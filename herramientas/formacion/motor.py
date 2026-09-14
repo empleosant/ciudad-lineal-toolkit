@@ -251,8 +251,8 @@ def hoy():
 def perfil_desde_cv(cv):
     """El currículo del generador en texto, sin nombre ni contacto."""
     partes = []
-    if cv.get("perfil"):
-        partes.append(f"Perfil: {cv['perfil']}")
+    if cv.get("objetivo"):
+        partes.append(f"Objetivo profesional: {cv['objetivo']}")
     for e in cv.get("experiencias", []):
         p = e.get("puesto") or e.get("denominacion")
         if not p:

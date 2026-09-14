@@ -4,7 +4,7 @@ Llamadas a la IA del generador de CV.
     sugiere_funciones(cli, oficio)      funciones típicas de un oficio
     transcribe(cli, audio, mime)        lo grabado por el micrófono -> texto
     estructura(cli, texto)              trayectoria en texto libre -> fichas
-    redacta_perfil(cli, cv)             párrafo de perfil profesional
+    redacta_objetivo(cli, cv)           el objetivo profesional, en tres líneas
 
 Regla: a la IA no se le manda ningún dato identificativo. Recibe oficios,
 fechas y funciones; nunca el nombre, el teléfono ni el correo.
@@ -46,16 +46,20 @@ REGLAS:
 - Una experiencia por puesto distinto. Si el texto no menciona formación, "formacion": [].
 - Español con acentuación correcta."""
 
-PERFIL = """Redacta el párrafo de PERFIL PROFESIONAL de un currículo a partir de los
-datos que recibes (puestos, años, funciones y formación). Entre 40 y 60 palabras,
-en tercera persona impersonal ("Profesional con...", nunca "yo"), sin viñetas.
+OBJETIVO = """Redacta el OBJETIVO PROFESIONAL que cierra el apartado «Otros datos de
+interés» de un currículo, a partir de los datos que recibes (puestos, años,
+funciones, formación e intereses). Es UNA sola frase o dos, en primera persona,
+de entre 25 y 40 palabras: tiene que caber en tres líneas.
+
+Modelo de tono: «Mi objetivo profesional está enfocado hacia trabajos en las áreas
+de comercio y atención al cliente, en las que cuento con amplia experiencia
+profesional e interés por seguir desempeñándome profesionalmente.»
 
 REGLAS:
-- Usa SOLO lo que hay en los datos. No inventes años de experiencia, logros,
-  cualidades personales ni sectores que no aparezcan.
-- Si hay varias experiencias del mismo ramo, nómbralo como el eje del perfil.
-- Termina con una frase sobre lo que la persona busca solo si los datos lo dicen.
-- Devuelve el párrafo pelado, sin título ni comillas."""
+- Nombra las áreas o sectores hacia los que se dirige la persona. Si los datos
+  declaran un interés o un cambio de sector, ese manda; si no, la experiencia.
+- Usa SOLO lo que hay en los datos. No inventes años, logros ni cualidades.
+- Sin viñetas, sin título, sin comillas. Devuelve la frase pelada."""
 
 
 def sugiere_funciones(cli, oficio, motivo=""):
@@ -125,8 +129,8 @@ def estructura(cli, texto):
     )
 
 
-def redacta_perfil(cli, cv):
-    """El párrafo de perfil, o "" si falla. No manda datos identificativos."""
+def redacta_objetivo(cli, cv):
+    """El objetivo profesional, o "" si falla. No manda datos identificativos."""
     if cli is None:
         return ""
     lineas = []
@@ -139,9 +143,12 @@ def redacta_perfil(cli, cv):
     for f in cv.get("formacion", []):
         if f.get("titulo"):
             lineas.append(f"- Formación: {f['titulo']}" + (f" ({f['anio']})" if f.get("anio") else ""))
+    for rotulo, clave in (("Otros datos e intereses", "otros"), ("Disponibilidad", "disponibilidad")):
+        if cv.get(clave):
+            lineas.append(f"- {rotulo}: {cv[clave]}")
     if not lineas:
         return ""
     try:
-        return ia.genera(cli, PERFIL, "\n".join(lineas), max_tokens=400).strip('"')
+        return ia.genera(cli, OBJETIVO, "\n".join(lineas), max_tokens=300).strip('"')
     except Exception:  # noqa: BLE001
         return ""

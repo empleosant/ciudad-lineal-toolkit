@@ -4,7 +4,7 @@ Generador de CV con IA en pocos pasos: la pantalla.
     1 · Datos        quién es (no se manda a la IA)
     2 · Experiencia  fichas: del codificador SISPE, a mano o estructuradas por la IA
     3 · Formación    títulos, idiomas, informática, otros
-    4 · Documento    perfil redactado por la IA, vista previa y descarga en Word
+    4 · Documento    objetivo profesional redactado por la IA, vista previa y descarga
 
 La lógica está en `motor.py` (Python puro), las llamadas a la IA en
 `modelo.py` y el currículo en curso en `estado.py`, que es por donde entran
@@ -332,30 +332,31 @@ elif n_paso == 2:
 # ---------------------------------------------------------------------------
 
 else:
-    st.markdown('<div class="seccion">Perfil profesional</div>', unsafe_allow_html=True)
+    st.markdown('<div class="seccion">Objetivo profesional</div>', unsafe_allow_html=True)
     st.caption(
-        "Tres o cuatro líneas que abren el currículo. La IA lo redacta con lo que "
-        "hay en los pasos anteriores, sin el nombre ni el contacto. Revísalo. "
-        "El modelo de la oficina no lleva perfil: si lo dejas vacío, no sale."
+        "Cierra el apartado «Otros datos de interés»: hacia dónde se dirige la persona, "
+        "en primera persona y en tres líneas como máximo. La IA lo redacta con lo que "
+        "hay en los pasos anteriores, sin el nombre ni el contacto. Revísalo."
     )
 
     def redacta():
-        texto = modelo.redacta_perfil(ia.cliente(), cv)
+        texto = modelo.redacta_objetivo(ia.cliente(), cv)
         if texto:
-            cv["perfil"] = texto
-            st.session_state["cv_w_perfil"] = texto
+            cv["objetivo"] = texto
+            st.session_state["cv_w_objetivo"] = texto
         else:
             st.session_state["cv_aviso"] = (
-                "No he podido redactar el perfil. Hace falta al menos una experiencia "
+                "No he podido redactar el objetivo. Hace falta al menos una experiencia "
                 "o un título en los pasos anteriores, y conexión con la IA."
             )
 
     aviso = st.session_state.pop("cv_aviso", "")
     if aviso:
         st.warning(aviso)
-    st.button("🪄 Redactar el perfil con IA", on_click=redacta,
+    st.button("🪄 Redactar el objetivo con IA", on_click=redacta,
               disabled=not (cv["experiencias"] or cv["formacion"]))
-    area("Perfil", "perfil", height=110, label_visibility="collapsed")
+    area("Objetivo", "objetivo", height=90, label_visibility="collapsed",
+         placeholder="Mi objetivo profesional está enfocado hacia trabajos en las áreas de…")
 
     st.markdown('<div class="seccion">Cómo queda</div>', unsafe_allow_html=True)
     vista = motor.texto_plano(cv)

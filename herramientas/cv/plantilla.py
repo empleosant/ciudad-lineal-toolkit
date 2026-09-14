@@ -83,10 +83,6 @@ def _bloques(cv, con_sectores):
     if cv.get("localidad"):
         b.append(("contacto", cv["localidad"].strip()))
 
-    if cv.get("perfil"):
-        b.append(("cabecera", "PERFIL PROFESIONAL"))
-        b.append(("texto", cv["perfil"].strip()))
-
     exps = cv.get("experiencias", [])
     if exps:
         b.append(("cabecera", "EXPERIENCIA LABORAL"))
@@ -119,6 +115,9 @@ def _bloques(cv, con_sectores):
     for linea in (cv.get("otros") or "").splitlines():
         if linea.strip():
             otros.append(linea.strip())
+    if cv.get("objetivo"):
+        # Siempre el último punto: hacia dónde se dirige la persona, en tres líneas.
+        otros.append(cv["objetivo"].strip())
     if otros:
         b.append(("cabecera", "OTROS DATOS DE INTERÉS"))
         for o in otros:
@@ -149,11 +148,10 @@ _METRICA = {
     "nombre": (27, True, 0, 0, 0, 1.0),
     "contacto": (19, False, 35.45, 0, 0, 1.15),
     "cabecera": (20, False, 0, 0, 0, 1.15),
-    "texto": (16, False, 35.45, 0, 0, 0.95),
     "sector": (20, False, 2.85, 6, 6, 0.95),
     "experiencia": (18, True, 38.85, 0, 0, 0.95),
     "empresa": (16, False, 70.9, 0, 0, 0.95),
-    "funciones": (16, False, 70.9, 0, 0, 0.95),
+    "funciones": (16, False, 35.45, 0, 0, 0.95),
     "formacion": (16, False, 36, 6, 0, 0.9),
     "otros": (16, False, 33.15, 6, 0, 1.0),
 }
@@ -252,7 +250,11 @@ def _escala(elemento, factor):
 
 
 def _funciones_con_sangria(p):
-    """Sustituye el truco de tabuladores del modelo por una sangría francesa real."""
+    """Sustituye el truco de tabuladores del modelo por una sangría izquierda fija.
+
+    Todas las líneas de «Funciones:» empiezan a la misma altura que la
+    etiqueta (1,25 cm), que es como quedó en la corrección a mano del modelo.
+    """
     ppr = p.find(qn("w:pPr"))
     for tabs in ppr.findall(qn("w:tabs")):
         ppr.remove(tabs)
@@ -261,8 +263,7 @@ def _funciones_con_sangria(p):
         ind = etree.SubElement(ppr, qn("w:ind"))
     for k in list(ind.attrib):
         del ind.attrib[k]
-    ind.set(qn("w:left"), "1418")
-    ind.set(qn("w:hanging"), "709")
+    ind.set(qn("w:left"), "709")
     return p
 
 
@@ -300,8 +301,6 @@ def genera(cv):
             anade(_parrafo_como(protos[P_CONTACTO], [(r_contacto, datos)], con_tab=True))
         elif tipo == "cabecera":
             anade(_parrafo_como(protos[P_CABECERA], [(r_cabecera, datos)]))
-        elif tipo == "texto":
-            anade(_funciones_con_sangria(_parrafo_como(protos[P_FUNCIONES], [(r_funciones, datos)])))
         elif tipo == "sector":
             anade(_parrafo_como(protos[P_SECTOR], [(r_sector, datos)]))
         elif tipo == "experiencia":

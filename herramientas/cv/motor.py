@@ -20,7 +20,7 @@ def nuevo():
     return {
         "nombre": "", "telefono": "", "email": "", "localidad": "",
         "permiso": "", "disponibilidad": "",
-        "perfil": "",
+        "objetivo": "",
         "experiencias": [],
         "formacion": [],
         "idiomas": "", "informatica": "", "otros": "",
@@ -154,8 +154,6 @@ def texto_plano(cv):
     lineas = []
     if cv.get("nombre"):
         lineas += [cv["nombre"].upper(), contacto(cv), ""]
-    if cv.get("perfil"):
-        lineas += ["PERFIL PROFESIONAL", cv["perfil"], ""]
     if cv.get("experiencias"):
         lineas.append("EXPERIENCIA LABORAL")
         for sector, e in experiencias_agrupadas(cv["experiencias"]):
@@ -174,13 +172,18 @@ def texto_plano(cv):
             detalle = " · ".join(x for x in (f.get("centro"), f.get("anio")) if x)
             lineas.append(f"·   {f.get('titulo', '')}{f' ({detalle})' if detalle else ''}")
         lineas.append("")
-    for rotulo, clave in (("IDIOMAS", "idiomas"), ("INFORMÁTICA", "informatica"),
-                          ("OTROS DATOS", "otros")):
-        if cv.get(clave):
-            lineas += [rotulo, cv[clave], ""]
-    extra = [x for x in (cv.get("permiso"), cv.get("disponibilidad")) if x]
-    if extra and not cv.get("otros"):
-        lineas += ["OTROS DATOS", " · ".join(extra), ""]
+    otros = []
+    if cv.get("idiomas"):
+        otros.append(f"Idiomas: {cv['idiomas']}")
+    if cv.get("informatica"):
+        otros.append(f"Informática: {cv['informatica']}")
+    otros += [x for x in (cv.get("permiso"), cv.get("disponibilidad")) if x]
+    otros += [x.strip() for x in (cv.get("otros") or "").splitlines() if x.strip()]
+    if cv.get("objetivo"):
+        otros.append(cv["objetivo"].strip())
+    if otros:
+        lineas.append("OTROS DATOS DE INTERÉS")
+        lineas += [f"·   {o}" for o in otros]
     return "\n".join(lineas).strip()
 
 
@@ -232,8 +235,6 @@ def _pdf_bloques(bloques, f):
                 f'<font color="white">{_esc(datos)}</font>',
                 _estilo(pt, antes=4, mult=mult, backColor=_AZUL, borderPadding=(1, 2, 2, 2)),
             ))
-        elif tipo == "texto":
-            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=70.9, primera=-35.45, mult=mult, alignment=4)))
         elif tipo == "sector":
             flujo.append(Paragraph(f"<u>{_esc(datos)}</u>", _estilo(pt, izq=sangria, antes=antes, despues=despues, mult=mult)))
         elif tipo == "experiencia":
@@ -246,7 +247,7 @@ def _pdf_bloques(bloques, f):
         elif tipo == "empresa":
             flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=0, primera=35.45, mult=mult, alignment=4)))
         elif tipo == "funciones":
-            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=70.9, primera=-35.45, mult=mult, alignment=4)))
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=sangria, mult=mult, alignment=4)))
         elif tipo == "formacion":
             titulo, centro, anio = datos
             texto = f"<b>{_esc(titulo)}" + (" –</b>" if (centro or anio) else "</b>")

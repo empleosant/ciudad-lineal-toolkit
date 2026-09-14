@@ -112,7 +112,9 @@ el currículo:
   experiencia y formación. Solo ordena lo que se le ha contado.
 - **Sugerir funciones** habituales de un oficio, como vocabulario de
   partida. No son las de la persona: hay que quitar lo que no hiciera.
-- **Redactar el perfil profesional** con lo que hay en las fichas.
+- **Redactar el objetivo profesional**: la frase que cierra «Otros datos
+  de interés», en primera persona y en tres líneas como máximo. El modelo
+  de la oficina no lleva apartado de perfil.
 
 El documento sigue el **modelo de CV de la oficina**
 (`herramientas/cv/plantillas/Modelo_CV.docx`, convertido de la plantilla
