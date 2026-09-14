@@ -6,7 +6,7 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 | Herramienta | Carpeta | Estado |
 |---|---|---|
 | Codificador de ocupaciones SISPE | `herramientas/sispe/` | en uso |
-| Generador de CV con IA | `herramientas/cv/` | en construcción |
+| Generador de CV con IA en pocos pasos | `herramientas/cv/` | en uso |
 
 ## Estructura
 
@@ -28,7 +28,10 @@ herramientas/
       ocupaciones_sispe_ultraligero.txt   catálogo oficial (nombre exacto)
       terminos_ampliados.txt   jerga por ocupación (lo genera scripts/enriquecer.py)
   cv/
-    vista.py                   página provisional del generador de CV
+    vista.py                   la pantalla: cuatro pasos (datos, experiencia, formación, documento)
+    motor.py                   el currículo como datos, vista previa y el Word. Python puro
+    modelo.py                  prompts: sugerir funciones, estructurar texto libre, redactar perfil
+    estado.py                  el currículo en curso en la sesión; por aquí entran otras herramientas
 pruebas/
   motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
@@ -59,6 +62,32 @@ Reglas de la casa:
 
 Las claves de `st.session_state` de cada herramienta llevan su prefijo
 (`sispe_`, `cv_`) para que dos páginas no se pisen.
+
+## Cómo se conectan las herramientas
+
+Cada herramienta hace una cosa. Cuando una necesita pasarle algo a otra,
+lo hace a través del módulo `estado.py` de la herramienta que recibe,
+nunca tocando sus claves de sesión a mano.
+
+La primera conexión es codificador → generador de CV: el botón «+ CV» bajo
+las tarjetas llama a `herramientas.cv.estado.anade_experiencia()`, y al
+lado aparece un enlace para abrir el generador con lo que lleva. Como la
+sesión de Streamlit es la misma para todas las páginas, el currículo se
+conserva al cambiar de herramienta.
+
+# Generador de CV
+
+Cuatro pasos. Los datos de contacto nunca se mandan a la IA; solo van al
+documento. La IA hace tres cosas, todas revisables antes de que entren en
+el currículo:
+
+- **Estructurar la trayectoria** contada en texto libre en fichas de
+  experiencia y formación. Solo ordena lo que se le ha contado.
+- **Sugerir funciones** habituales de un oficio, como vocabulario de
+  partida. No son las de la persona: hay que quitar lo que no hiciera.
+- **Redactar el perfil profesional** con lo que hay en las fichas.
+
+El documento sale en Word (`python-docx`) para que se pueda retocar.
 
 # Codificador de ocupaciones SISPE
 

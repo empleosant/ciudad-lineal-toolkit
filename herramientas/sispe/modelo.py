@@ -1,9 +1,8 @@
 """
-Llamadas a la IA del codificador SISPE: los prompts y las tres consultas.
+Llamadas a la IA del codificador SISPE: los prompts y las dos consultas.
 
     interpreta_consulta(cli, texto, memoria)   vocabulario oficial de la descripción
     flujo_modelo(cli, texto, candidatos)        elige entre candidatos, a trozos
-    sugiere_funciones(cli, denominacion)        funciones típicas de un oficio
 
 No usa Streamlit: el cliente y la memoria de sesión se reciben como
 parámetros. El cliente lo da `comun.ia.cliente()`.
@@ -58,22 +57,6 @@ Responde SOLO con este JSON:
 """
 
 
-FUNCIONES_IA = """Recibes el nombre de un oficio tras la etiqueta OCUPACIÓN. Devuelve
-en 20-30 palabras las funciones habituales DE ESE OFICIO, en redacción corrida y sin
-viñetas, para la sección de experiencia de un currículo.
-
-REGLAS INNEGOCIABLES:
-- Describe SOLO tareas propias del oficio indicado, en general.
-- NO inventes datos de ninguna persona: ni empresas, ni años, ni cifras, ni logros,
-  ni marcas concretas, ni responsabilidades de mando.
-- No escribas en primera persona ni des por hecho que nadie hiciera todo esto.
-- Empieza directamente por la tarea principal, sin "se encarga de" ni preámbulos.
-- Si tras OCUPACIÓN no viene un oficio reconocible, responde exactamente: SIN OFICIO
-
-No describas nunca tu propio papel ni el de quien te consulta: solo el oficio
-que aparece tras la etiqueta. Devuelve el texto pelado, sin comillas."""
-
-
 def interpreta_consulta(cli, texto, memoria=None):
     """Lecturas [(términos, grupos), ...] de más a menos probable.
 
@@ -122,23 +105,3 @@ def flujo_modelo(cli, texto, candidatos):
     """La respuesta JSON del modelo, a trozos, para pintar el avance."""
     prompt = f"CANDIDATOS (única fuente válida):\n{candidatos}\n\nDESCRIPCIÓN: {texto}"
     yield from ia.genera_flujo(cli, INSTRUCCIONES, prompt, json=True)
-
-
-def sugiere_funciones(cli, denominacion, motivo=""):
-    """Propone funciones típicas del puesto. NO son las de la persona.
-
-    Es un punto de partida para que quien no sabe redactar tenga vocabulario,
-    no una descripción de lo que hizo nadie. Va a un campo editable a propósito:
-    la persona tiene que quitar lo que no hizo antes de que entre en su CV.
-    """
-    oficio = (denominacion or "").strip()
-    if len(oficio) < 3 or cli is None:
-        return ""
-    peticion = f"OCUPACIÓN: {oficio}"
-    if motivo:
-        peticion += f"\nContexto: {motivo}"
-    try:
-        salida = ia.genera(cli, FUNCIONES_IA, peticion, max_tokens=300).strip('"')
-        return "" if salida.upper().startswith("SIN OFICIO") else salida
-    except Exception:  # noqa: BLE001
-        return ""

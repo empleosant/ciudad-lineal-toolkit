@@ -10,8 +10,10 @@ consulta (`resuelve`). La lógica está repartida en:
     aprendizaje.py  lo que se guarda en el Gist compartido
     comun/          cliente de IA, Gist y estilo, compartidos con otras herramientas
 
-Claves de sesión: todas con prefijo `sispe_` (las `cv_` pasarán al
-generador de CV). Las claves de widgets (`consulta`, `buscar`, `marca`,
+Conexión con otras herramientas: el botón «+ CV» bajo las tarjetas manda
+la ocupación al generador de CV a través de `herramientas.cv.estado`.
+
+Claves de sesión: todas con prefijo `sispe_`. Las claves de widgets (`consulta`, `buscar`, `marca`,
 `cabecera`, `pregunta`, `reinicio`, `ajustes`) las usa el CSS de
 `comun/estilo.py` por su nombre: no las cambies sin cambiarlo allí.
 """
@@ -27,6 +29,8 @@ import streamlit.components.v1 as components
 
 from comun import estilo, gist, ia
 from comun.texto import normaliza
+from herramientas.cv import estado as cv_estado
+from herramientas.cv import motor as cv_motor
 from herramientas.sispe import aprendizaje, modelo, motor
 
 N_CANDIDATOS = 16
@@ -621,9 +625,6 @@ st.session_state.setdefault("sispe_por_guardar", [])
 st.session_state.setdefault("sispe_refuerzos_por_guardar", [])
 st.session_state.setdefault("sispe_ultima", "")
 st.session_state.setdefault("consulta", "")
-st.session_state.setdefault("cv_experiencias", [])
-st.session_state.setdefault("cv_auto_orden", True)
-st.session_state.setdefault("cv_manuales", 0)
 
 EJEMPLOS = [
     "Una persona que limpia habitaciones de hotel",
@@ -690,163 +691,43 @@ def usar_ejemplo(texto_ejemplo):
     st.session_state["sispe_ultima"] = ""
 
 
-SUELTAS_ES = ("r", "n", "l", "d", "s", "z", "j")
-
-
-def a_oracion(denom):
-    """Pasa la denominacion oficial a algo que se pueda poner en un CV.
-
-    El catalogo va en MAYUSCULAS y en plural ("CAMAREROS DE PISO"), porque asi
-    consta oficialmente y asi debe verse en el codificador. Pero un curriculo
-    se escribe en singular y en tipo oracion ("Camarero de piso"). El singular
-    es aproximado a proposito: el campo queda editable y la persona lo ajusta.
-    """
-    base = re.sub(r"\s*\([^)]*\)", "", denom).strip().lower()
-    # Coletillas del catalogo que no pintan nada en un curriculo.
-    base = re.sub(r",?\s*(en general|en gral\.?|n\.c\.o\.p\.?)\s*$", "", base).strip()
-    base = base.strip(" ,;")
-    if not base:
-        return ""
-
-    def singular(palabra):
-        if palabra.endswith("es") and len(palabra) > 4 and palabra[-3] in SUELTAS_ES:
-            return palabra[:-2]
-        if palabra.endswith("s") and len(palabra) > 3:
-            return palabra[:-1]
-        return palabra
-
-    piezas = base.split()
-    # "matarifes-carniceros" y demas compuestos: cada mitad va en plural.
-    piezas[0] = "-".join(singular(x) for x in piezas[0].split("-"))
-    return " ".join(piezas).capitalize()
-
-
-def pon_funciones(codigo):
-    for e in st.session_state["cv_experiencias"]:
-        if e["codigo"] == codigo:
-            # El puesto se lee de la caja, no del diccionario: el usuario acaba
-            # de escribirlo y en la ficha manual no hay denominacion de catalogo.
-            escrito = (st.session_state.get(f"pue_{codigo}") or e["puesto"] or "").strip()
-            oficio = e["denominacion"] or escrito
-            if len(oficio.strip()) < 3:
-                st.session_state["cv_aviso"] = (
-                    "Escribe primero el puesto y vuelve a pulsar."
-                )
-                return
-            texto = modelo.sugiere_funciones(ia.cliente(), oficio, e.get("motivo", ""))
-            if texto:
-                e["funciones"] = texto
-                st.session_state[f"fun_{codigo}"] = texto
-            else:
-                st.session_state["cv_aviso"] = (
-                    "No he podido proponer funciones para ese puesto. "
-                    "Comprueba que el nombre del oficio es claro, o escríbelas a mano."
-                )
-            return
-
-
-def en_carrito(codigo):
-    return any(e["codigo"] == codigo for e in st.session_state["cv_experiencias"])
-
-
-def anade_al_carrito(codigo, denominacion, motivo):
-    if en_carrito(codigo):
-        return
-    st.session_state["cv_experiencias"].append({
-        "codigo": codigo,
-        "denominacion": denominacion,
-        "motivo": motivo,
-        "sector": "",
-        "puesto": a_oracion(denominacion),
-        "contexto": "",
-        "funciones": "",
-        "desde": "",
-        "hasta": "",
-    })
-
-
-def anade_a_mano():
-    """Una experiencia que no viene del codificador.
-
-    No todo lo que se pone en un curriculo hace falta codificarlo en SISPE, y
-    hay quien llega con el itinerario ya contado. El codigo interno solo sirve
-    para que cada ficha conserve sus datos al moverla.
-    """
-    n = st.session_state["cv_manuales"] = st.session_state.get("cv_manuales", 0) + 1
-    st.session_state["cv_experiencias"].append({
-        "codigo": f"mano-{n}",
-        "denominacion": "",
-        "motivo": "",
-        "sector": "",
-        "puesto": "",
-        "contexto": "",
-        "funciones": "",
-        "desde": "",
-        "hasta": "",
-    })
-
-
-def quita_del_carrito(i):
-    st.session_state["cv_experiencias"].pop(i)
-
-
-def mueve(i, salto):
-    e = st.session_state["cv_experiencias"]
-    j = i + salto
-    if 0 <= j < len(e):
-        e[i], e[j] = e[j], e[i]
-
-
-def _anio(texto):
-    m = re.findall(r"(19|20)\d{2}", texto or "")
-    return int((texto or "")[texto.find(m[-1]):][:4]) if m else 0
-
-
-def ordena_por_fechas():
-    """Mas reciente primero, que es como se lee un curriculo.
-
-    Los que no tienen ningun ano se quedan al final y conservan el orden en que
-    se anadieron, para poder colocarlos a mano con las flechas.
-    """
-    st.session_state["cv_experiencias"].sort(
-        key=lambda e: (
-            0 if (_anio(e["hasta"]) or _anio(e["desde"])) else 1,
-            -(_anio(e["hasta"]) or _anio(e["desde"])),
-            -_anio(e["desde"]),
-        ),
-    )
-
-
 def botones_carrito(ocupaciones):
-    """Botones reales bajo las tarjetas.
+    """Botones reales bajo las tarjetas: mandan la ocupación al generador de CV.
 
     No pueden ir dentro: las tarjetas se dibujan con components.html, en un
-    marco aislado, y un boton de ahi dentro no puede avisar a la aplicacion.
+    marco aislado, y un botón de ahí dentro no puede avisar a la aplicación.
+    Es la conexión entre las dos herramientas: pasa por `herramientas.cv.estado`.
     """
     if not ocupaciones:
         return
     st.markdown('<div class="seccion">Añadir al currículo</div>', unsafe_allow_html=True)
     for o in ocupaciones:
-        ya = en_carrito(o["codigo"])
+        ya = cv_estado.en_lista(o["codigo"])
         boton, texto = st.columns([1.5, 8.5], gap="small")
         boton.button(
             "Añadido" if ya else "+ CV",
             key=f"addcv_{o['codigo']}", use_container_width=True, disabled=ya,
             type="secondary" if ya else "primary",
-            on_click=anade_al_carrito,
+            on_click=cv_estado.anade_experiencia,
             args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
         )
         # El nombre oficial manda, pero entre parentesis va como se llamaria el
         # puesto en un curriculo. De momento sale de convertir la denominacion;
         # el nombre de mercado de verdad ("montador de placa de pladur") lo
         # tiene que proponer el modelo, y eso va en el paso siguiente.
-        sugerencia = a_oracion(o["denominacion"])
+        sugerencia = cv_motor.a_oracion(o["denominacion"])
         texto.markdown(
             f'<div style="padding-top:.35rem;line-height:1.3">'
             f'<span style="font-size:.82rem;font-weight:600">{o["denominacion"]}</span><br>'
             f'<span style="font-size:.78rem;color:var(--suave)">'
             f'En el currículo: <b>{sugerencia}</b> · {o["codigo"]}</span></div>',
             unsafe_allow_html=True,
+        )
+    n = len(cv_estado.experiencias())
+    if n:
+        st.page_link(
+            cv_estado.PAGINA, icon=":material/description:",
+            label=f"Abrir el generador de CV ({n} experiencia{'s' if n != 1 else ''})",
         )
 
 
@@ -913,231 +794,59 @@ if entrada:
     st.session_state["sispe_ultima"] = entrada
 
 # ---------------------------------------------------------------------------
-# Pestañas
+# Cuerpo
 # ---------------------------------------------------------------------------
 
-n_cv = len(st.session_state["cv_experiencias"])
-tab_codificador, tab_cv = st.tabs([
-    "Codificador",
-    f"Creador de CV ({n_cv})" if n_cv else "Creador de CV",
-])
+if entrada:
+    st.markdown(
+        f'<div class="consulta-box"><div class="consulta-texto">{rotulo or entrada}</div></div>',
+        unsafe_allow_html=True,
+    )
+    zona = st.empty()
+    payload = resuelve(
+        entrada, zona,
+        usar_ia=st.session_state["sispe_usar_ia"],
+        contexto=contexto, busqueda=busqueda,
+    )
+    st.session_state["sispe_actual"] = (rotulo or entrada, payload)
+    st.session_state["sispe_registro"].append((
+        rotulo or entrada,
+        " | ".join(o["codigo"] for o in payload.get("ocupaciones", [])),
+    ))
+    st.rerun()
 
-with tab_codificador:
-    # ---------------------------------------------------------------------------
-    # Cuerpo
-    # ---------------------------------------------------------------------------
+elif st.session_state["sispe_actual"]:
+    consulta, payload = st.session_state["sispe_actual"]
+    st.markdown(
+        f'<div class="consulta-box"><div class="consulta-texto">{consulta}</div></div>',
+        unsafe_allow_html=True,
+    )
+    pinta_resultado(payload, interactivo=True, consulta=consulta)
+    botones_carrito(payload.get("ocupaciones", []))
 
-    if entrada:
-        st.markdown(
-            f'<div class="consulta-box"><div class="consulta-texto">{rotulo or entrada}</div></div>',
-            unsafe_allow_html=True,
-        )
-        zona = st.empty()
-        payload = resuelve(
-            entrada, zona,
-            usar_ia=st.session_state["sispe_usar_ia"],
-            contexto=contexto, busqueda=busqueda,
-        )
-        st.session_state["sispe_actual"] = (rotulo or entrada, payload)
-        st.session_state["sispe_registro"].append((
-            rotulo or entrada,
-            " | ".join(o["codigo"] for o in payload.get("ocupaciones", [])),
-        ))
-        st.rerun()
+    st.markdown('<div class="separa"></div>', unsafe_allow_html=True)
+    st.button("↺", key="reinicio", help="Nueva búsqueda", on_click=empezar_de_nuevo)
+    st.markdown('<div class="pie-nueva">Nueva búsqueda</div>', unsafe_allow_html=True)
 
-    elif st.session_state["sispe_actual"]:
-        consulta, payload = st.session_state["sispe_actual"]
-        st.markdown(
-            f'<div class="consulta-box"><div class="consulta-texto">{consulta}</div></div>',
-            unsafe_allow_html=True,
-        )
-        pinta_resultado(payload, interactivo=True, consulta=consulta)
-        botones_carrito(payload.get("ocupaciones", []))
-
-        st.markdown('<div class="separa"></div>', unsafe_allow_html=True)
-        st.button("↺", key="reinicio", help="Nueva búsqueda", on_click=empezar_de_nuevo)
-        st.markdown('<div class="pie-nueva">Nueva búsqueda</div>', unsafe_allow_html=True)
-
-    else:
-        st.markdown('<div class="seccion">Prueba con</div>', unsafe_allow_html=True)
-        arranque = "Una persona que "
-        for i in range(0, len(EJEMPLOS), 2):
-            fila = EJEMPLOS[i:i + 2]
-            cols = st.columns(2, gap="small")
-            for col, ej in zip(cols, fila):
-                rotulo_ej = (
-                    f"{arranque}**{ej[len(arranque):]}**"
-                    if ej.startswith(arranque) else f"**{ej}**"
-                )
-                col.button(
-                    rotulo_ej, use_container_width=True, key=f"ej_{i}_{ej[-14:]}",
-                    on_click=usar_ejemplo, args=(ej,),
-                )
-
-    # Estas dos escrituras van a la API de GitHub y ocurren AL TERMINAR la
-    # busqueda, cuando el usuario ya cree que ha acabado. No se veian en el panel
-    # porque solo se cronometraba a Gemini; aqui pueden irse varios segundos.
-
-with tab_cv:
-    exps = st.session_state["cv_experiencias"]
-
-    if not exps:
-        st.markdown('<div class="seccion">Experiencia laboral</div>', unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown("**Todavía no hay ninguna experiencia**")
-            st.caption(
-                "Puedes traerlas del Codificador, buscando la ocupación y "
-                "pulsando el botón rojo que sale bajo las tarjetas, o "
-                "escribirlas aquí directamente si no necesitas codificarlas."
+else:
+    st.markdown('<div class="seccion">Prueba con</div>', unsafe_allow_html=True)
+    arranque = "Una persona que "
+    for i in range(0, len(EJEMPLOS), 2):
+        fila = EJEMPLOS[i:i + 2]
+        cols = st.columns(2, gap="small")
+        for col, ej in zip(cols, fila):
+            rotulo_ej = (
+                f"{arranque}**{ej[len(arranque):]}**"
+                if ej.startswith(arranque) else f"**{ej}**"
             )
-            st.button("Añadir una experiencia a mano", type="primary",
-                      use_container_width=True, on_click=anade_a_mano)
-    else:
-        st.markdown('<div class="seccion">Experiencia laboral</div>', unsafe_allow_html=True)
-        st.caption(
-            "El nombre del puesto viene del catálogo, pasado a singular y "
-            "minúscula para el currículo. Cámbialo si no encaja: manda lo que "
-            "escribas aquí, no lo que diga el catálogo."
-        )
-        st.session_state["cv_auto_orden"] = st.toggle(
-            "Ordenar solo por fechas", value=st.session_state["cv_auto_orden"],
-            help="En cuanto escribas los años, el más reciente sube al primer "
-                 "puesto. Apágalo si quieres colocarlos tú con las flechas.",
-        )
-        _aviso = st.session_state.pop("cv_aviso", "")
-        if _aviso:
-            st.warning(_aviso)
+            col.button(
+                rotulo_ej, use_container_width=True, key=f"ej_{i}_{ej[-14:]}",
+                on_click=usar_ejemplo, args=(ej,),
+            )
 
-        for i, e in enumerate(exps):
-            with st.container(border=True):
-                arriba, abajo, titulo, fuera = st.columns([0.8, 0.8, 7, 1.2], gap="small")
-                arriba.button("↑", key=f"sube_{e['codigo']}", disabled=(i == 0),
-                              use_container_width=True, on_click=mueve, args=(i, -1))
-                abajo.button("↓", key=f"baja_{e['codigo']}", disabled=(i == len(exps) - 1),
-                             use_container_width=True, on_click=mueve, args=(i, 1))
-                if e["denominacion"]:
-                    apunte = f"{e['codigo']} · {e['denominacion'][:40]}"
-                else:
-                    apunte = "Añadida a mano, sin código"
-                titulo.markdown(
-                    f"**{e['puesto'] or a_oracion(e['denominacion']) or 'Experiencia sin nombre'}**"
-                    f" &nbsp;&nbsp;<span style='color:#888;font-size:.8rem'>{apunte}</span>",
-                    unsafe_allow_html=True,
-                )
-                fuera.button("Quitar", key=f"quita_{e['codigo']}", use_container_width=True,
-                             on_click=quita_del_carrito, args=(i,))
-
-                c1, c2 = st.columns(2, gap="medium")
-                e["sector"] = c1.text_input(
-                    "Sector", value=e["sector"], key=f"sec_{e['codigo']}",
-                    placeholder="Construcción, Hostelería, Conducción profesional…",
-                    help="Opcional. Solo aparece en el currículo si agrupa dos o "
-                         "más experiencias del mismo ramo. No sale del catálogo.",
-                )
-                e["puesto"] = c2.text_input(
-                    "Puesto, tal como quieres que salga", value=e["puesto"], key=f"pue_{e['codigo']}",
-                )
-
-                c3, c4 = st.columns(2, gap="medium")
-                e["desde"] = c3.text_input("Desde", value=e["desde"], key=f"des_{e['codigo']}",
-                                           placeholder="2016")
-                e["hasta"] = c4.text_input("Hasta", value=e["hasta"], key=f"has_{e['codigo']}",
-                                           placeholder="2022, o «actualmente»")
-
-                e["contexto"] = st.text_input(
-                    "Dónde", value=e["contexto"], key=f"ctx_{e['codigo']}",
-                    placeholder="Empresas de construcción y obras públicas en Madrid capital.",
-                    help="Puedes nombrar las empresas o describir el tipo de "
-                         "empresa, que es útil cuando han sido muchas o no se "
-                         "recuerdan los nombres.",
-                )
-                etiqueta, varita = st.columns([6, 2], gap="small")
-                etiqueta.markdown(
-                    '<div style="font-size:.8rem;padding-top:.4rem">Funciones</div>',
-                    unsafe_allow_html=True,
-                )
-                varita.button(
-                    "🪄 Sugerir funciones", key=f"ia_{e['codigo']}",
-                    use_container_width=True,
-                    on_click=pon_funciones, args=(e["codigo"],),
-                    help="La IA propone las funciones HABITUALES de este oficio, "
-                         "no las de esta persona. Quita lo que no hiciera antes "
-                         "de darlo por bueno.",
-                )
-                st.session_state.setdefault(f"fun_{e['codigo']}", e["funciones"])
-                e["funciones"] = st.text_area(
-                    "Funciones", key=f"fun_{e['codigo']}",
-                    height=90, label_visibility="collapsed",
-                    placeholder="Qué hacía en ese puesto, en dos o tres líneas.",
-                )
-
-        izq, der = st.columns([1, 1], gap="small")
-        if not st.session_state["cv_auto_orden"]:
-            izq.button("Ordenar por fechas", use_container_width=True,
-                       on_click=ordena_por_fechas,
-                       help="Coloca el más reciente arriba.")
-        else:
-            izq.caption("Se ordenan solos por fecha, del más reciente al más antiguo.")
-        st.button("Añadir otra experiencia a mano", use_container_width=True,
-                  on_click=anade_a_mano)
-
-        if der.button("Vaciar la lista", use_container_width=True):
-            st.session_state["cv_experiencias"] = []
-            st.rerun()
-
-        # Se ordena DESPUES de leer los campos: asi, en cuanto escribes un ano,
-        # la ficha sube o baja sola en el siguiente refresco.
-        if st.session_state["cv_auto_orden"]:
-            antes = [x["codigo"] for x in exps]
-            ordena_por_fechas()
-            if [x["codigo"] for x in exps] != antes:
-                st.rerun()
-
-        # ------------------------------------------------------------------
-        # Vista previa
-        # ------------------------------------------------------------------
-        st.markdown('<div class="seccion">Cómo va quedando</div>', unsafe_allow_html=True)
-
-        # El sector solo es un agrupador: se escribe si reune dos o mas puestos.
-        # Con uno solo seria un titulo para una linea, que gasta espacio sin
-        # aportar nada, y en un curriculo de una pagina el espacio es el limite.
-        cuenta = {}
-        for e in exps:
-            if e["sector"].strip():
-                cuenta[e["sector"].strip().upper()] = cuenta.get(
-                    e["sector"].strip().upper(), 0) + 1
-        agrupan = {k for k, v in cuenta.items() if v >= 2}
-
-        lineas, sector_actual = [], None
-        for e in exps:
-            sector = e["sector"].strip().upper()
-            if sector in agrupan and sector != sector_actual:
-                lineas.append(f"\n{sector}")
-                sector_actual = sector
-            elif sector not in agrupan:
-                sector_actual = None
-
-            periodo = ""
-            if e["desde"] or e["hasta"]:
-                rango = " - ".join(x for x in (e["desde"], e["hasta"]) if x)
-                a1, a2 = _anio(e["desde"]), _anio(e["hasta"])
-                if a1 and a2 and a2 >= a1:
-                    anios = max(1, a2 - a1)
-                    periodo = f" ({anios} año{'s' if anios != 1 else ''} - {rango})"
-                else:
-                    periodo = f" ({rango})"
-
-            lineas.append(f"·   {e['puesto'] or a_oracion(e['denominacion'])}{periodo}")
-            if e["contexto"]:
-                lineas.append(e["contexto"])
-            if e["funciones"]:
-                lineas.append(f"Funciones: {e['funciones']}")
-
-        st.code("EXPERIENCIA LABORAL\n" + "\n".join(lineas), language=None)
-        st.caption(
-            "Vista provisional en texto. El documento con formato, en un A4, es "
-            "el paso siguiente; ahí decidiremos qué se recorta si no cabe."
-        )
+# Estas dos escrituras van a la API de GitHub y ocurren AL TERMINAR la
+# busqueda, cuando el usuario ya cree que ha acabado. No se veian en el panel
+# porque solo se cronometraba a Gemini; aqui pueden irse varios segundos.
 
 _pendientes = st.session_state.pop("sispe_por_guardar", [])
 if _pendientes:
