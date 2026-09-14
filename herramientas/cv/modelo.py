@@ -2,6 +2,7 @@
 Llamadas a la IA del generador de CV.
 
     sugiere_funciones(cli, oficio)      funciones típicas de un oficio
+    transcribe(cli, audio, mime)        lo grabado por el micrófono -> texto
     estructura(cli, texto)              trayectoria en texto libre -> fichas
     redacta_perfil(cli, cv)             párrafo de perfil profesional
 
@@ -75,6 +76,16 @@ def sugiere_funciones(cli, oficio, motivo=""):
         return "" if salida.upper().startswith("SIN OFICIO") else salida
     except Exception:  # noqa: BLE001
         return ""
+
+
+def transcribe(cli, audio, mime="audio/wav"):
+    """(texto, error). Si falla, texto vacío y el motivo en `error`."""
+    if cli is None:
+        return "", "No hay conexión con la IA."
+    try:
+        return ia.transcribe(cli, audio, mime), ""
+    except Exception as e:  # noqa: BLE001
+        return "", f"{type(e).__name__}: {e}"
 
 
 def _json(bruto):

@@ -10,6 +10,12 @@ OpenAI) y dos formas de llamar:
 Las dos aceptan `json=True` para pedir la salida en JSON y `pensar=True`
 para dejar razonar al modelo (por defecto, lo mínimo: son tareas cortas).
 
+    transcribe(cli, audio, mime)              audio grabado -> texto
+
+Gemini transcribe con el mismo modelo de texto. En los proveedores
+compatibles con OpenAI hace falta un modelo de transcripción aparte
+(`transcripcion` en PROVEEDORES); si no lo hay, no se puede.
+
 La lista de modelos es una cadena de relevo: si el primero agota la cuota,
 el siguiente. Qué modelo está respondiendo se recuerda en la sesión
 (`ia_modelo_ok`) para no volver a tropezar en la misma piedra.
@@ -52,6 +58,7 @@ PROVEEDORES = {
         "clave": "GROQ_API_KEY",
         "modelos": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
         "url": "https://api.groq.com/openai/v1",
+        "transcripcion": "whisper-large-v3-turbo",
     },
     "mistral": {
         "clave": "MISTRAL_API_KEY",
@@ -104,7 +111,9 @@ def cliente():
 
 
 def _config_gemini(sistema, max_tokens, json, nivel):
-    cfg = dict(system_instruction=sistema, max_output_tokens=max_tokens)
+    cfg = dict(max_output_tokens=max_tokens)
+    if sistema:
+        cfg["system_instruction"] = sistema
     if json:
         cfg["response_mime_type"] = "application/json"
     if nivel:
@@ -189,6 +198,31 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False):
         yield from _flujo_gemini(cli, sistema, entrada, max_tokens, json)
     else:
         yield from _flujo_openai(cli, sistema, entrada, max_tokens, json)
+
+
+TRANSCRIPCION = (
+    "Transcribe literalmente, en español, lo que se dice en el audio. "
+    "Devuelve solo el texto transcrito, sin comentarios ni etiquetas. "
+    "Si no se entiende nada, devuelve una cadena vacía."
+)
+
+
+def transcribe(cli, audio, mime="audio/wav"):
+    """El texto de una grabación. Lanza la excepción si falla."""
+    if PROVEEDOR == "gemini":
+        r = cli.models.generate_content(
+            model=modelo_actual(),
+            contents=[types.Part.from_bytes(data=audio, mime_type=mime), TRANSCRIPCION],
+            config=types.GenerateContentConfig(**_config_gemini(None, 2048, False, "minimal")),
+        )
+        return (getattr(r, "text", "") or "").strip()
+    modelo = AJUSTES.get("transcripcion")
+    if not modelo:
+        raise RuntimeError(f"El proveedor {PROVEEDOR} no tiene modelo de transcripción.")
+    r = cli.audio.transcriptions.create(
+        model=modelo, file=("grabacion.wav", audio, mime), language="es",
+    )
+    return (getattr(r, "text", "") or "").strip()
 
 
 def prueba():

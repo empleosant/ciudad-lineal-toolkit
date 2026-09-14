@@ -13,6 +13,7 @@ las experiencias que manda el codificador.
 Claves de sesión con prefijo `cv_`; las de widgets, `cv_w_`.
 """
 
+import hashlib
 import re
 
 import streamlit as st
@@ -112,9 +113,30 @@ elif n_paso == 1:
         st.caption(
             "Escribe lo que cuente la persona, tal cual: «Estuve seis años de "
             "camarera de piso en hoteles de Madrid, luego dos en un supermercado "
-            "reponiendo…». La IA lo convierte en fichas, que después revisas. "
-            "No pongas nombre, teléfono ni ningún dato identificativo."
+            "reponiendo…», o grábalo con el micrófono. La IA lo convierte en "
+            "fichas, que después revisas. Sin nombre, teléfono ni ningún dato "
+            "identificativo."
         )
+        grabacion = st.audio_input(
+            "O cuéntalo por el micrófono", key="cv_w_audio",
+            help="Pulsa el micrófono, habla y vuelve a pulsar para parar. Lo que se "
+                 "diga se transcribe y se añade al cuadro de texto. La grabación "
+                 "sale a la IA para transcribirla: no digáis nombre ni teléfono.",
+        )
+        if grabacion is not None:
+            huella = hashlib.md5(grabacion.getvalue()).hexdigest()
+            if st.session_state.get("cv_audio_huella") != huella:
+                with st.spinner("Transcribiendo…"):
+                    texto, error = modelo.transcribe(
+                        ia.cliente(), grabacion.getvalue(), grabacion.type or "audio/wav",
+                    )
+                st.session_state["cv_audio_huella"] = huella
+                if texto:
+                    previo = (st.session_state.get("cv_w_relato") or "").rstrip()
+                    st.session_state["cv_w_relato"] = f"{previo}\n{texto}".strip()
+                    st.rerun()
+                st.warning(f"No he podido transcribir la grabación. {error}")
+
         relato = st.text_area("Trayectoria", key="cv_w_relato", height=140,
                               label_visibility="collapsed")
         if st.button("Estructurar con IA", type="primary", disabled=len(relato.strip()) < 10):

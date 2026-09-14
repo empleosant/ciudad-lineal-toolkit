@@ -81,6 +81,10 @@ Cuatro pasos. Los datos de contacto nunca se mandan a la IA; solo van al
 documento. La IA hace tres cosas, todas revisables antes de que entren en
 el currículo:
 
+- **Transcribir** lo que se cuente por el micrófono, para no tener que
+  teclearlo. El grabador es el de Streamlit; el audio lo transcribe Gemini
+  con la misma clave. Hace falta HTTPS (Streamlit Cloud lo es) y dar
+  permiso al micrófono en el navegador.
 - **Estructurar la trayectoria** contada en texto libre en fichas de
   experiencia y formación. Solo ordena lo que se le ha contado.
 - **Sugerir funciones** habituales de un oficio, como vocabulario de
