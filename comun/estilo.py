@@ -39,6 +39,13 @@ html,body,[class*="css"],.stMarkdown{
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="stExpandSidebarButton"]{ display:none !important; }
 
+/* ---------- Portada: tarjetas de herramientas ---------- */
+.st-key-tarjetas div[data-testid="stVerticalBlockBorderWrapper"]{
+  background:#fff; border-left:4px solid var(--rojo) !important; border-radius:4px;
+}
+.tarjeta-titulo{ font-size:1.05rem; font-weight:700; letter-spacing:-.01em; margin:0 0 .25rem; }
+.tarjeta-texto{ font-size:.86rem; color:var(--suave); line-height:1.4; margin:0 0 .6rem; }
+
 /* ---------- Menú de herramientas, dentro de la banda negra ---------- */
 .st-key-menu{ margin-bottom:.25rem; }
 .st-key-menu div[data-testid="stHorizontalBlock"]{ gap:.35rem !important; flex-wrap:wrap; }
@@ -226,14 +233,14 @@ def menu(actual):
     `actual` es el id (ver `comun/registro.py`) de la herramienta que lo
     pinta: sale marcada en rojo y no es un enlace.
     """
-    from comun.registro import HERRAMIENTAS
+    from comun.registro import PAGINAS
 
     try:
         caja = st.container(key="menu")
     except TypeError:
         caja = st.container()
     with caja:
-        cols = st.columns(len(HERRAMIENTAS), gap="small")
-        for col, h in zip(cols, HERRAMIENTAS):
+        cols = st.columns(len(PAGINAS), gap="small")
+        for col, h in zip(cols, PAGINAS):
             col.page_link(h["ruta"], label=h["titulo"], icon=h["icono"],
                           disabled=(h["id"] == actual))

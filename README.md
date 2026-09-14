@@ -12,8 +12,9 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 
 ```
 app.py                         punto de entrada: solo la navegación
+inicio.py                      portada: una tarjeta por herramienta
 comun/                         lo que comparten varias herramientas
-  registro.py                  la lista de herramientas (nombre, icono, ruta)
+  registro.py                  la lista de herramientas (nombre, icono, ruta, descripción)
   ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)
   gist.py                      almacén compartido en un Gist de GitHub
   estilo.py                    CSS común y el menú de herramientas de la banda negra
@@ -60,8 +61,9 @@ Reglas de la casa:
 
 1. Crea `herramientas/<nombre>/vista.py` con la pantalla. Al principio de
    su banda negra llama a `estilo.menu("<nombre>")`.
-2. Añade una entrada a `HERRAMIENTAS` en `comun/registro.py`. Con eso sale
-   en la navegación y en el menú de todas las páginas.
+2. Añade una entrada a `HERRAMIENTAS` en `comun/registro.py`, con su
+   descripción. Con eso sale en el menú de todas las páginas y como
+   tarjeta en la portada.
 
 El menú va dentro de la página, no en la barra lateral de Streamlit: la
 barra se podía plegar y el botón para reabrirla quedaba oculto por el CSS

@@ -16,7 +16,7 @@ de ningún control interno de Streamlit y se ve igual en móvil.
 
 import streamlit as st
 
-from comun.registro import HERRAMIENTAS
+from comun.registro import PAGINAS
 
 # Única llamada permitida a set_page_config. Las páginas no deben repetirla.
 st.set_page_config(
@@ -30,7 +30,7 @@ paginas = [
         h["ruta"], title=h["titulo"], icon=h["icono"],
         url_path=h["url"], default=(h["url"] is None),
     )
-    for h in HERRAMIENTAS
+    for h in PAGINAS
 ]
 
 st.navigation(paginas, position="hidden").run()
