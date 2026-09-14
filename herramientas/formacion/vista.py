@@ -42,6 +42,7 @@ estilo.banda(
 )
 
 st.session_state.setdefault("fmc_cursos", [])
+st.session_state.setdefault("fmc_filas", 0)
 st.session_state.setdefault("fmc_hojas", [])
 st.session_state.setdefault("fmc_archivo", "")
 st.session_state.setdefault("fmc_resultado", None)
@@ -65,25 +66,29 @@ if archivo is not None:
     hoja = st.session_state.get("fmc_w_hoja")
     if st.session_state["fmc_archivo"] != huella or st.session_state.get("fmc_hoja_leida") != hoja:
         try:
-            cursos, hojas = motor.lee_cursos(archivo.getvalue(), archivo.name, hoja)
-            st.session_state.update(fmc_cursos=cursos, fmc_hojas=hojas, fmc_archivo=huella,
+            filas, hojas = motor.lee_filas(archivo.getvalue(), archivo.name, hoja)
+            st.session_state.update(fmc_cursos=motor.agrupa(filas), fmc_filas=len(filas),
+                                    fmc_hojas=hojas, fmc_archivo=huella,
                                     fmc_hoja_leida=hoja, fmc_resultado=None)
         except Exception as e:  # noqa: BLE001
             st.error(f"No he podido leer el archivo: {type(e).__name__}: {e}")
-            st.session_state.update(fmc_cursos=[], fmc_hojas=[], fmc_archivo="")
+            st.session_state.update(fmc_cursos=[], fmc_filas=0, fmc_hojas=[], fmc_archivo="")
     if len(st.session_state["fmc_hojas"]) > 1:
         st.selectbox("Hoja del Excel", st.session_state["fmc_hojas"], key="fmc_w_hoja")
         if st.session_state.get("fmc_hoja_leida") != st.session_state.get("fmc_w_hoja"):
             st.rerun()
 else:
-    st.session_state.update(fmc_cursos=[], fmc_hojas=[], fmc_archivo="", fmc_resultado=None)
+    st.session_state.update(fmc_cursos=[], fmc_filas=0, fmc_hojas=[], fmc_archivo="", fmc_resultado=None)
 
 cursos = st.session_state["fmc_cursos"]
 if cursos:
-    columnas = list(cursos[0]["campos"].keys())
-    st.caption(f"{len(cursos)} cursos leídos. Columnas: {', '.join(columnas)}.")
-    with st.expander("Ver los primeros cursos tal como los leo"):
-        st.code(motor.lista_para_ia(cursos[:5]), language=None)
+    n_filas = st.session_state["fmc_filas"]
+    st.caption(
+        f"{n_filas} ediciones leídas, {len(cursos)} cursos distintos. "
+        "Las ediciones del mismo curso (otro centro, otra fecha) se agrupan."
+    )
+    with st.expander("Ver los primeros cursos tal como se los paso a la IA"):
+        st.code(motor.lista_para_ia(cursos[:6]), language=None)
 
 # ---------------------------------------------------------------------------
 # 2. Perfil de la persona
@@ -150,7 +155,7 @@ listo = bool(cursos) and len((perfil or "").strip()) >= 20
 if not listo:
     c2.caption("Hace falta el catálogo de cursos y un perfil de al menos unas líneas.")
 if c2.button("Pedir sugerencias", type="primary", use_container_width=True, disabled=not listo):
-    candidatos = motor.preselecciona(cursos, perfil, n=60)
+    candidatos = motor.preselecciona(cursos, perfil)
     with st.spinner(f"Comparando el perfil con {len(candidatos)} cursos…"):
         try:
             recs, obs, desc = modelo.sugiere(ia.cliente(), perfil, candidatos, cuantos)
@@ -171,20 +176,28 @@ if res:
         )
     if not res["recs"]:
         st.info("La IA no ha encontrado cursos que encajen. Prueba con un perfil más detallado.")
-    col_titulo = motor.columna_titulo(cursos)
     for r in res["recs"]:
-        campos = r["curso"]["campos"]
-        titulo = motor.titulo_curso(r["curso"], col_titulo)
-        resto = " · ".join(f"{k}: {v}" for k, v in campos.items() if k != col_titulo)[:220]
+        c = r["curso"]
+        cabecera = " · ".join(x for x in (c.get("tipo"), c.get("codigo_esp")) if x)
+        ediciones = "<br>".join(
+            f"<b>{e['inicio'] or 'sin fecha'}</b> · {e['municipio'] or '?'} · {e['modalidad'].lower()}"
+            f" · {e['centro']}" + (f" · código {e['codigo']}" if e["codigo"] else "")
+            for e in c["ediciones"][:6]
+        )
+        if len(c["ediciones"]) > 6:
+            ediciones += f"<br>y {len(c['ediciones']) - 6} ediciones más"
         with st.container(border=True):
             st.markdown(
-                f'<div class="curso-titulo">{titulo}'
+                f'<div class="curso-titulo">{c["denominacion"]}'
                 f'<span class="prioridad {r["prioridad"]}">{r["prioridad"]}</span></div>'
-                f'<div class="curso-campos">Fila {r["curso"]["n"]} del catálogo · {resto}</div>'
+                f'<div class="curso-campos">{cabecera}</div>'
                 f'<div class="curso-porque">{r["por_que"]}</div>'
-                + (f'<div class="curso-aviso">⚠ {r["aviso"]}</div>' if r["aviso"] else ""),
+                + (f'<div class="curso-aviso">⚠ {r["aviso"]}</div>' if r["aviso"] else "")
+                + (f'<div class="curso-campos" style="margin-top:.4rem"><b>Edición que encaja:</b> {r["edicion"]}</div>' if r["edicion"] else ""),
                 unsafe_allow_html=True,
             )
+            with st.expander(f"Ediciones ({len(c['ediciones'])})"):
+                st.markdown(f'<div class="curso-campos">{ediciones}</div>', unsafe_allow_html=True)
     if res["obs"]:
         st.markdown('<div class="seccion">Para el orientador</div>', unsafe_allow_html=True)
         st.markdown(res["obs"])
@@ -193,9 +206,12 @@ if res:
 
     lineas = ["Cursos sugeridos", ""]
     for i, r in enumerate(res["recs"], 1):
-        campos = r["curso"]["campos"]
-        lineas.append(f"{i}. {motor.titulo_curso(r['curso'], col_titulo)} (prioridad {r['prioridad']})")
+        c = r["curso"]
+        tipo = f" · {c['tipo']}" if c.get("tipo") else ""
+        lineas.append(f"{i}. {c['denominacion']}{tipo} (prioridad {r['prioridad']})")
         lineas.append(f"   {r['por_que']}")
+        if r["edicion"]:
+            lineas.append(f"   Edición: {r['edicion']}")
         if r["aviso"]:
             lineas.append(f"   Aviso: {r['aviso']}")
     if res["obs"]:

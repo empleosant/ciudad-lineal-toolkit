@@ -131,10 +131,23 @@ De dónde sale cada cosa:
   persona. Se le pide un perfil sin datos identificativos en Markdown y se
   arrastra aquí. La pantalla lleva el texto de encargo listo para pegar.
 
-Garantía sobre los cursos: la IA solo elige por número de fila y la app
-muestra los datos reales del Excel. Lo que no corresponda a ninguna fila
-se descarta y se avisa. Si el catálogo tiene más de 60 cursos, se le
-mandan a la IA los 60 que más palabras comparten con el perfil.
+El Excel del portal trae una fila por EDICIÓN (mismo curso en otro
+centro u otra fecha). Se agrupa por denominación y la IA razona sobre
+cursos; cada tarjeta enseña luego todas las ediciones. Se lee con
+`python-calamine`, porque a `openpyxl` le fallan los estilos de ese
+archivo. Si la cabecera no está en la primera fila, se busca.
+
+Garantía sobre los cursos: la IA solo elige por número y la app muestra
+los datos reales del Excel. Lo que no corresponda a ningún curso se
+descarta y se avisa. Con más de 250 cursos distintos se le mandan a la
+IA los 250 que más palabras comparten con el perfil.
+
+El prompt conoce la estructura del catálogo: qué es un certificado
+profesional (y sus niveles de acceso), un módulo formativo o una
+especialidad; que la persona es de Ciudad Lineal salvo que el perfil
+diga otra cosa, así que Madrid capital o teleformación antes que
+Getafe o Paracuellos; y la fecha de hoy, para no proponer ediciones
+ya empezadas.
 
 # Codificador de ocupaciones SISPE
 
