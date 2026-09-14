@@ -22,6 +22,19 @@ from comun import estilo, ia
 from herramientas.cv import estado, modelo, motor
 
 estilo.aplica()
+st.markdown("""
+<style>
+/* Aire propio del generador: contenido más estrecho que el codificador,
+   porque son formularios y leen mejor sin estirarse; hueco entre bloques
+   y margen inferior para que el último botón no quede pegado al borde. */
+.block-container{ max-width:1040px; padding-bottom:3.5rem !important; }
+.st-key-cv_paso{ margin:.9rem 0 .6rem; }
+.seccion{ margin-top:1.4rem; }
+.st-key-cabecera{ margin-bottom:.4rem; }
+div[data-testid="stExpander"]{ margin-top:.5rem; }
+.st-key-descargas{ margin-top:.6rem; }
+</style>
+""", unsafe_allow_html=True)
 cv = estado.cv()
 
 PASOS = ["1 · Datos", "2 · Experiencia", "3 · Formación", "4 · Documento"]
@@ -359,13 +372,25 @@ else:
         st.info("Aún no hay nada que mostrar. Rellena los pasos anteriores.")
 
     nombre_archivo = re.sub(r"[^\w]+", "_", cv["nombre"].strip(), flags=re.UNICODE).strip("_") or "curriculo"
-    izq, der = st.columns(2, gap="small")
-    izq.download_button(
-        "Descargar en Word", motor.documento_docx(cv),
-        file_name=f"CV_{nombre_archivo}.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        type="primary", use_container_width=True, disabled=not vista,
-    )
-    der.button("Empezar un CV nuevo", use_container_width=True, on_click=empezar_de_nuevo,
-               help="Borra todos los datos de este currículo.")
+    try:
+        descargas = st.container(key="descargas")
+    except TypeError:
+        descargas = st.container()
+    with descargas:
+        word, pdf, nuevo = st.columns([1.2, 1.2, 1], gap="small")
+        word.download_button(
+            "Descargar en Word", motor.documento_docx(cv),
+            file_name=f"CV_{nombre_archivo}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            type="primary", use_container_width=True, disabled=not vista,
+            help="Para retocarlo después.",
+        )
+        pdf.download_button(
+            "Descargar en PDF", motor.documento_pdf(cv),
+            file_name=f"CV_{nombre_archivo}.pdf", mime="application/pdf",
+            type="primary", use_container_width=True, disabled=not vista,
+            help="Para enviarlo o imprimirlo tal cual.",
+        )
+        nuevo.button("Empezar un CV nuevo", use_container_width=True, on_click=empezar_de_nuevo,
+                     help="Borra todos los datos de este currículo.")
     navegacion()

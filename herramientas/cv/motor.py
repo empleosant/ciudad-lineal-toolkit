@@ -8,6 +8,7 @@ fichas: experiencias y formación. Aquí vive todo lo que no dibuja:
     ordena_por_fechas(fichas) más reciente primero
     texto_plano(cv)           vista previa en texto
     documento_docx(cv)        el Word, en bytes
+    documento_pdf(cv)         el PDF, en bytes, con la misma maquetación
 """
 
 import io
@@ -285,4 +286,102 @@ def documento_docx(cv):
 
     salida = io.BytesIO()
     doc.save(salida)
+    return salida.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# PDF: la misma maquetación que el Word, con reportlab
+# ---------------------------------------------------------------------------
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+from xml.sax.saxutils import escape as _esc
+
+_ROJO_PDF = colors.HexColor("#D1122E")
+_GRIS_PDF = colors.HexColor("#555555")
+
+_E = {
+    "nombre": ParagraphStyle("nombre", fontName="Helvetica-Bold", fontSize=20, leading=24,
+                             alignment=TA_LEFT, spaceAfter=2),
+    "contacto": ParagraphStyle("contacto", fontName="Helvetica", fontSize=9.5, leading=12,
+                               textColor=_GRIS_PDF, spaceAfter=6),
+    "seccion": ParagraphStyle("seccion", fontName="Helvetica-Bold", fontSize=10.5, leading=13,
+                              textColor=_ROJO_PDF, spaceBefore=10, spaceAfter=1),
+    "normal": ParagraphStyle("normal", fontName="Helvetica", fontSize=10, leading=13, spaceAfter=2),
+    "sector": ParagraphStyle("sector", fontName="Helvetica-Bold", fontSize=9, leading=11,
+                             textColor=_GRIS_PDF, spaceBefore=4, spaceAfter=1),
+    "puesto": ParagraphStyle("puesto", fontName="Helvetica", fontSize=10.5, leading=13,
+                             spaceBefore=3, spaceAfter=0),
+    "contexto": ParagraphStyle("contexto", fontName="Helvetica", fontSize=9.5, leading=12,
+                               textColor=_GRIS_PDF, spaceAfter=0),
+    "titulo_f": ParagraphStyle("titulo_f", fontName="Helvetica", fontSize=10, leading=13, spaceAfter=1),
+}
+
+
+def _p(texto, estilo):
+    return Paragraph(_esc(texto or "").replace("\n", "<br/>"), _E[estilo])
+
+
+def _seccion_pdf(texto):
+    return [
+        _p(texto.upper(), "seccion"),
+        HRFlowable(width="100%", thickness=0.75, color=_ROJO_PDF, spaceBefore=0, spaceAfter=3),
+    ]
+
+
+def documento_pdf(cv):
+    """El currículo en PDF. Devuelve bytes. Misma maquetación que el Word."""
+    salida = io.BytesIO()
+    doc = SimpleDocTemplate(
+        salida, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=1.8 * cm, bottomMargin=1.8 * cm,
+        title=(cv.get("nombre") or "Currículo").strip(), author="", subject="Currículo",
+    )
+    f = [_p((cv.get("nombre") or "Nombre y apellidos").strip(), "nombre")]
+    if contacto(cv):
+        f.append(_p(contacto(cv), "contacto"))
+
+    if cv.get("perfil"):
+        f += _seccion_pdf("Perfil profesional")
+        f.append(_p(cv["perfil"], "normal"))
+
+    if cv.get("experiencias"):
+        f += _seccion_pdf("Experiencia laboral")
+        for sector, e in experiencias_agrupadas(cv["experiencias"]):
+            if sector:
+                f.append(_p(sector, "sector"))
+            linea = f"<b>{_esc(titulo_experiencia(e))}</b>"
+            if periodo(e):
+                linea += f'   <font size="9.5" color="#555555">{_esc(periodo(e))}</font>'
+            f.append(Paragraph(linea, _E["puesto"]))
+            if e.get("contexto"):
+                f.append(_p(e["contexto"], "contexto"))
+            if e.get("funciones"):
+                f.append(_p(e["funciones"], "normal"))
+
+    if cv.get("formacion"):
+        f += _seccion_pdf("Formación")
+        for x in cv["formacion"]:
+            linea = f"<b>{_esc(x.get('titulo', ''))}</b>"
+            detalle = " · ".join(v for v in (x.get("centro"), x.get("anio")) if v)
+            if detalle:
+                linea += f'   <font size="9.5" color="#555555">{_esc(detalle)}</font>'
+            f.append(Paragraph(linea, _E["titulo_f"]))
+
+    for rotulo, clave in (("Idiomas", "idiomas"), ("Informática", "informatica")):
+        if cv.get(clave):
+            f += _seccion_pdf(rotulo)
+            f.append(_p(cv[clave], "normal"))
+
+    otros = [x for x in (cv.get("permiso"), cv.get("disponibilidad"), cv.get("otros")) if x]
+    if otros:
+        f += _seccion_pdf("Otros datos")
+        f.append(_p(" · ".join(otros), "normal"))
+
+    f.append(Spacer(1, 1))
+    doc.build(f)
     return salida.getvalue()

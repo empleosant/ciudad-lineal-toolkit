@@ -100,7 +100,8 @@ el currículo:
   partida. No son las de la persona: hay que quitar lo que no hiciera.
 - **Redactar el perfil profesional** con lo que hay en las fichas.
 
-El documento sale en Word (`python-docx`) para que se pueda retocar.
+El documento sale en Word (`python-docx`), para retocarlo, y en PDF
+(`reportlab`), para enviarlo tal cual. Misma maquetación en los dos.
 
 # Codificador de ocupaciones SISPE
 
