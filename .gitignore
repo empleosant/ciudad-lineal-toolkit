@@ -1,5 +1,6 @@
 # Salida regenerable de las baterías de pruebas
 informe_evaluacion.csv
+pruebas/informe_evaluacion.csv
 
 # Python
 __pycache__/

@@ -21,7 +21,7 @@ ARCHIVOS
                 significando "algo que funcionaba se ha roto".
                 Este script NUNCA escribe en casos.csv: es la referencia.
     informe_evaluacion.csv   salida de --informe, regenerable, no versionar
-    motor_pruebas.py  carga app.py sin la interfaz (compartido con estres.py)
+    motor_pruebas.py  carga la vista SISPE sin la interfaz (compartido con estres.py)
 
 CÓMO AMPLIARLA
     Cada vez que una consulta real falle, añade a mano una línea a casos.csv
@@ -45,7 +45,8 @@ except Exception:  # noqa: BLE001
 
 from motor_pruebas import cabecera, carga_motor
 
-CASOS = "casos.csv"
+AQUI = os.path.dirname(os.path.abspath(__file__))
+CASOS = os.path.join(AQUI, "casos.csv")
 INFORME = "informe_evaluacion.csv"
 
 

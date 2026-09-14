@@ -288,8 +288,9 @@ def consultas_de_prueba(motor):
     import os
 
     lista = []
-    if os.path.exists("casos.csv"):
-        with open("casos.csv", encoding="utf-8-sig") as f:
+    casos = os.path.join(os.path.dirname(os.path.abspath(__file__)), "casos.csv")
+    if os.path.exists(casos):
+        with open(casos, encoding="utf-8-sig") as f:
             lista = [fila["consulta"] for fila in csv.DictReader(f, delimiter=";")]
     if not lista:
         lista = [reg["denom"] for reg in motor.IDX["registros"][:40]]

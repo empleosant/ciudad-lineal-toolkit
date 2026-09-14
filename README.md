@@ -1,26 +1,56 @@
+# Caja de herramientas · Oficina de Empleo de Ciudad Lineal
+
+Aplicación Streamlit que reúne varias mini-herramientas de apoyo al trabajo
+de orientación. Cada una vive en su carpeta y se registra en `app.py`.
+
+| Herramienta | Carpeta | Estado |
+|---|---|---|
+| Codificador de ocupaciones SISPE | `herramientas/sispe/` | en uso |
+| Generador de CV con IA | `herramientas/cv/` | en construcción |
+
+## Estructura
+
+```
+app.py                         punto de entrada: solo la navegación
+comun/                         lo que comparten varias herramientas (vacío por ahora)
+herramientas/
+  sispe/
+    vista.py                   la pantalla del codificador (motor + interfaz, aún juntos)
+    datos/
+      vocabulario.json         palabras vacías y sinónimos base
+      ocupaciones_sispe_ultraligero.txt   catálogo oficial (nombre exacto)
+      terminos_ampliados.txt   jerga por ocupación (lo genera scripts/enriquecer.py)
+  cv/
+    vista.py                   página provisional del generador de CV
+pruebas/
+  motor_pruebas.py             carga la vista SISPE sin la interfaz (lo usan las pruebas)
+  evaluar.py                   aciertos: 40 consultas con su código correcto
+  casos.csv                    los 40 casos (referencia, se edita a mano)
+  estres.py                    robustez: que nada se rompa por lo bajo
+  informe_evaluacion.csv       salida de --informe, regenerable, no versionado
+scripts/
+  enriquecer.py                genera terminos_ampliados.txt (no lo usa la app)
+  despertar.py                 despertador (no lo usa la app)
+.github/workflows/             programa el despertador
+.streamlit/config.toml         colores del tema
+requirements.txt               dependencias
+```
+
+Regla de la casa: `app.py` es el único sitio donde se llama a
+`st.set_page_config`. Las páginas no deben repetirla.
+
+## Añadir una herramienta
+
+1. Crea `herramientas/<nombre>/vista.py` con la pantalla.
+2. Añade un `st.Page` a la lista `HERRAMIENTAS` de `app.py`.
+
+Las claves de `st.session_state` de cada herramienta llevan su prefijo
+(`sispe_`, `cv_`) para que dos páginas no se pisen.
+
 # Codificador de ocupaciones SISPE
 
 Herramienta de apoyo para localizar códigos del catálogo SISPE antes de
 grabarlos en SilcoiWeb.
-
-## Archivos
-
-```
-app.py                            el motor. No contiene vocabulario.
-vocabulario.json                  palabras vacías y sinónimos base
-ocupaciones_sispe_ultraligero.txt catálogo oficial (nombre exacto)
-terminos_ampliados.txt            jerga por ocupación (lo genera enriquecer.py)
-requirements.txt                  dependencias
-.streamlit/config.toml            colores del tema
-enriquecer.py                     genera terminos_ampliados.txt (no lo usa la app)
-motor_pruebas.py                  carga app.py sin la interfaz (lo usan las pruebas)
-evaluar.py                        aciertos: 40 consultas con su código correcto
-casos.csv                         los 40 casos (referencia, se edita a mano)
-informe_evaluacion.csv            salida de --informe, regenerable, no versionado
-estres.py                         robustez: que nada se rompa por lo bajo
-scripts/despertar.py              despertador (no lo usa la app)
-.github/workflows/…               programa el despertador
-```
 
 ## Las cuatro capas de vocabulario
 
@@ -51,7 +81,7 @@ limpia.
 
 - **Modelo de IA**: bloque `PROVEEDORES`. Es una lista con relevo automático.
 - **Proveedor**: constante `PROVEEDOR` (`gemini`, `groq`, `mistral`).
-- **Vocabulario**: `vocabulario.json`. Si falta, la app arranca en modo mínimo.
+- **Vocabulario**: `herramientas/sispe/datos/vocabulario.json`. Si falta, la app arranca en modo mínimo.
 
 ## Las dos baterías de pruebas
 
@@ -59,7 +89,7 @@ Antes de subir cualquier cambio en `vocabulario.json` o en el buscador, las dos.
 Ninguna llama a la IA ni gasta cuota; entre las dos tardan unos segundos.
 
 ```
-python evaluar.py && python estres.py
+python pruebas/evaluar.py && python pruebas/estres.py
 ```
 
 **`evaluar.py` — aciertos.** Pasa los 40 casos de `casos.csv`. Dice si el
@@ -98,7 +128,7 @@ solo detectó dos casos raros. La prueba de convergencia lo canta entero.
 
 ### La marca de corte
 
-Las dos baterías cargan `app.py` hasta la línea `# === FIN DEL MOTOR ===` para
+Las dos baterías cargan `herramientas/sispe/vista.py` hasta la línea `# === FIN DEL MOTOR ===` para
 probar el buscador sin dibujar pantalla. **No borres esa línea ni la muevas.**
 Si desaparece, `motor_pruebas.py` avisa por pantalla en vez de fallar en
 silencio.

@@ -1,25 +1,28 @@
 """
 Cargador del motor para las pruebas.
 
-Importa `app.py` hasta justo antes de la interfaz y devuelve el módulo ya
+Importa `herramientas/sispe/vista.py` hasta justo antes de la interfaz y devuelve el módulo ya
 cargado, con `busca`, `raiz`, `normaliza`, `IDX`, `VACIAS` y `SINONIMOS`
 listos para usar. No llama a la IA ni gasta cuota.
 
 Lo usan `evaluar.py` (aciertos) y `estres.py` (robustez).
 
 DÓNDE CORTA
-    Busca la marca `# === FIN DEL MOTOR ===` en app.py. Si no está, prueba
+    Busca la marca `# === FIN DEL MOTOR ===` en vista.py. Si no está, prueba
     con la cabecera `# INTERFAZ`. Si tampoco, ejecuta el archivo entero
     apoyándose en el Streamlit de mentira de más abajo.
 
-    La marca es lo que evita que una reorganización de app.py deje las
+    La marca es lo que evita que una reorganización de vista.py deje las
     pruebas rotas en silencio, que es justo lo que pasó el 21 de agosto.
 """
 
 import sys
 import types
 
-APP = "app.py"
+import os
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+APP = os.path.join(AQUI, "..", "herramientas", "sispe", "vista.py")
 
 MARCAS = ("# === FIN DEL MOTOR ===", "# INTERFAZ")
 

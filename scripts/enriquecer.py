@@ -29,8 +29,9 @@ import time
 from google import genai
 from google.genai import types
 
-CATALOGO = "ocupaciones_sispe_ultraligero.txt"
-SALIDA = "terminos_ampliados.txt"
+DATOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "herramientas", "sispe", "datos")
+CATALOGO = os.path.join(DATOS, "ocupaciones_sispe_ultraligero.txt")
+SALIDA = os.path.join(DATOS, "terminos_ampliados.txt")
 MODELO = "gemini-3.5-flash-lite"
 LOTE = 15            # ocupaciones por llamada (con lotes grandes responde peor)
 PAUSA = 4.5          # segundos entre llamadas (15 por minuto en el tramo gratuito)
