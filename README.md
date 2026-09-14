@@ -7,6 +7,7 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 |---|---|---|
 | Codificador de ocupaciones SISPE | `herramientas/sispe/` | en uso |
 | Generador de CV con IA en pocos pasos | `herramientas/cv/` | en uso |
+| Asesor de formación | `herramientas/formacion/` | en uso |
 
 ## Estructura
 
@@ -34,6 +35,10 @@ herramientas/
     motor.py                   el currículo como datos, vista previa y el Word. Python puro
     modelo.py                  prompts: sugerir funciones, estructurar texto libre, redactar perfil
     estado.py                  el currículo en curso en la sesión; por aquí entran otras herramientas
+  formacion/
+    vista.py                   catálogo de cursos + perfil -> sugerencias
+    motor.py                   lee el Excel, preselecciona cursos, cruza lo que devuelve la IA
+    modelo.py                  el prompt del asesor
 pruebas/
   motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
@@ -78,6 +83,13 @@ Cada herramienta hace una cosa. Cuando una necesita pasarle algo a otra,
 lo hace a través del módulo `estado.py` de la herramienta que recibe,
 nunca tocando sus claves de sesión a mano.
 
+Conexiones que hay:
+
+- Codificador → generador de CV (abajo).
+- Generador de CV → asesor de formación: el botón «Tomar el perfil del
+  generador de CV» construye el perfil con lo que hay en el currículo,
+  sin nombre ni contacto.
+
 La primera conexión es codificador → generador de CV: el botón «+ CV» bajo
 las tarjetas llama a `herramientas.cv.estado.anade_experiencia()`, y al
 lado aparece un enlace para abrir el generador con lo que lleva. Como la
@@ -102,6 +114,18 @@ el currículo:
 
 El documento sale en Word (`python-docx`), para retocarlo, y en PDF
 (`reportlab`), para enviarlo tal cual. Misma maquetación en los dos.
+
+# Asesor de formación
+
+Dos entradas: un Excel o CSV con una fila por curso (vale cualquier
+estructura de columnas) y el perfil de la persona, como archivo `.md` o
+`.txt`, pegado a mano, o tomado del generador de CV. Sin datos
+identificativos: el perfil se manda a la IA.
+
+Garantía sobre los cursos: la IA solo elige por número de fila y la app
+muestra los datos reales del Excel. Lo que no corresponda a ninguna fila
+se descarta y se avisa. Si el catálogo tiene más de 60 cursos, se le
+mandan a la IA los 60 que más palabras comparten con el perfil.
 
 # Codificador de ocupaciones SISPE
 

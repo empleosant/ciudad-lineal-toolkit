@@ -36,6 +36,16 @@ HERRAMIENTAS = [
                        "contada de palabra o por escrito, sugiere funciones y redacta "
                        "el perfil. Sale en Word, listo para retocar.",
     },
+    {
+        "id": "formacion",
+        "ruta": "herramientas/formacion/vista.py",
+        "titulo": "Asesor de formación",
+        "icono": ":material/school:",
+        "url": "formacion",
+        "descripcion": "Sube el Excel de cursos y el perfil de la persona, o tómalo del "
+                       "generador de CV, y la IA propone los cursos que más le convienen "
+                       "y explica por qué.",
+    },
 ]
 
 PAGINAS = [INICIO] + HERRAMIENTAS
