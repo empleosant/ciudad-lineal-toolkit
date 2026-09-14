@@ -32,6 +32,25 @@ html,body,[class*="css"],.stMarkdown{
 }
 .block-container{ padding:0 1rem .4rem !important; max-width:1200px; }
 #MainMenu, footer, header[data-testid="stHeader"]{ visibility:hidden; height:0; }
+
+/* La cabecera de Streamlit va oculta, pero dentro vive el botón que reabre la
+   barra lateral cuando está plegada. Sin esto desaparecía el menú y no había
+   forma de recuperarlo. Va como pastilla clara con borde: en pantalla ancha
+   cae sobre fondo blanco y en la estrecha sobre la banda negra. */
+[data-testid="stExpandSidebarButton"]{ visibility:visible; }
+[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] button{
+  color:var(--texto) !important; background:#fff !important;
+  border:1px solid #C4C4C4 !important; border-radius:4px !important;
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+[data-testid="stExpandSidebarButton"]:hover,
+[data-testid="stExpandSidebarButton"] button:hover{
+  background:var(--negro) !important; color:#fff !important; border-color:var(--negro) !important;
+}
+@media (max-width:1260px){
+  body:has([data-testid="stExpandSidebarButton"]) .st-key-cabecera{ padding-left:3.6rem !important; }
+}
 [data-testid="stHeaderActionElements"]{ display:none !important; }
 h1 > a, h2 > a, h3 > a, .stMarkdown a.anchor-link{ display:none !important; }
 div[data-testid="InputInstructions"]{ display:none !important; }
