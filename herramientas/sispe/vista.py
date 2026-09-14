@@ -27,7 +27,7 @@ import time
 import streamlit as st
 import streamlit.components.v1 as components
 
-from comun import estilo, gist, ia
+from comun import estilo, gist, ia, version
 from comun.texto import normaliza
 from herramientas.cv import estado as cv_estado
 from herramientas.cv import motor as cv_motor
@@ -663,7 +663,9 @@ def panel_ajustes():
                 f"{len(motor.IDX['registros'])} ocupaciones del catálogo oficial. "
                 "Describe solo el puesto: sin datos identificativos."
             )
+            st.caption(f"Versión {version.commit()}")
             return
+        st.caption(f"Versión {version.commit()}")
 
         tiempos = st.session_state.get("sispe_tiempos", [])
         if tiempos:
