@@ -19,7 +19,7 @@ import re
 import streamlit as st
 
 from comun import estilo, ia
-from herramientas.cv import estado, modelo, motor
+from herramientas.cv import estado, modelo, motor, plantilla
 
 estilo.aplica()
 st.markdown("""
@@ -335,7 +335,8 @@ else:
     st.markdown('<div class="seccion">Perfil profesional</div>', unsafe_allow_html=True)
     st.caption(
         "Tres o cuatro líneas que abren el currículo. La IA lo redacta con lo que "
-        "hay en los pasos anteriores, sin el nombre ni el contacto. Revísalo."
+        "hay en los pasos anteriores, sin el nombre ni el contacto. Revísalo. "
+        "El modelo de la oficina no lleva perfil: si lo dejas vacío, no sale."
     )
 
     def redacta():
@@ -360,6 +361,18 @@ else:
     vista = motor.texto_plano(cv)
     if vista:
         st.code(vista, language=None)
+        _, factor, con_sectores = plantilla.decide(cv)
+        hay_sectores = any((e.get("sector") or "").strip() for e in cv["experiencias"])
+        if factor >= 1.0:
+            ajuste = "Cabe en una página con el tamaño de letra del modelo."
+        else:
+            ajuste = f"Para que quepa en una página, la letra va al {round(factor * 100)} % del modelo."
+        if hay_sectores and not con_sectores:
+            ajuste += " Se han quitado los rótulos de sector para ganar espacio."
+        st.caption(
+            "El documento sigue el modelo de CV de la oficina: misma estructura, fuentes y "
+            f"colores, siempre en una página. {ajuste}"
+        )
     else:
         st.info("Aún no hay nada que mostrar. Rellena los pasos anteriores.")
 

@@ -32,7 +32,9 @@ herramientas/
       terminos_ampliados.txt   jerga por ocupación (lo genera scripts/enriquecer.py)
   cv/
     vista.py                   la pantalla: cuatro pasos (datos, experiencia, formación, documento)
-    motor.py                   el currículo como datos, vista previa y el Word. Python puro
+    motor.py                   el currículo como datos, vista previa y el PDF. Python puro
+    plantilla.py               el Word sobre el modelo de la oficina, ajustado a una página
+    plantillas/Modelo_CV.docx  el modelo de CV de la oficina (fuente de verdad del diseño)
     modelo.py                  prompts: sugerir funciones, estructurar texto libre, redactar perfil
     estado.py                  el currículo en curso en la sesión; por aquí entran otras herramientas
   formacion/
@@ -112,8 +114,28 @@ el currículo:
   partida. No son las de la persona: hay que quitar lo que no hiciera.
 - **Redactar el perfil profesional** con lo que hay en las fichas.
 
-El documento sale en Word (`python-docx`), para retocarlo, y en PDF
-(`reportlab`), para enviarlo tal cual. Misma maquetación en los dos.
+El documento sigue el **modelo de CV de la oficina**
+(`herramientas/cv/plantillas/Modelo_CV.docx`, convertido de la plantilla
+`.dotx`): Trebuchet MS, nombre a 27 pt, contacto con sangría, cabeceras en
+barra azul con texto blanco, sectores subrayados, experiencias con viñeta
+(puesto en negrita, fechas en cursiva, «Empresa:» y «Funciones:» debajo),
+formación y otros datos con viñeta.
+
+Cómo se construye el Word: se abre el modelo, se toman sus párrafos como
+prototipos, se vacía y se rellena copiando esos prototipos con los datos.
+Así conserva estilos, fuentes, viñetas y márgenes exactos. Si se cambia
+el modelo, hay que revisar los índices de párrafo en `plantilla.py`.
+
+**Una página siempre.** Sin Word en el servidor, la altura se estima con
+métricas de fuente (DejaVu Sans corregida hacia Trebuchet, con holgura) y
+se reduce el tamaño de letra proporcionalmente, hasta un mínimo del 55 %.
+Si hiciera falta bajar del 85 %, se prueba también sin los rótulos de
+sector y se elige la opción que deje la letra más grande. La pantalla
+dice qué ajuste se ha aplicado.
+
+El PDF (`reportlab`) replica el modelo con DejaVu Sans, porque Trebuchet
+MS es de Microsoft y no está en el servidor; para el documento definitivo
+con la fuente exacta, el Word.
 
 # Asesor de formación
 

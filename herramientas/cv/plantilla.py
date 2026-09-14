@@ -1,0 +1,336 @@
+"""
+El currículo sobre el modelo de la oficina (plantillas/Modelo_CV.docx).
+
+El modelo es la fuente de verdad: se abre, se toman sus párrafos como
+prototipos (nombre, contacto, cabecera azul, sector, experiencia, empresa,
+funciones, formación, otros datos), se vacía el cuerpo y se vuelve a
+rellenar copiando esos prototipos con el texto de la persona. Así el Word
+que sale conserva estilos, fuentes (Trebuchet MS), colores, viñetas y
+márgenes exactamente como el modelo.
+
+UNA PÁGINA SIEMPRE. Aquí no hay Word para medir, así que se estima la
+altura del documento con métricas de fuente y se reduce el tamaño de
+letra (todo a la vez, proporcionalmente) hasta que quepa. Si hace falta
+reducir mucho, se prueba también sin los rótulos de sector, y se elige
+la opción que deje la letra más grande.
+
+    genera(cv) -> (bytes del .docx, factor de escala, con_sectores)
+"""
+
+import copy
+import io
+import math
+import os
+
+from docx import Document
+from docx.oxml.ns import qn
+from lxml import etree
+from PIL import ImageFont
+
+from herramientas.cv import motor
+
+PLANTILLA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plantillas", "Modelo_CV.docx")
+
+# Índices de los párrafos-prototipo dentro del modelo.
+P_NOMBRE, P_CONTACTO, P_CABECERA, P_SECTOR = 0, 1, 4, 5
+P_EXPERIENCIA, P_EMPRESA, P_FUNCIONES, P_FORMACION, P_OTROS = 6, 7, 8, 18, 21
+
+# Página A4 con márgenes de 1 cm, en puntos.
+ANCHO_UTIL = (11906 - 567 * 2) / 20
+ALTO_UTIL = (16838 - 567 * 2) / 20
+MARGEN_SEGURIDAD = 14        # puntos que se dejan libres al pie
+FACTOR_MINIMO = 0.55
+FACTOR_SECTORES = 0.85       # por debajo de esto se prueba a quitar los sectores
+ALTURA_LINEA = 1.17          # Trebuchet MS: ascendente + descendente, en ems
+ANCHO_TREBUCHET = 0.92       # DejaVu Sans es más ancha; se corrige
+HOLGURA_AJUSTE = 1.06        # el ajuste por palabras desperdicia algo de línea
+
+_FUENTES = {
+    False: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    True: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+}
+_cache_fuentes = {}
+
+
+def _fuente(negrita, pt):
+    clave = (negrita, round(pt, 1))
+    if clave not in _cache_fuentes:
+        try:
+            _cache_fuentes[clave] = ImageFont.truetype(_FUENTES[negrita], size=max(1, round(pt * 10)) / 10)
+        except Exception:  # noqa: BLE001
+            _cache_fuentes[clave] = None
+    return _cache_fuentes[clave]
+
+
+def _ancho_texto(texto, pt, negrita=False):
+    f = _fuente(negrita, pt)
+    if f is None:
+        return len(texto) * pt * 0.52
+    return f.getlength(texto) * ANCHO_TREBUCHET
+
+
+# ---------------------------------------------------------------------------
+# El contenido, como lista de bloques independientes del formato
+# ---------------------------------------------------------------------------
+
+def _bloques(cv, con_sectores):
+    """[(tipo, datos)] en el orden del documento."""
+    b = [("nombre", (cv.get("nombre") or "Nombre Apellido1 Apellido2").strip())]
+    if cv.get("telefono"):
+        b.append(("contacto", f"Tlf.: {cv['telefono'].strip()}"))
+    if cv.get("email"):
+        b.append(("contacto", f"Email: {cv['email'].strip()}"))
+    if cv.get("localidad"):
+        b.append(("contacto", cv["localidad"].strip()))
+
+    if cv.get("perfil"):
+        b.append(("cabecera", "PERFIL PROFESIONAL"))
+        b.append(("texto", cv["perfil"].strip()))
+
+    exps = cv.get("experiencias", [])
+    if exps:
+        b.append(("cabecera", "EXPERIENCIA LABORAL"))
+        agrupadas = motor.experiencias_agrupadas(exps) if con_sectores else [(None, e) for e in exps]
+        for sector, e in agrupadas:
+            if sector:
+                b.append(("sector", sector))
+            b.append(("experiencia", (motor.titulo_experiencia(e), _periodo_partes(e))))
+            if e.get("contexto"):
+                b.append(("empresa", f"Empresa: {e['contexto'].strip().rstrip('.')}."))
+            if e.get("funciones"):
+                b.append(("funciones", f"Funciones: {e['funciones'].strip()}"))
+
+    if cv.get("formacion"):
+        b.append(("cabecera", "FORMACIÓN ACADÉMICA / COMPLEMENTARIA"))
+        for f in cv["formacion"]:
+            if f.get("titulo"):
+                b.append(("formacion", (f["titulo"].strip(), (f.get("centro") or "").strip(),
+                                        (f.get("anio") or "").strip())))
+
+    otros = []
+    if cv.get("idiomas"):
+        otros.append(f"Idiomas: {cv['idiomas'].strip()}")
+    if cv.get("informatica"):
+        otros.append(f"Informática: {cv['informatica'].strip()}")
+    if cv.get("permiso"):
+        otros.append(cv["permiso"].strip())
+    if cv.get("disponibilidad"):
+        otros.append(cv["disponibilidad"].strip())
+    for linea in (cv.get("otros") or "").splitlines():
+        if linea.strip():
+            otros.append(linea.strip())
+    if otros:
+        b.append(("cabecera", "OTROS DATOS DE INTERÉS"))
+        for o in otros:
+            b.append(("otros", o if o.endswith((".", "!", "?")) else o + "."))
+    return b
+
+
+def _periodo_partes(e):
+    """("(6 años - ", "2016-2022", ")") o ("", "", "") si no hay fechas."""
+    desde, hasta = (e.get("desde") or "").strip(), (e.get("hasta") or "").strip()
+    if not (desde or hasta):
+        return ("", "", "")
+    rango = "-".join(x for x in (desde, hasta) if x)
+    a1, a2 = motor.anio(desde), motor.anio(hasta)
+    if a1 and a2 and a2 >= a1:
+        n = max(1, a2 - a1)
+        return (f"({n} año{'s' if n != 1 else ''} - ", rango, ")")
+    return ("(", rango, ")")
+
+
+# ---------------------------------------------------------------------------
+# Estimación de altura (para decidir el factor de escala)
+# ---------------------------------------------------------------------------
+
+# Por tipo de bloque: (tamaño pt, negrita, sangría izquierda pt, espacio antes,
+#                      espacio después, interlineado múltiple). Del modelo.
+_METRICA = {
+    "nombre": (27, True, 0, 0, 0, 1.0),
+    "contacto": (19, False, 35.45, 0, 0, 1.15),
+    "cabecera": (20, False, 0, 0, 0, 1.15),
+    "texto": (16, False, 35.45, 0, 0, 0.95),
+    "sector": (20, False, 2.85, 6, 6, 0.95),
+    "experiencia": (18, True, 38.85, 0, 0, 0.95),
+    "empresa": (16, False, 70.9, 0, 0, 0.95),
+    "funciones": (16, False, 70.9, 0, 0, 0.95),
+    "formacion": (16, False, 36, 6, 0, 0.9),
+    "otros": (16, False, 33.15, 6, 0, 1.0),
+}
+
+
+def _texto_plano(tipo, datos):
+    if tipo == "experiencia":
+        titulo, (a, fechas, c) = datos
+        return f"{titulo} {a}{fechas}{c}"
+    if tipo == "formacion":
+        titulo, centro, anio = datos
+        return " ".join(x for x in (f"{titulo} –", f"{centro},", f"{anio}.") if x.strip(" –,."))
+    return datos
+
+
+def _altura(bloques, factor):
+    total = 0.0
+    for tipo, datos in bloques:
+        pt, negrita, sangria, antes, despues, mult = _METRICA[tipo]
+        pt *= factor
+        ancho = ANCHO_UTIL - sangria
+        texto = _texto_plano(tipo, datos)
+        lineas = 0
+        for parrafo in texto.split("\n") or [""]:
+            lineas += max(1, math.ceil(_ancho_texto(parrafo, pt, negrita) * HOLGURA_AJUSTE / ancho))
+        total += lineas * pt * ALTURA_LINEA * mult + antes + despues
+    return total
+
+
+def _factor_que_cabe(bloques):
+    f = 1.0
+    while f > FACTOR_MINIMO:
+        if _altura(bloques, f) <= ALTO_UTIL - MARGEN_SEGURIDAD:
+            return f
+        f = round(f - 0.02, 2)
+    return FACTOR_MINIMO
+
+
+def decide(cv):
+    """(bloques, factor, con_sectores): la mejor combinación para una página."""
+    con = _bloques(cv, True)
+    f_con = _factor_que_cabe(con)
+    hay_sectores = any(t == "sector" for t, _ in con)
+    if not hay_sectores or f_con >= FACTOR_SECTORES:
+        return con, f_con, hay_sectores
+    sin = _bloques(cv, False)
+    f_sin = _factor_que_cabe(sin)
+    if f_sin > f_con:
+        return sin, f_sin, False
+    return con, f_con, True
+
+
+# ---------------------------------------------------------------------------
+# Construcción del Word a partir de los prototipos del modelo
+# ---------------------------------------------------------------------------
+
+def _run_como(proto_run, texto, con_tab=False):
+    r = copy.deepcopy(proto_run)
+    for hijo in list(r):
+        if hijo.tag != qn("w:rPr"):
+            r.remove(hijo)
+    if con_tab:
+        etree.SubElement(r, qn("w:tab"))
+    t = etree.SubElement(r, qn("w:t"))
+    t.text = texto
+    t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    return r
+
+
+def _parrafo_como(proto, runs_texto, con_tab=False):
+    """Copia el prototipo y sustituye sus runs por (prototipo_run, texto)."""
+    p = copy.deepcopy(proto)
+    for hijo in list(p):
+        if hijo.tag != qn("w:pPr"):
+            p.remove(hijo)
+    primero = True
+    for proto_run, texto in runs_texto:
+        if texto == "":
+            continue
+        p.append(_run_como(proto_run, texto, con_tab and primero))
+        primero = False
+    return p
+
+
+def _runs(proto):
+    return proto.findall(qn("w:r"))
+
+
+def _escala(elemento, factor):
+    """Multiplica todos los w:sz y w:szCs que cuelguen del elemento."""
+    for tag in ("w:sz", "w:szCs"):
+        for sz in elemento.iter(qn(tag)):
+            v = sz.get(qn("w:val"))
+            if v and v.isdigit():
+                sz.set(qn("w:val"), str(max(8, round(int(v) * factor))))
+
+
+def _funciones_con_sangria(p):
+    """Sustituye el truco de tabuladores del modelo por una sangría francesa real."""
+    ppr = p.find(qn("w:pPr"))
+    for tabs in ppr.findall(qn("w:tabs")):
+        ppr.remove(tabs)
+    ind = ppr.find(qn("w:ind"))
+    if ind is None:
+        ind = etree.SubElement(ppr, qn("w:ind"))
+    for k in list(ind.attrib):
+        del ind.attrib[k]
+    ind.set(qn("w:left"), "1418")
+    ind.set(qn("w:hanging"), "709")
+    return p
+
+
+def genera(cv):
+    """El currículo en Word sobre el modelo. (bytes, factor, con_sectores)."""
+    bloques, factor, con_sectores = decide(cv)
+    doc = Document(PLANTILLA)
+    cuerpo = doc.element.body
+    protos = [copy.deepcopy(p._p) for p in doc.paragraphs]
+    for p in list(cuerpo):
+        if p.tag == qn("w:p"):
+            cuerpo.remove(p)
+    sect = cuerpo.find(qn("w:sectPr"))
+
+    def anade(p):
+        if sect is not None:
+            sect.addprevious(p)
+        else:
+            cuerpo.append(p)
+
+    r_nombre = _runs(protos[P_NOMBRE])[0]
+    r_contacto = _runs(protos[P_CONTACTO])[0]
+    r_cabecera = _runs(protos[P_CABECERA])[0]
+    r_sector = _runs(protos[P_SECTOR])[0]
+    rx = _runs(protos[P_EXPERIENCIA])          # negrita, negrita, normal, cursiva, normal
+    r_empresa = _runs(protos[P_EMPRESA])[0]
+    r_funciones = _runs(protos[P_FUNCIONES])[0]
+    rf = _runs(protos[P_FORMACION])            # negrita, normal, cursiva, normal
+    r_otros = _runs(protos[P_OTROS])[0]
+
+    for tipo, datos in bloques:
+        if tipo == "nombre":
+            anade(_parrafo_como(protos[P_NOMBRE], [(r_nombre, datos)]))
+        elif tipo == "contacto":
+            anade(_parrafo_como(protos[P_CONTACTO], [(r_contacto, datos)], con_tab=True))
+        elif tipo == "cabecera":
+            anade(_parrafo_como(protos[P_CABECERA], [(r_cabecera, datos)]))
+        elif tipo == "texto":
+            anade(_funciones_con_sangria(_parrafo_como(protos[P_FUNCIONES], [(r_funciones, datos)])))
+        elif tipo == "sector":
+            anade(_parrafo_como(protos[P_SECTOR], [(r_sector, datos)]))
+        elif tipo == "experiencia":
+            titulo, (a, fechas, c) = datos
+            anade(_parrafo_como(protos[P_EXPERIENCIA], [
+                (rx[0], titulo), (rx[1], " " if fechas else ""), (rx[2], a), (rx[3], fechas), (rx[4], c),
+            ]))
+        elif tipo == "empresa":
+            anade(_parrafo_como(protos[P_EMPRESA], [(r_empresa, datos)]))
+        elif tipo == "funciones":
+            anade(_funciones_con_sangria(_parrafo_como(protos[P_FUNCIONES], [(r_funciones, datos)])))
+        elif tipo == "formacion":
+            titulo, centro, anio = datos
+            cola = f" {anio}." if anio else ("." if not centro else "")
+            anade(_parrafo_como(protos[P_FORMACION], [
+                (rf[0], f"{titulo} –" if (centro or anio) else titulo),
+                (rf[1], " " if centro else ""), (rf[2], f"{centro}," if (centro and anio) else centro),
+                (rf[3], cola),
+            ]))
+        elif tipo == "otros":
+            anade(_parrafo_como(protos[P_OTROS], [(r_otros, datos)]))
+
+    if factor < 1.0:
+        _escala(cuerpo, factor)
+        try:
+            _escala(doc.part.numbering_part.element, factor)   # las viñetas también
+        except Exception:  # noqa: BLE001
+            pass
+
+    salida = io.BytesIO()
+    doc.save(salida)
+    return salida.getvalue(), factor, con_sectores

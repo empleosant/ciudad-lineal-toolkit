@@ -7,19 +7,13 @@ fichas: experiencias y formación. Aquí vive todo lo que no dibuja:
     a_oracion(denominacion)   nombre de catálogo -> nombre para el currículo
     ordena_por_fechas(fichas) más reciente primero
     texto_plano(cv)           vista previa en texto
-    documento_docx(cv)        el Word, en bytes
-    documento_pdf(cv)         el PDF, en bytes, con la misma maquetación
+    documento_docx(cv)        el Word sobre el modelo de la oficina (ver plantilla.py)
+    documento_pdf(cv)         el PDF, réplica del modelo, una página
 """
 
 import io
 import re
 
-from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Cm, Pt, RGBColor
-
-ROJO = RGBColor(0xD1, 0x12, 0x2E)
-GRIS = RGBColor(0x55, 0x55, 0x55)
 
 
 def nuevo():
@@ -130,18 +124,24 @@ def _sectores_que_agrupan(experiencias):
 
 
 def experiencias_agrupadas(experiencias):
-    """[(sector o None, ficha), ...] en orden, con el sector solo en su primera ficha."""
+    """[(sector o None, ficha), ...] con las fichas de cada sector juntas.
+
+    Como en el modelo de la oficina: un bloque por sector (rótulo solo en la
+    primera ficha), en el orden en que aparece cada sector; dentro del bloque
+    se respeta el orden de la lista (normalmente, por fechas). Las fichas de
+    sectores que no agrupan van sueltas, sin rótulo, donde les toque.
+    """
     agrupan = _sectores_que_agrupan(experiencias)
-    salida, actual = [], None
+    salida, hechos = [], set()
     for e in experiencias:
         sector = (e.get("sector") or "").strip().upper()
-        if sector in agrupan and sector != actual:
-            salida.append((sector, e))
-            actual = sector
-        else:
-            if sector not in agrupan:
-                actual = None
+        if sector not in agrupan:
             salida.append((None, e))
+        elif sector not in hechos:
+            hechos.add(sector)
+            bloque = [x for x in experiencias if (x.get("sector") or "").strip().upper() == sector]
+            salida.append((sector, bloque[0]))
+            salida.extend((None, x) for x in bloque[1:])
     return salida
 
 
@@ -184,204 +184,103 @@ def texto_plano(cv):
     return "\n".join(lineas).strip()
 
 
-def _seccion(doc, texto):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(10)
-    p.paragraph_format.space_after = Pt(3)
-    r = p.add_run(texto.upper())
-    r.bold = True
-    r.font.size = Pt(10.5)
-    r.font.color.rgb = ROJO
-    # Línea bajo el rótulo, sin tablas: un borde inferior de párrafo.
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-    pPr = p._p.get_or_add_pPr()
-    borde = OxmlElement("w:pBdr")
-    abajo = OxmlElement("w:bottom")
-    for k, v in (("w:val", "single"), ("w:sz", "6"), ("w:space", "1"), ("w:color", "D1122E")):
-        abajo.set(qn(k), v)
-    borde.append(abajo)
-    pPr.append(borde)
-    return p
-
-
-def _parrafo(doc, texto, negrita=False, gris=False, tamano=10, antes=0, despues=2):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(antes)
-    p.paragraph_format.space_after = Pt(despues)
-    r = p.add_run(texto)
-    r.bold = negrita
-    r.font.size = Pt(tamano)
-    if gris:
-        r.font.color.rgb = GRIS
-    return p
-
-
-def documento_docx(cv):
-    """El currículo en Word, listo para descargar. Devuelve bytes."""
-    doc = Document()
-    for s in doc.sections:
-        s.page_height, s.page_width = Cm(29.7), Cm(21.0)
-        s.top_margin = s.bottom_margin = Cm(1.8)
-        s.left_margin = s.right_margin = Cm(2.0)
-    normal = doc.styles["Normal"]
-    normal.font.name = "Calibri"
-    normal.font.size = Pt(10)
-
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    p.paragraph_format.space_after = Pt(0)
-    r = p.add_run((cv.get("nombre") or "Nombre y apellidos").strip())
-    r.bold = True
-    r.font.size = Pt(20)
-    if contacto(cv):
-        _parrafo(doc, contacto(cv), gris=True, tamano=9.5, despues=4)
-
-    if cv.get("perfil"):
-        _seccion(doc, "Perfil profesional")
-        _parrafo(doc, cv["perfil"])
-
-    if cv.get("experiencias"):
-        _seccion(doc, "Experiencia laboral")
-        for sector, e in experiencias_agrupadas(cv["experiencias"]):
-            if sector:
-                _parrafo(doc, sector, negrita=True, gris=True, tamano=9, antes=4)
-            p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(3)
-            p.paragraph_format.space_after = Pt(0)
-            r = p.add_run(titulo_experiencia(e))
-            r.bold = True
-            r.font.size = Pt(10.5)
-            if periodo(e):
-                r2 = p.add_run(f"   {periodo(e)}")
-                r2.font.size = Pt(9.5)
-                r2.font.color.rgb = GRIS
-            if e.get("contexto"):
-                _parrafo(doc, e["contexto"], gris=True, tamano=9.5, despues=0)
-            if e.get("funciones"):
-                _parrafo(doc, e["funciones"], despues=2)
-
-    if cv.get("formacion"):
-        _seccion(doc, "Formación")
-        for f in cv["formacion"]:
-            p = doc.add_paragraph()
-            p.paragraph_format.space_after = Pt(1)
-            r = p.add_run(f.get("titulo", ""))
-            r.bold = True
-            detalle = " · ".join(x for x in (f.get("centro"), f.get("anio")) if x)
-            if detalle:
-                r2 = p.add_run(f"   {detalle}")
-                r2.font.size = Pt(9.5)
-                r2.font.color.rgb = GRIS
-
-    for rotulo, clave in (("Idiomas", "idiomas"), ("Informática", "informatica")):
-        if cv.get(clave):
-            _seccion(doc, rotulo)
-            _parrafo(doc, cv[clave])
-
-    otros = [x for x in (cv.get("permiso"), cv.get("disponibilidad"), cv.get("otros")) if x]
-    if otros:
-        _seccion(doc, "Otros datos")
-        _parrafo(doc, " · ".join(otros))
-
-    salida = io.BytesIO()
-    doc.save(salida)
-    return salida.getvalue()
-
-
 # ---------------------------------------------------------------------------
-# PDF: la misma maquetación que el Word, con reportlab
+# PDF: réplica del modelo de la oficina, con reportlab
 # ---------------------------------------------------------------------------
+# Trebuchet MS es de Microsoft y no está en el servidor: el PDF usa DejaVu
+# Sans, parecida en espíritu. El Word lleva la fuente exacta del modelo.
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Paragraph, SimpleDocTemplate
 from xml.sax.saxutils import escape as _esc
 
-_ROJO_PDF = colors.HexColor("#D1122E")
-_GRIS_PDF = colors.HexColor("#555555")
+_AZUL = colors.HexColor("#3366FF")
+_FUENTE, _FUENTE_B = "Helvetica", "Helvetica-Bold"
+try:
+    pdfmetrics.registerFont(TTFont("DejaVu", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
+    pdfmetrics.registerFont(TTFont("DejaVu-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+    _FUENTE, _FUENTE_B = "DejaVu", "DejaVu-Bold"
+except Exception:  # noqa: BLE001
+    pass
 
-_E = {
-    "nombre": ParagraphStyle("nombre", fontName="Helvetica-Bold", fontSize=20, leading=24,
-                             alignment=TA_LEFT, spaceAfter=2),
-    "contacto": ParagraphStyle("contacto", fontName="Helvetica", fontSize=9.5, leading=12,
-                               textColor=_GRIS_PDF, spaceAfter=6),
-    "seccion": ParagraphStyle("seccion", fontName="Helvetica-Bold", fontSize=10.5, leading=13,
-                              textColor=_ROJO_PDF, spaceBefore=10, spaceAfter=1),
-    "normal": ParagraphStyle("normal", fontName="Helvetica", fontSize=10, leading=13, spaceAfter=2),
-    "sector": ParagraphStyle("sector", fontName="Helvetica-Bold", fontSize=9, leading=11,
-                             textColor=_GRIS_PDF, spaceBefore=4, spaceAfter=1),
-    "puesto": ParagraphStyle("puesto", fontName="Helvetica", fontSize=10.5, leading=13,
-                             spaceBefore=3, spaceAfter=0),
-    "contexto": ParagraphStyle("contexto", fontName="Helvetica", fontSize=9.5, leading=12,
-                               textColor=_GRIS_PDF, spaceAfter=0),
-    "titulo_f": ParagraphStyle("titulo_f", fontName="Helvetica", fontSize=10, leading=13, spaceAfter=1),
-}
+_MARGEN = 567 / 20   # 1 cm, como el modelo
 
 
-def _p(texto, estilo):
-    return Paragraph(_esc(texto or "").replace("\n", "<br/>"), _E[estilo])
+def _estilo(pt, negrita=False, izq=0, primera=0, antes=0, despues=0, mult=1.0, **k):
+    return ParagraphStyle(
+        "x", fontName=_FUENTE_B if negrita else _FUENTE, fontSize=pt, leading=pt * 1.17 * mult,
+        leftIndent=izq, firstLineIndent=primera, spaceBefore=antes, spaceAfter=despues, **k,
+    )
 
 
-def _seccion_pdf(texto):
-    return [
-        _p(texto.upper(), "seccion"),
-        HRFlowable(width="100%", thickness=0.75, color=_ROJO_PDF, spaceBefore=0, spaceAfter=3),
-    ]
+def _pdf_bloques(bloques, f):
+    from herramientas.cv.plantilla import _METRICA
+    flujo = []
+    for tipo, datos in bloques:
+        pt, negrita, sangria, antes, despues, mult = _METRICA[tipo]
+        pt *= f
+        if tipo == "nombre":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, True, mult=mult)))
+        elif tipo == "contacto":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=sangria, mult=mult)))
+        elif tipo == "cabecera":
+            flujo.append(Paragraph(
+                f'<font color="white">{_esc(datos)}</font>',
+                _estilo(pt, antes=4, mult=mult, backColor=_AZUL, borderPadding=(1, 2, 2, 2)),
+            ))
+        elif tipo == "texto":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=70.9, primera=-35.45, mult=mult, alignment=4)))
+        elif tipo == "sector":
+            flujo.append(Paragraph(f"<u>{_esc(datos)}</u>", _estilo(pt, izq=sangria, antes=antes, despues=despues, mult=mult)))
+        elif tipo == "experiencia":
+            titulo, (a, fechas, c) = datos
+            cola = f" {_esc(a)}<i>{_esc(fechas)}</i>{_esc(c)}" if fechas else ""
+            flujo.append(Paragraph(
+                f"<b>{_esc(titulo)}</b>{cola}",
+                _estilo(pt, izq=sangria, mult=mult, bulletIndent=sangria - 18, bulletFontSize=pt), bulletText="•",
+            ))
+        elif tipo == "empresa":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=0, primera=35.45, mult=mult, alignment=4)))
+        elif tipo == "funciones":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=70.9, primera=-35.45, mult=mult, alignment=4)))
+        elif tipo == "formacion":
+            titulo, centro, anio = datos
+            texto = f"<b>{_esc(titulo)}" + (" –</b>" if (centro or anio) else "</b>")
+            if centro:
+                texto += f" <i>{_esc(centro)}{',' if anio else ''}</i>"
+            if anio:
+                texto += f" {_esc(anio)}."
+            flujo.append(Paragraph(texto, _estilo(pt, izq=sangria, antes=antes, mult=mult,
+                                                  bulletIndent=sangria - 18, bulletFontSize=pt), bulletText="•"))
+        elif tipo == "otros":
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=sangria, antes=antes, mult=mult,
+                                                        bulletIndent=sangria - 16, bulletFontSize=pt * 0.75), bulletText="•"))
+    return flujo
 
 
 def documento_pdf(cv):
-    """El currículo en PDF. Devuelve bytes. Misma maquetación que el Word."""
-    salida = io.BytesIO()
-    doc = SimpleDocTemplate(
-        salida, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm,
-        topMargin=1.8 * cm, bottomMargin=1.8 * cm,
-        title=(cv.get("nombre") or "Currículo").strip(), author="", subject="Currículo",
-    )
-    f = [_p((cv.get("nombre") or "Nombre y apellidos").strip(), "nombre")]
-    if contacto(cv):
-        f.append(_p(contacto(cv), "contacto"))
+    """El currículo en PDF, réplica del modelo. Devuelve bytes. Una página."""
+    from herramientas.cv import plantilla
+    bloques, factor, _ = plantilla.decide(cv)
+    f = factor
+    while True:
+        salida = io.BytesIO()
+        doc = SimpleDocTemplate(
+            salida, pagesize=A4, leftMargin=_MARGEN, rightMargin=_MARGEN,
+            topMargin=_MARGEN, bottomMargin=_MARGEN,
+            title=(cv.get("nombre") or "Currículo").strip(), author="", subject="Currículo",
+        )
+        doc.build(_pdf_bloques(bloques, f))
+        if doc.page <= 1 or f <= plantilla.FACTOR_MINIMO:
+            return salida.getvalue()
+        f = round(f - 0.02, 2)
 
-    if cv.get("perfil"):
-        f += _seccion_pdf("Perfil profesional")
-        f.append(_p(cv["perfil"], "normal"))
 
-    if cv.get("experiencias"):
-        f += _seccion_pdf("Experiencia laboral")
-        for sector, e in experiencias_agrupadas(cv["experiencias"]):
-            if sector:
-                f.append(_p(sector, "sector"))
-            linea = f"<b>{_esc(titulo_experiencia(e))}</b>"
-            if periodo(e):
-                linea += f'   <font size="9.5" color="#555555">{_esc(periodo(e))}</font>'
-            f.append(Paragraph(linea, _E["puesto"]))
-            if e.get("contexto"):
-                f.append(_p(e["contexto"], "contexto"))
-            if e.get("funciones"):
-                f.append(_p(e["funciones"], "normal"))
-
-    if cv.get("formacion"):
-        f += _seccion_pdf("Formación")
-        for x in cv["formacion"]:
-            linea = f"<b>{_esc(x.get('titulo', ''))}</b>"
-            detalle = " · ".join(v for v in (x.get("centro"), x.get("anio")) if v)
-            if detalle:
-                linea += f'   <font size="9.5" color="#555555">{_esc(detalle)}</font>'
-            f.append(Paragraph(linea, _E["titulo_f"]))
-
-    for rotulo, clave in (("Idiomas", "idiomas"), ("Informática", "informatica")):
-        if cv.get(clave):
-            f += _seccion_pdf(rotulo)
-            f.append(_p(cv[clave], "normal"))
-
-    otros = [x for x in (cv.get("permiso"), cv.get("disponibilidad"), cv.get("otros")) if x]
-    if otros:
-        f += _seccion_pdf("Otros datos")
-        f.append(_p(" · ".join(otros), "normal"))
-
-    f.append(Spacer(1, 1))
-    doc.build(f)
-    return salida.getvalue()
+def documento_docx(cv):
+    """El currículo en Word sobre el modelo de la oficina. Devuelve bytes."""
+    from herramientas.cv import plantilla
+    return plantilla.genera(cv)[0]
