@@ -1,150 +1,36 @@
 """
 Cargador del motor para las pruebas.
 
-Importa `herramientas/sispe/vista.py` hasta justo antes de la interfaz y devuelve el módulo ya
-cargado, con `busca`, `raiz`, `normaliza`, `IDX`, `VACIAS` y `SINONIMOS`
-listos para usar. No llama a la IA ni gasta cuota.
+Importa `herramientas/sispe/motor.py`, que es Python puro, y lo devuelve con
+`busca`, `raiz`, `normaliza`, `IDX`, `VACIAS` y `SINONIMOS` listos para usar.
+No llama a la IA ni gasta cuota.
 
 Lo usan `evaluar.py` (aciertos) y `estres.py` (robustez).
 
-DÓNDE CORTA
-    Busca la marca `# === FIN DEL MOTOR ===` en vista.py. Si no está, prueba
-    con la cabecera `# INTERFAZ`. Si tampoco, ejecuta el archivo entero
-    apoyándose en el Streamlit de mentira de más abajo.
-
-    La marca es lo que evita que una reorganización de vista.py deje las
-    pruebas rotas en silencio, que es justo lo que pasó el 21 de agosto.
+Antes el motor vivía dentro de la app y había que cargarla hasta una marca
+de corte con un Streamlit de mentira. Desde que el motor es un módulo aparte,
+esto se reduce a un import: si alguien mete Streamlit en el motor, el import
+falla aquí a la vista, en vez de romper las pruebas en silencio.
 """
 
-import sys
-import types
-
 import os
+import sys
 
-AQUI = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.join(AQUI, "..", "herramientas", "sispe", "vista.py")
-
-MARCAS = ("# === FIN DEL MOTOR ===", "# INTERFAZ")
-
-
-class _Vacio:
-    """Sustituto de cualquier objeto que devuelva Streamlit.
-
-    Se traga todas las llamadas, sirve como gestor de contexto (`with col:`)
-    y es iterable, para que un desempaquetado inesperado no reviente.
-    """
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
-
-    def __getattr__(self, n):
-        return lambda *a, **k: _Vacio()
-
-    def __iter__(self):
-        return iter(())
-
-    def __bool__(self):
-        return False
-
-    def __call__(self, *a, **k):
-        return _Vacio()
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
 
 
-def _cache(f=None, **k):
-    """Imita cache_resource y cache_data: memoriza de verdad."""
+def carga_motor():
+    if "streamlit" in sys.modules:
+        del sys.modules["streamlit"]
+    from herramientas.sispe import motor
 
-    def deco(fn):
-        guardado = {}
-
-        def envoltorio(*a, **kk):
-            clave = (a, tuple(sorted(kk.items())))
-            if clave not in guardado:
-                guardado[clave] = fn(*a, **kk)
-            return guardado[clave]
-
-        envoltorio.clear = guardado.clear
-        return envoltorio
-
-    return deco(f) if callable(f) else deco
-
-
-def _columnas(reparto, *a, **k):
-    """st.columns admite un número o una lista de pesos. Devuelve tantas
-    columnas como se pidan, para que el desempaquetado funcione."""
-    n = reparto if isinstance(reparto, int) else len(reparto)
-    return [_Vacio() for _ in range(max(int(n), 1))]
-
-
-class _Falso(types.ModuleType):
-    """Cualquier función de Streamlit que se llame aquí no hace nada."""
-
-    def __getattr__(self, nombre):
-        return lambda *a, **k: _Vacio()
-
-
-def _instala_streamlit_falso():
-    falso = _Falso("streamlit")
-    falso.cache_resource = _cache
-    falso.cache_data = _cache
-    falso.session_state = {}
-    falso.secrets = {}
-
-    # Las que devuelven varias cosas y por tanto se desempaquetan.
-    falso.columns = _columnas
-    falso.tabs = lambda etiquetas, *a, **k: [_Vacio() for _ in etiquetas]
-
-    componentes = _Falso("streamlit.components")
-    v1 = _Falso("streamlit.components.v1")
-    componentes.v1 = v1
-    falso.components = componentes
-
-    sys.modules["streamlit"] = falso
-    sys.modules["streamlit.components"] = componentes
-    sys.modules["streamlit.components.v1"] = v1
-
-    # google-genai y openai no hacen falta para probar la búsqueda.
-    for ausente in ("google", "google.genai", "google.genai.types", "openai"):
-        sys.modules.setdefault(ausente, _Falso(ausente))
-
-
-def _recorta(codigo):
-    for marca in MARCAS:
-        if marca in codigo:
-            return codigo[: codigo.index(marca)], marca
-    return codigo, None
-
-
-def carga_motor(ruta=APP, avisar=True):
-    import os
-
-    if not os.path.exists(ruta):
-        sys.exit(f"No encuentro {ruta} en esta carpeta.")
-
-    codigo, marca = _recorta(open(ruta, encoding="utf-8").read())
-    if marca is None and avisar:
-        print(
-            f"AVISO: no encuentro ninguna marca de corte en {ruta}. Se ejecuta\n"
-            "       el archivo entero, interfaz incluida. Vuelve a poner la\n"
-            f"       línea «{MARCAS[0]}» delante de la interfaz.\n",
-            file=sys.stderr,
+    if "streamlit" in sys.modules:
+        sys.exit(
+            "El motor ha importado Streamlit. Tiene que ser Python puro: lo que\n"
+            "necesite Streamlit va en vista.py, no en motor.py."
         )
-
-    _instala_streamlit_falso()
-
-    motor = types.ModuleType("motor")
-    motor.__dict__["__file__"] = ruta
-    exec(compile(codigo, ruta, "exec"), motor.__dict__)  # noqa: S102
-
-    for pieza in ("busca", "raiz", "normaliza", "IDX", "VACIAS", "SINONIMOS"):
-        if not hasattr(motor, pieza):
-            sys.exit(
-                f"El motor cargado no tiene «{pieza}». Es probable que la marca\n"
-                f"de corte «{marca}» haya quedado demasiado arriba en {ruta}."
-            )
-
     return motor
 
 

@@ -26,8 +26,7 @@ HERRAMIENTAS = [
         "herramientas/sispe/vista.py",
         title="Codificador SISPE",
         icon=":material/manage_search:",
-        url_path="sispe",
-        default=True,
+        default=True,   # la página por defecto se sirve en la raíz (/)
     ),
     st.Page(
         "herramientas/cv/vista.py",

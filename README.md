@@ -12,10 +12,17 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 
 ```
 app.py                         punto de entrada: solo la navegación
-comun/                         lo que comparten varias herramientas (vacío por ahora)
+comun/                         lo que comparten varias herramientas
+  ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)
+  gist.py                      almacén compartido en un Gist de GitHub
+  estilo.py                    CSS común: colores, cabecera, bloques repetidos
+  texto.py                     normaliza()
 herramientas/
   sispe/
-    vista.py                   la pantalla del codificador (motor + interfaz, aún juntos)
+    vista.py                   la pantalla del codificador: lo único que dibuja
+    motor.py                   búsqueda en el catálogo. Python puro, sin Streamlit
+    modelo.py                  prompts y llamadas a la IA del codificador
+    aprendizaje.py             lo que guarda en el Gist: léxico y refuerzos
     datos/
       vocabulario.json         palabras vacías y sinónimos base
       ocupaciones_sispe_ultraligero.txt   catálogo oficial (nombre exacto)
@@ -23,7 +30,7 @@ herramientas/
   cv/
     vista.py                   página provisional del generador de CV
 pruebas/
-  motor_pruebas.py             carga la vista SISPE sin la interfaz (lo usan las pruebas)
+  motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
   casos.csv                    los 40 casos (referencia, se edita a mano)
   estres.py                    robustez: que nada se rompa por lo bajo
@@ -36,8 +43,14 @@ scripts/
 requirements.txt               dependencias
 ```
 
-Regla de la casa: `app.py` es el único sitio donde se llama a
-`st.set_page_config`. Las páginas no deben repetirla.
+Reglas de la casa:
+
+- `app.py` es el único sitio donde se llama a `st.set_page_config`.
+- El motor de cada herramienta (`motor.py`) no importa Streamlit. Recibe
+  datos y devuelve resultados; lo que dibuja va en `vista.py`. Así las
+  pruebas lo importan tal cual, sin simular pantalla.
+- Las llamadas a la IA pasan por `comun/ia.py`: `genera()` para una
+  respuesta entera y `genera_flujo()` para verla llegar a trozos.
 
 ## Añadir una herramienta
 
@@ -79,8 +92,10 @@ limpia.
 
 ## Dónde se toca cada cosa
 
-- **Modelo de IA**: bloque `PROVEEDORES`. Es una lista con relevo automático.
-- **Proveedor**: constante `PROVEEDOR` (`gemini`, `groq`, `mistral`).
+- **Modelo de IA**: bloque `PROVEEDORES` de `comun/ia.py`. Es una lista con relevo automático.
+- **Proveedor**: constante `PROVEEDOR` en el mismo archivo (`gemini`, `groq`, `mistral`).
+- **Prompts del codificador**: `herramientas/sispe/modelo.py`.
+- **Puntuación del buscador**: `busca()` en `herramientas/sispe/motor.py`.
 - **Vocabulario**: `herramientas/sispe/datos/vocabulario.json`. Si falta, la app arranca en modo mínimo.
 
 ## Las dos baterías de pruebas
@@ -126,12 +141,13 @@ Hace falta porque `evaluar.py` no lo ve todo. El 21/08/2026 un cambio en el
 lematizador dejó 216 ocupaciones inalcanzables desde el singular y `evaluar.py`
 solo detectó dos casos raros. La prueba de convergencia lo canta entero.
 
-### La marca de corte
+### El motor es un módulo aparte
 
-Las dos baterías cargan `herramientas/sispe/vista.py` hasta la línea `# === FIN DEL MOTOR ===` para
-probar el buscador sin dibujar pantalla. **No borres esa línea ni la muevas.**
-Si desaparece, `motor_pruebas.py` avisa por pantalla en vez de fallar en
-silencio.
+Las dos baterías hacen `from herramientas.sispe import motor` y prueban
+`busca()` directamente. Si alguien mete Streamlit en `motor.py`,
+`motor_pruebas.py` lo detecta y para. Antes el motor vivía dentro de la app
+y había que cargarla hasta una marca de corte con un Streamlit de mentira;
+ya no hace falta.
 
 ## Garantía sobre los datos
 

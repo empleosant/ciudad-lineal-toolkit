@@ -21,7 +21,7 @@ ARCHIVOS
                 significando "algo que funcionaba se ha roto".
                 Este script NUNCA escribe en casos.csv: es la referencia.
     informe_evaluacion.csv   salida de --informe, regenerable, no versionar
-    motor_pruebas.py  carga la vista SISPE sin la interfaz (compartido con estres.py)
+    motor_pruebas.py  importa herramientas/sispe/motor.py (compartido con estres.py)
 
 CÓMO AMPLIARLA
     Cada vez que una consulta real falle, añade a mano una línea a casos.csv

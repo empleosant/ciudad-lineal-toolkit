@@ -1,1048 +1,51 @@
 """
-Codificador de ocupaciones SISPE
-Interfaz de apoyo para localizar codigos oficiales antes de grabarlos en SilcoiWeb.
+Codificador de ocupaciones SISPE: la pantalla.
+
+Apoyo para localizar códigos oficiales antes de grabarlos en SilcoiWeb.
+Aquí solo vive lo que dibuja: tarjetas, cabecera, pestañas y el hilo de una
+consulta (`resuelve`). La lógica está repartida en:
+
+    motor.py        búsqueda en el catálogo, sin Streamlit (lo prueban las baterías)
+    modelo.py       prompts y llamadas a la IA
+    aprendizaje.py  lo que se guarda en el Gist compartido
+    comun/          cliente de IA, Gist y estilo, compartidos con otras herramientas
+
+Claves de sesión: todas con prefijo `sispe_` (las `cv_` pasarán al
+generador de CV). Las claves de widgets (`consulta`, `buscar`, `marca`,
+`cabecera`, `pregunta`, `reinicio`, `ajustes`) las usa el CSS de
+`comun/estilo.py` por su nombre: no las cambies sin cambiarlo allí.
 """
 
-import os
-import re
 import csv
-import time
 import io
-import json
 import math
-import unicodedata
-from collections import defaultdict
-from difflib import SequenceMatcher
-
-import urllib.error
-import urllib.request
+import re
+import time
 
 import streamlit as st
 import streamlit.components.v1 as components
 
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:                     # noqa: S110
-    genai = types = None
+from comun import estilo, gist, ia
+from comun.texto import normaliza
+from herramientas.sispe import aprendizaje, modelo, motor
 
-try:
-    from openai import OpenAI
-except ImportError:                     # noqa: S110
-    OpenAI = None
-
-DATOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos")
-CATALOGO = os.path.join(DATOS, "ocupaciones_sispe_ultraligero.txt")
-AMPLIADO = os.path.join(DATOS, "terminos_ampliados.txt")
 N_CANDIDATOS = 16
 VENTAJA_CLARA = 3.0   # cuántas veces debe superar el 1º del buscador al 2º
                       # para que mande él en lugar del modelo (sube para que
                       # mande menos, baja para que mande más)
-ESPERA_MAXIMA = 30   # segundos por intento. A 45 una llamada atascada te dejaba
-                     # mirando la pantalla; a 12 se cortaban llamadas que iban a
-                     # terminar bien y caias al catalogo sin afinar.
 
-# ---------------------------------------------------------------------------
-# PROVEEDOR DE IA
-# ---------------------------------------------------------------------------
-PROVEEDOR = "gemini"
+estilo.aplica()
 
-PROVEEDORES = {
-    "gemini": {
-        "clave": "GEMINI_API_KEY",
-        "modelos": [
-            "gemini-3.5-flash-lite",
-            "gemini-3.1-flash-lite",
-            "gemini-2.5-flash-lite",
-            "gemini-3.6-flash",
-        ],
-    },
-    "groq": {
-        "clave": "GROQ_API_KEY",
-        "modelos": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-        "url": "https://api.groq.com/openai/v1",
-    },
-    "mistral": {
-        "clave": "MISTRAL_API_KEY",
-        "modelos": ["mistral-small-latest"],
-        "url": "https://api.mistral.ai/v1",
-    },
-}
-
-AJUSTES = PROVEEDORES[PROVEEDOR]
-MODELOS = AJUSTES["modelos"]
-
-
-def modelo_actual():
-    return MODELOS[min(st.session_state.get("modelo_ok", 0), len(MODELOS) - 1)]
-
-
-def sin_cuota(e):
-    t = str(e)
-    return "429" in t or "RESOURCE_EXHAUSTED" in t or "quota" in t.lower()
-
-# La configuración de página (título, icono, ancho) la fija app.py, que es
-# el punto de entrada. Streamlit solo admite una llamada por ejecución.
-
-# ---------------------------------------------------------------------------
-# ESTILO FLUIDO Y COMPACTO
-# ---------------------------------------------------------------------------
-
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap');
-
-:root{
-  --negro:#0A0A0A;
-  --rojo:#D1122E;
-  --rojo-oscuro:#A50E24;
-  --texto:#1A1A1A;
-  --suave:#555555;
-  --tenue:#8E8E93;
-  --linea:#E2E8F0;
-  --gris:#F1F5F9;
-}
-
-.stApp{ background:#FAFAFA; }
-html,body,[class*="css"],.stMarkdown{
-  font-family:'Libre Franklin',system-ui,sans-serif; color:var(--texto);
-}
-.block-container{ padding:0 1rem .4rem !important; max-width:1200px; }
-#MainMenu, footer, header[data-testid="stHeader"]{ visibility:hidden; height:0; }
-[data-testid="stHeaderActionElements"]{ display:none !important; }
-h1 > a, h2 > a, h3 > a, .stMarkdown a.anchor-link{ display:none !important; }
-div[data-testid="InputInstructions"]{ display:none !important; }
-
-/* Eliminación de márgenes fantasma entre iframe y contenedor */
-div[data-testid="stCustomComponentV1"] {
-  margin-bottom: 0px !important;
-  padding-bottom: 0px !important;
-}
-div[data-testid="stCustomComponentV1"] iframe {
-  margin-bottom: 0px !important;
-  padding-bottom: 0px !important;
-  display: block !important;
-}
-
-/* ---------- Cabecera fluida ---------- */
-.st-key-cabecera{
-  background:var(--negro);
-  padding:clamp(0.55rem, 1vh, 0.8rem) clamp(1rem, 2vw, 1.8rem);
-  margin-bottom:clamp(0.25rem, 0.6vh, 0.45rem);
-  box-shadow:0 2px 10px rgba(0,0,0,0.06);
-}
-.rotulo{
-  color:#8A8A8A; font-size:clamp(0.58rem, 0.65vw, 0.66rem); font-weight:600;
-  letter-spacing:.16em; text-transform:uppercase; margin:0 0 .1rem;
-}
-.rotulo span{ color:var(--rojo); font-weight:700; }
-
-/* Título */
-.st-key-marca button{
-  background:transparent !important; border:none !important; box-shadow:none !important;
-  padding:0 !important; justify-content:flex-start !important; margin-bottom:.35rem;
-}
-.st-key-marca button p{
-  color:#fff !important; font-size:clamp(1.2rem, 1.45vw, 1.45rem) !important;
-  font-weight:700 !important; letter-spacing:-.025em; margin:0 !important;
-  text-align:left !important; border-bottom:2px solid transparent; transition:border-color .15s ease;
-}
-.st-key-marca button:hover p{ border-bottom-color:var(--rojo); }
-
-/* Campo de búsqueda */
-.st-key-cabecera div[data-testid="stTextInput"] div[data-baseweb="base-input"],
-.st-key-cabecera div[data-testid="stTextInput"] input,
-.st-key-cabecera div[data-testid="stTextInput"] input:focus,
-.st-key-cabecera div[data-testid="stTextInput"] input:hover{
-  background:transparent !important; border:none !important;
-  box-shadow:none !important; outline:none !important;
-}
-.st-key-cabecera div[data-testid="stTextInput"] div[data-baseweb="input"]{
-  background:#fff !important; border:1px solid #fff !important;
-  border-radius:4px 0 0 4px !important; box-shadow:none !important;
-}
-.st-key-cabecera div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within{
-  border-color:var(--rojo) !important; box-shadow:0 0 0 2px var(--rojo) !important;
-}
-div[data-testid="stTextInput"] input{
-  padding:clamp(0.42rem, 0.8vh, 0.6rem) clamp(0.7rem, 1vw, 1rem) !important;
-  font-size:clamp(0.88rem, 0.95vw, 0.98rem) !important;
-  color:var(--texto) !important; font-family:'Libre Franklin',sans-serif !important;
-}
-
-/* Botones */
-.st-key-buscar button{
-  background:var(--rojo) !important; color:#fff !important; border:none !important;
-  border-radius:0 4px 4px 0 !important; font-weight:700 !important;
-  font-size:clamp(0.84rem, 0.9vw, 0.92rem) !important;
-  padding:clamp(0.42rem, 0.8vh, 0.6rem) 1rem !important;
-  min-height:clamp(36px, 3.8vh, 44px) !important; letter-spacing:.02em;
-  transition:background .15s ease;
-}
-.st-key-buscar button:hover{ background:var(--rojo-oscuro) !important; }
-.st-key-buscar button p{ color:#fff !important; font-weight:700 !important; }
-
-.st-key-ajustes button{
-  width:clamp(36px, 3.8vh, 44px) !important; height:clamp(36px, 3.8vh, 44px) !important;
-  min-height:clamp(36px, 3.8vh, 44px) !important;
-  border-radius:4px !important; padding:0 !important;
-  background:#1A1A1A !important; border:1px solid #333 !important; color:#fff !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  transition:all .18s ease;
-}
-.st-key-ajustes button:hover{
-  background:var(--rojo) !important; border-color:var(--rojo) !important; color:#fff !important;
-}
-
-/* Consulta activa */
-.consulta-box{
-  border-bottom:2px solid var(--negro); padding-bottom:.2rem;
-  margin:0 0 clamp(0.25rem, 0.5vh, 0.4rem);
-}
-.consulta-texto{
-  font-size:clamp(0.95rem, 1.05vw, 1.08rem); font-weight:700;
-  letter-spacing:-.015em; color:var(--texto);
-}
-.seccion{
-  font-size:.65rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--suave); margin:1rem 0 .5rem;
-}
-
-/* Pregunta interactiva centrada (arriba de las tarjetas) */
-.st-key-pregunta{
-  background:#fff; border:1px solid var(--linea); border-top:3px solid var(--rojo);
-  border-radius:4px; padding:clamp(0.45rem, 0.8vh, 0.65rem) clamp(0.8rem, 1.2vw, 1.2rem);
-  margin:0.2rem 0 0.45rem !important; box-shadow:0 1px 4px rgba(0,0,0,0.03);
-  text-align:center !important;
-}
-.pregunta-titulo{
-  font-size:.62rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--rojo); margin-bottom:.12rem; text-align:center !important;
-}
-.pregunta-texto{
-  font-size:clamp(0.9rem, 0.98vw, 0.98rem); line-height:1.32; font-weight:600;
-  color:var(--texto); margin-bottom:.42rem; text-align:center !important;
-}
-.st-key-pregunta div[data-testid="stHorizontalBlock"]{
-  justify-content:center !important; align-items:center !important;
-}
-.st-key-pregunta .stButton button{
-  background:#fff; border:1px solid var(--negro); font-weight:600; border-radius:4px;
-  padding:.32rem .75rem; min-height:34px; font-size:.84rem; transition:all .15s ease;
-  white-space:normal !important; height:auto !important;
-}
-.st-key-pregunta .stButton button:hover{
-  background:var(--negro); color:#fff; border-color:var(--negro);
-}
-
-.nota{ font-size:.74rem; color:var(--suave); margin:.15rem 0; }
-.separa{ height:1px; background:var(--linea); margin:clamp(0.25rem, 0.5vh, 0.4rem) 0; }
-
-/* Botón de reinicio */
-.st-key-reinicio,
-.st-key-reinicio > div,
-.st-key-reinicio [data-testid="stTooltipHoverTarget"],
-.st-key-reinicio [data-testid="stElementToolbar"]{
-  display:flex !important; justify-content:center !important; width:100% !important;
-}
-.st-key-reinicio button{
-  width:clamp(40px, 4.4vh, 48px) !important; height:clamp(40px, 4.4vh, 48px) !important;
-  min-height:clamp(40px, 4.4vh, 48px) !important;
-  border-radius:50% !important; padding:0 !important;
-  border:2px solid var(--negro) !important; background:#fff !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  transition:all .2s cubic-bezier(.2,.85,.3,1); box-shadow:0 2px 6px rgba(0,0,0,0.05);
-}
-.st-key-reinicio button p{
-  font-size:clamp(1.25rem, 1.5vw, 1.5rem) !important; line-height:1 !important;
-  margin:0 !important; color:var(--negro) !important;
-}
-.st-key-reinicio button:hover{
-  background:var(--rojo) !important; border-color:var(--rojo) !important;
-  transform:rotate(-90deg) scale(1.05);
-}
-.st-key-reinicio button:hover p{ color:#fff !important; }
-.pie-nueva{
-  text-align:center; font-size:.74rem; font-weight:600; color:var(--suave); margin:.2rem 0 0;
-}
-
-div[data-testid="stExpander"]{ border:none; background:transparent; margin-top:.1rem; }
-div[data-testid="stExpander"] summary{ font-size:.8rem; color:var(--suave); padding:.1rem 0; }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------------------------
-# CATALOGO
-# ---------------------------------------------------------------------------
-
-def normaliza(t):
-    t = re.sub(r"[/\\_\-]+", " ", t)
-    return "".join(
-        c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn"
-    ).lower().strip()
-
-
-VOCABULARIO = os.path.join(DATOS, "vocabulario.json")
-
-VACIAS_MINIMAS = {
-    "de", "del", "la", "el", "los", "las", "en", "y", "o", "con", "para",
-    "por", "un", "una", "al", "sin", "que", "su", "general", "persona",
-    "personas", "dame", "dime", "codigo", "puesto", "trabajo",
-}
-
-
-@st.cache_resource(show_spinner=False)
-def carga_vocabulario():
-    if os.path.exists(VOCABULARIO):
-        try:
-            with open(VOCABULARIO, "r", encoding="utf-8") as f:
-                datos = json.load(f)
-            vacias = {normaliza(w) for w in datos.get("vacias", []) if w}
-            sinonimos = {
-                normaliza(k): str(v)
-                for k, v in (datos.get("sinonimos") or {}).items() if k and v
-            }
-            if vacias or sinonimos:
-                return vacias or set(VACIAS_MINIMAS), sinonimos
-        except Exception:  # noqa: BLE001
-            pass
-    return set(VACIAS_MINIMAS), {}
-
-
-NIVELES = {
-    "10": "Dirección",
-    "20": "Mandos intermedios",
-    "30": "Jefes de equipo",
-    "00": "Técnicos / Sin categoría",
-    "70": "Auxiliares",
-    "80": "Peones",
-    "90": "Aprendices",
-}
-
-
-ARCHIVO_GIST = "lexico.json"
-ARCHIVO_REFUERZOS = "refuerzos.json"
-
-
-def _credenciales():
-    gist = st.secrets.get("GIST_ID") or os.environ.get("GIST_ID")
-    token = st.secrets.get("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    return (gist, token) if gist and token else (None, None)
-
-
-def _peticion(url, token, datos=None, metodo="GET"):
-    cuerpo = json.dumps(datos).encode("utf-8") if datos is not None else None
-    p = urllib.request.Request(url, data=cuerpo, method=metodo)
-    p.add_header("Authorization", f"Bearer {token}")
-    p.add_header("Accept", "application/vnd.github+json")
-    if cuerpo:
-        p.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(p, timeout=10) as r:
-        return json.loads(r.read().decode("utf-8"))
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def _lee_gist(archivo):
-    # Sale a GitHub. Se relee cada 5 minutos, asi que de vez en cuando una
-    # busqueda paga este viaje sin que se note de donde viene.
-    gist, token = _credenciales()
-    if not gist:
-        return {}
-    try:
-        datos = _peticion(f"https://api.github.com/gists/{gist}", token)
-        contenido = datos["files"][archivo]["content"]
-        return {str(k): str(v) for k, v in json.loads(contenido).items()}
-    except Exception:  # noqa: BLE001
-        return {}
-
-
-def _escribe_gist(archivo, datos):
-    gist, token = _credenciales()
-    _peticion(
-        f"https://api.github.com/gists/{gist}", token,
-        datos={"files": {archivo: {
-            "content": json.dumps(datos, ensure_ascii=False, indent=1, sort_keys=True)
-        }}},
-        metodo="PATCH",
-    )
-    _lee_gist.clear()
-
-
-def lexico_compartido():
-    return _lee_gist(ARCHIVO_GIST)
-
-
-def refuerzos_compartidos():
-    return _lee_gist(ARCHIVO_REFUERZOS)
-
-
-def guarda_termino(clave, valor):
-    gist, _ = _credenciales()
-    if not gist:
-        return False
-    try:
-        actual = dict(lexico_compartido())
-        if actual.get(clave) == valor:
-            return True
-        actual[clave] = valor
-        _escribe_gist(ARCHIVO_GIST, actual)
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def guarda_refuerzo(codigo, palabras):
-    gist, _ = _credenciales()
-    if not gist or codigo not in IDX["por_codigo"]:
-        return False
-    nuevas = [w for w in palabras if len(w) > 2]
-    if not nuevas:
-        return False
-    try:
-        actual = dict(refuerzos_compartidos())
-        previas = actual.get(codigo, "").split()
-        fusion = list(dict.fromkeys(previas + nuevas))[:24]
-        if fusion == previas:
-            return True
-        actual[codigo] = " ".join(fusion)
-        _escribe_gist(ARCHIVO_REFUERZOS, actual)
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def prueba_gist():
-    gist, token = _credenciales()
-    if not gist:
-        return False, "No hay GIST_ID o GITHUB_TOKEN en los Secrets."
-
-    marca = f"_prueba_{int(time.time())}"
-    try:
-        actual = dict(lexico_compartido())
-        antes = len(actual)
-        actual[marca] = "comprobacion"
-        _peticion(
-            f"https://api.github.com/gists/{gist}", token,
-            datos={"files": {ARCHIVO_GIST: {
-                "content": json.dumps(actual, ensure_ascii=False, indent=1, sort_keys=True)
-            }}},
-            metodo="PATCH",
-        )
-    except urllib.error.HTTPError as e:
-        pistas = {
-            401: "el token no vale o está revocado",
-            403: "al token le falta el permiso «gist»",
-            404: "el GIST_ID no existe o no es tuyo",
-        }
-        return False, f"Al escribir: {e.code}, {pistas.get(e.code, 'error de GitHub')}."
-    except Exception as e:  # noqa: BLE001
-        return False, f"Al escribir: {type(e).__name__}: {e}"
-
-    _lee_gist.clear()
-    try:
-        vuelta = lexico_compartido()
-    except Exception as e:  # noqa: BLE001
-        return False, f"Al releer: {type(e).__name__}: {e}"
-
-    if marca not in vuelta:
-        return False, "Se escribió, pero al releer no aparece."
-
-    del vuelta[marca]
-    try:
-        _peticion(
-            f"https://api.github.com/gists/{gist}", token,
-            datos={"files": {ARCHIVO_GIST: {
-                "content": json.dumps(vuelta, ensure_ascii=False, indent=1, sort_keys=True)
-            }}},
-            metodo="PATCH",
-        )
-        _lee_gist.clear()
-    except Exception:  # noqa: BLE001
-        pass
-
-    return True, f"Escritura y lectura correctas. {antes} términos guardados."
-
-
-def diccionario():
-    fusion = dict(lexico_compartido())
-    fusion.update(SINONIMOS)
-    return fusion
-
-
-def raiz(w):
-    """Lematizador mínimo: número, después sufijo de agente, después género.
-
-    Las tres fases son INDEPENDIENTES a propósito. Si se juntan en una cadena
-    elif, el plural y el singular de la misma palabra dejan de lematizar
-    igual: "montadores" se queda en "montador" (solo se aplica la regla de
-    plural) mientras que "montador" llega a "mont". El catálogo está en plural
-    y el ciudadano escribe en singular, así que dejan de encontrarse. Se probó
-    el 21/08/2026 y rompía 216 nombres de agente del catálogo.
-
-    Tampoco conviene meter aquí participios (-ado, -ido): en este catálogo
-    "cuidado", "montado" o "trasdosado" son sustantivos, no formas verbales, y
-    recortarlos los confunde con "cuidador" y "montador".
-
-    El gerundio (-ando, -iendo) se probó y no aporta: el pase de
-    interpretación ya normaliza la consulta antes de la búsqueda local.
-
-    Antes de tocar esta función:  python evaluar.py && python estres.py
-    """
-    if len(w) > 5 and w.endswith("es"):
-        w = w[:-2]
-    elif len(w) > 4 and w.endswith("s"):
-        w = w[:-1]
-    if len(w) > 5 and w.endswith("or"):
-        w = w[:-2]
-    if len(w) > 4 and w[-1] in "aoe":
-        w = w[:-1]
-    return w
-
-
-VACIAS, SINONIMOS = carga_vocabulario()
-
-
-@st.cache_resource(show_spinner=False)
-def carga_indice():
-    if not os.path.exists(CATALOGO):
-        return {"ok": False, "registros": []}
-
-    ampliado = {}
-    if os.path.exists(AMPLIADO):
-        with open(AMPLIADO, "r", encoding="utf-8") as f:
-            for linea in f:
-                if ":" in linea:
-                    cod, terms = linea.split(":", 1)
-                    ampliado[cod.strip()] = terms.strip()
-
-    registros, inv, inv_raiz = [], defaultdict(list), defaultdict(list)
-    inv_extra = defaultdict(list)
-    with open(CATALOGO, "r", encoding="utf-8") as f:
-        for linea in f:
-            linea = linea.strip()
-            if ":" not in linea:
-                continue
-            codigo, denom = linea.split(":", 1)
-            tokens = [
-                t for t in re.findall(r"\w+", normaliza(denom))
-                if len(t) > 2 and t not in VACIAS
-            ]
-            propias = {raiz(t) for t in tokens}
-            sueltas = {
-                raiz(t)
-                for t in re.findall(r"\w+", normaliza(ampliado.get(codigo.strip(), "")))
-                if len(t) > 2 and t not in VACIAS
-            }
-            registros.append({
-                "codigo": codigo.strip(),
-                "denom": denom.strip(),
-                "palabras": set(tokens),
-                "raices": propias,
-                "cabeza": {raiz(t) for t in tokens[:3]},
-                "extra": sueltas - propias,
-            })
-
-    n = max(1, len(registros))
-    for i, r in enumerate(registros):
-        for w in r["palabras"]:
-            inv[w].append(i)
-        for w in r["raices"]:
-            inv_raiz[w].append(i)
-        for w in r["extra"]:
-            inv_extra[w].append(i)
-
-    trigramas = defaultdict(set)
-    for w in inv_raiz:
-        for j in range(len(w) - 2):
-            trigramas[w[j:j + 3]].add(w)
-
-    return {
-        "ok": True,
-        "registros": registros,
-        "por_codigo": {r["codigo"]: r["denom"] for r in registros},
-        "posicion": {r["codigo"]: i for i, r in enumerate(registros)},
-        "inv": inv,
-        "inv_raiz": inv_raiz,
-        "idf": {w: math.log(1 + n / len(ix)) for w, ix in inv.items()},
-        "idf_raiz": {w: math.log(1 + n / len(ix)) for w, ix in inv_raiz.items()},
-        "inv_extra": inv_extra,
-        "idf_extra": {w: math.log(1 + n / len(ix)) for w, ix in inv_extra.items()},
-        "ampliado": len(ampliado),
-        "trigramas": trigramas,
-        "vocab_raiz": list(inv_raiz.keys()),
-    }
-
-
-IDX = carga_indice()
-
-if not IDX["ok"]:
-    st.error(f"Falta el archivo **{CATALOGO}**.")
+if not motor.IDX["ok"]:
+    st.error(f"Falta el archivo **{motor.CATALOGO}**.")
     st.stop()
 
 
-def parecidas(palabra, umbral=0.84, tope=3):
-    posibles = set()
-    for j in range(len(palabra) - 2):
-        posibles |= IDX["trigramas"].get(palabra[j:j + 3], set())
-    salida = []
-    for c in posibles:
-        if abs(len(c) - len(palabra)) > 3:
-            continue
-        r = SequenceMatcher(None, palabra, c).ratio()
-        if r >= umbral:
-            salida.append((r, c))
-    salida.sort(reverse=True)
-    return salida[:tope]
-
-
-def busca(consulta, tope=20, grupos=None):
-    q = normaliza(consulta)
-    terminos = {}
-    cabezas = set()
-
-    clausulas = [
-        c.strip()
-        for c in re.split(r"\s+(?:y|e|o|ademas|tambien)\s+", q)
-        if c.strip()
-    ]
-    if not clausulas:
-        clausulas = [q]
-
-    for clausula in clausulas:
-        contadas = 0
-        for w in re.findall(r"\w+", clausula):
-            if len(w) > 2 and w not in VACIAS and w not in terminos:
-                contadas += 1
-                if contadas == 1:
-                    cabezas.add(raiz(w))
-                terminos[w] = 1.0 if contadas <= 3 else 0.7
-
-    palabras_q = set(re.findall(r"\w+", q))
-    for clave, expansion in diccionario().items():
-        if (clave in palabras_q) if " " not in clave else (clave in q):
-            for w in re.findall(r"\w+", normaliza(expansion)):
-                terminos.setdefault(w, 0.85)
-    if not terminos:
-        return []
-
-    originales = {raiz(w) for w, peso in terminos.items() if peso == 1.0}
-    puntos, cubierto = defaultdict(float), defaultdict(set)
-
-    def suma(i, valor, termino):
-        puntos[i] += valor
-        cubierto[i].add(termino)
-
-    for w, peso in terminos.items():
-        r = raiz(w)
-        encontrado = False
-        if w in IDX["inv"]:
-            encontrado = True
-            k = IDX["idf"][w] * peso * 3.0
-            for i in IDX["inv"][w]:
-                suma(i, k, r)
-        if r in IDX["inv_raiz"]:
-            encontrado = True
-            k = IDX["idf_raiz"][r] * peso * 2.2
-            for i in IDX["inv_raiz"][r]:
-                suma(i, k, r)
-        if r in IDX["inv_extra"]:
-            encontrado = True
-            k = IDX["idf_extra"][r] * peso * 1.6
-            for i in IDX["inv_extra"][r]:
-                suma(i, k, r)
-
-        if len(r) > 3:
-            for v in IDX["vocab_raiz"]:
-                if v != r and (v.startswith(r) or r.startswith(v)):
-                    k = IDX["idf_raiz"][v] * peso * 1.0
-                    for i in IDX["inv_raiz"][v]:
-                        suma(i, k, r)
-        if not encontrado and len(r) > 4:
-            for ratio, c in parecidas(r):
-                k = IDX["idf_raiz"][c] * peso * ratio * 1.4
-                for i in IDX["inv_raiz"][c]:
-                    suma(i, k, r)
-
-    stems_consulta = {raiz(w) for w in re.findall(r"\w+", q) if len(w) > 2}
-    for codigo, aprendidas in refuerzos_compartidos().items():
-        i = IDX["posicion"].get(codigo)
-        if i is None:
-            continue
-        comunes = stems_consulta & {raiz(w) for w in aprendidas.split()}
-        if comunes:
-            suma(i, 14.0 * len(comunes), next(iter(comunes)))
-
-    n_term = max(1, len(originales))
-    n_total = max(1, len({raiz(w) for w in terminos}))
-    resultados = []
-    for i, valor in puntos.items():
-        reg = IDX["registros"][i]
-        nucleo = 1.0 + 0.5 * len(cubierto[i] & reg["cabeza"])
-        if cabezas and (cabezas & reg["cabeza"]):
-            nucleo *= 1.8
-        familia = 1.0
-        if grupos:
-            familia = 1.7 if reg["codigo"][0] in grupos else 0.45
-
-        propios = len(cubierto[i] & originales)
-        cobertura = (
-            0.55
-            + 0.30 * min(1.0, len(cubierto[i]) / n_total)
-            + 0.15 * min(1.0, propios / n_term)
-        )
-        resultados.append(
-            (valor * nucleo * cobertura * familia, reg["codigo"], reg["denom"])
-        )
-    resultados.sort(reverse=True)
-    return resultados[:tope]
-
-
-# ---------------------------------------------------------------------------
-# MODELO
-# ---------------------------------------------------------------------------
-
-@st.cache_resource(show_spinner=False)
-def cliente():
-    nombre = AJUSTES["clave"]
-    clave = st.secrets.get(nombre) or os.environ.get(nombre)
-    if not clave:
-        return None
-    if PROVEEDOR == "gemini":
-        if not genai:
-            return None
-        try:
-            return genai.Client(
-                api_key=clave,
-                http_options=types.HttpOptions(timeout=ESPERA_MAXIMA * 1000),
-            )
-        except Exception:  # noqa: BLE001
-            return genai.Client(api_key=clave)
-    if not OpenAI:
-        return None
-    return OpenAI(api_key=clave, base_url=AJUSTES["url"], timeout=ESPERA_MAXIMA)
-
-
-INSTRUCCIONES = """Eres un técnico de codificación de ocupaciones para SilcoiWeb (SEPE).
-
-Recibes la descripción de un puesto y una lista cerrada de ocupaciones candidatas.
-Selecciona entre 3 y 5, de mayor a menor afinidad.
-
-REGLAS
-1. Usa únicamente códigos y denominaciones literales de la lista de candidatos. No inventes ni modifiques ninguno.
-2. Los candidatos llegan ordenados por coincidencia de palabras, NO por acierto. Ese orden es solo una pista: elige siempre la ocupación cuya denominación describa la actividad real, aunque esté al final de la lista.
-3. Devuelve SIEMPRE entre 3 y 5 ocupaciones, aunque dudes.
-4. Nivel profesional: 90 aprendices (sin experiencia) / 00 técnicos o sin categoría (estándar con experiencia) / 10 dirección / 20 mandos intermedios / 30 jefes de equipo / 70 auxiliares / 80 peones.
-5. El campo "motivo" explica en menos de 10 palabras por qué encaja, en español con acentuación correcta.
-6. No propongas ocupaciones de dirección, jefatura ni mando (niveles 10, 20, 30) salvo que la descripción diga expresamente que dirigía equipos, centros o departamentos.
-7. Respeta el entorno de trabajo que indique la descripción: domicilio particular frente a institución, centro o residencia.
-8. PREGUNTA Y OPCIONES (DESAMBIGUACIÓN):
-   - Rellena "pregunta" y "opciones" solo si hay duda para desempatar entre las DOS PRIMERAS ocupaciones. Si no hay duda, deja "pregunta": "" y "opciones": [].
-   - La pregunta debe plantear una elección clara y directa (máximo 15 palabras).
-   - El campo "opciones" DEBE contener una lista con las 2 alternativas concretas (ej. ["Atención en caja / mostrador", "Cocina y preparación de comida"], ["Casas particulares", "Residencias / Centros"], o ["Sí", "No"]). NUNCA dejes "opciones" vacío si hay "pregunta".
-9. Si ninguna de las candidatas describe con precisión la actividad, rellena "otros_terminos" con entre 6 y 10 palabras sueltas de la CNO.
-
-EJEMPLO DE RESPUESTA:
-{"ocupaciones":[{"codigo":"51201027","denominacion":"CAMAREROS DE BARRA Y/O DEPENDIENTES DE CAFETERÍA","nivel":"00","motivo":"Atención en mostrador y servicio de comida rápida."},{"codigo":"93101024","denominacion":"PINCHES DE COCINA","nivel":"00","motivo":"Elaboración y preparación de alimentos en restauración."}],"pregunta":"¿A qué tarea dedicaba la mayor parte de su jornada?","opciones":["Atención en caja y mostrador","Preparación de comida en cocina"],"otros_terminos":""}
-"""
-
-
-def _configuraciones():
-    base = dict(
-        system_instruction=INSTRUCCIONES,
-        max_output_tokens=2048,
-        response_mime_type="application/json",
+def _busca(consulta, **k):
+    """El buscador del motor más lo aprendido en el Gist compartido."""
+    return motor.busca(
+        consulta, lexico=aprendizaje.lexico(), refuerzos=aprendizaje.refuerzos(), **k
     )
-    opciones = []
-    for nivel in ("minimal", "low"):
-        try:
-            opciones.append(
-                {**base, "thinking_config": types.ThinkingConfig(thinking_level=nivel)}
-            )
-        except Exception:  # noqa: BLE001
-            break
-    opciones.append(base)
-    return opciones
-
-
-def _flujo_gemini(cli, prompt):
-    opciones = _configuraciones()
-    ultimo = None
-    for m in range(st.session_state.get("modelo_ok", 0), len(MODELOS)):
-        for i in range(st.session_state.get("cfg", 0), len(opciones)):
-            emitido = False
-            try:
-                flujo = cli.models.generate_content_stream(
-                    model=MODELOS[m], contents=prompt,
-                    config=types.GenerateContentConfig(**opciones[i]),
-                )
-                for trozo in flujo:
-                    if not emitido:
-                        st.session_state["modelo_ok"] = m
-                        st.session_state["cfg"] = i
-                        emitido = True
-                    if getattr(trozo, "text", None):
-                        yield trozo.text
-                return
-            except Exception as e:  # noqa: BLE001
-                if emitido:
-                    raise
-                ultimo = e
-                if sin_cuota(e):
-                    break
-    raise ultimo
-
-
-def _flujo_openai(cli, prompt):
-    flujo = cli.chat.completions.create(
-        model=modelo_actual(),
-        messages=[
-            {"role": "system", "content": INSTRUCCIONES},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=2048,
-        temperature=0,
-        response_format={"type": "json_object"},
-        stream=True,
-    )
-    for trozo in flujo:
-        if not trozo.choices:
-            continue
-        texto = trozo.choices[0].delta.content
-        if texto:
-            yield texto
-
-
-INTERPRETE = """Eres experto en el catálogo de ocupaciones del SEPE (CNO).
-
-Lees la descripción de un puesto escrita por un orientador laboral, con las
-palabras de la persona atendida, y devuelves el VOCABULARIO OFICIAL de los
-oficios que podría estar describiendo.
-
-Una descripción corriente admite varias lecturas: "cuidado de niños en una
-escuela" puede ser guardería, comedor escolar o tiempo libre. Devuelve entre
-2 y 3 lecturas distintas, de más a menos probable.
-
-Si la descripción incluye dos funciones distintas o tareas combinadas
-(ej. "cobro en caja y repongo", "conduzco y reparto"), genera una lectura
-específica para cada una de las actividades.
-
-Responde SOLO con este JSON:
-{"lecturas":[{"terminos":"...","grupos":"5"},{"terminos":"...","grupos":"3"}]}
-"""
-
-
-def interpreta_consulta(cli, texto):
-    clave = normaliza(texto)
-    memoria = st.session_state.setdefault("interpretaciones", {})
-    if clave in memoria:
-        return memoria[clave]
-    try:
-        cfg = dict(system_instruction=INTERPRETE, max_output_tokens=2048)
-        if PROVEEDOR == "gemini":
-            try:
-                cfg["thinking_config"] = types.ThinkingConfig(thinking_level="minimal")
-            except Exception:  # noqa: BLE001
-                pass
-            r = cli.models.generate_content(
-                model=modelo_actual(), contents=texto,
-                config=types.GenerateContentConfig(**cfg),
-            )
-            bruto = (getattr(r, "text", "") or "").strip()
-        else:
-            r = cli.chat.completions.create(
-                model=modelo_actual(),
-                messages=[{"role": "system", "content": INTERPRETE}, {"role": "user", "content": texto}],
-                max_tokens=2048, temperature=0,
-            )
-            bruto = (r.choices[0].message.content or "").strip()
-    except Exception:  # noqa: BLE001
-        return []
-
-    datos = {}
-    try:
-        bloque = re.search(r"\{.*\}", bruto, re.S)
-        datos = json.loads(bloque.group()) if bloque else {}
-    except Exception:  # noqa: BLE001
-        datos = {}
-
-    crudas = datos.get("lecturas")
-    if not isinstance(crudas, list):
-        crudas = [datos] if datos.get("terminos") else []
-
-    lecturas = []
-    for l in crudas[:3]:
-        terminos = " ".join(
-            re.findall(r"[a-zñáéíóúü]+", normaliza(str(l.get("terminos", ""))))[:12]
-        )
-        if terminos:
-            grupos = tuple(re.findall(r"[1-9]", str(l.get("grupos", ""))))[:2]
-            lecturas.append((terminos, grupos))
-
-    if not lecturas:
-        suelto = " ".join(re.findall(r"[a-zñáéíóúü]+", normaliza(bruto))[:14])
-        if suelto:
-            lecturas = [(suelto, ())]
-
-    memoria[clave] = lecturas
-    return lecturas
-
-
-def flujo_modelo(cli, texto, candidatos):
-    prompt = f"CANDIDATOS (única fuente válida):\n{candidatos}\n\nDESCRIPCIÓN: {texto}"
-    if PROVEEDOR == "gemini":
-        yield from _flujo_gemini(cli, prompt)
-    else:
-        yield from _flujo_openai(cli, prompt)
-
-
-def objetos_parciales(bruto):
-    inicio = bruto.find("[")
-    if inicio == -1:
-        return []
-    salida, prof, arranque = [], 0, None
-    cadena = escape = False
-    for i in range(inicio + 1, len(bruto)):
-        c = bruto[i]
-        if cadena:
-            if escape:
-                escape = False
-            elif c == "\\":
-                escape = True
-            elif c == '"':
-                cadena = False
-            continue
-        if c == '"':
-            cadena = True
-        elif c == "{":
-            if prof == 0:
-                arranque = i
-            prof += 1
-        elif c == "}":
-            prof -= 1
-            if prof == 0 and arranque is not None:
-                try:
-                    salida.append(json.loads(bruto[arranque:i + 1]))
-                except Exception:  # noqa: BLE001
-                    pass
-                arranque = None
-        elif c == "]" and prof == 0:
-            break
-    return salida
-
-
-def verifica(lista):
-    limpias, descartadas = [], 0
-    vistos = set()
-    for o in lista or []:
-        codigo = str(o.get("codigo", "")).strip()
-        if codigo in vistos:
-            continue
-        if codigo in IDX["por_codigo"]:
-            vistos.add(codigo)
-            nivel = str(o.get("nivel", "00")).strip()[:2] or "00"
-            limpias.append({
-                "codigo": codigo,
-                "denominacion": IDX["por_codigo"][codigo],
-                "nivel": nivel,
-                "nivel_texto": NIVELES.get(nivel, "Técnicos / Sin categoría"),
-                "motivo": str(o.get("motivo", "")).strip(),
-            })
-        elif codigo:
-            descartadas += 1
-    return limpias[:6], descartadas
-
-
-def limpia_opcion(texto):
-    t = texto.strip().strip("¿?¡!.,;").strip()
-    for _ in range(4):
-        t = re.sub(
-            r"^(?:la|el|los|las|un|una|unos|unas|en|a|al|del|de|para|con|por|su|sus)\s+",
-            "", t, flags=re.IGNORECASE,
-        ).strip()
-    if len(t) > 44:
-        t = t[:44].rsplit(" ", 1)[0]
-        # Cortar por una palabra entera no basta: si el corte cae justo detras
-        # de un conector queda "Gestion de contabilidad y", que no significa
-        # nada. Se retrocede hasta que la ultima palabra tenga contenido.
-        colgantes = {
-            "y", "o", "u", "e", "de", "del", "al", "a", "en", "con", "por",
-            "para", "sin", "sobre", "the", "la", "el", "los", "las", "un",
-            "una", "mas", "más", "que", "su", "sus",
-        }
-        piezas = t.split()
-        while len(piezas) > 1 and piezas[-1].lower().strip(",;") in colgantes:
-            piezas.pop()
-        t = " ".join(piezas) + "…"
-    return t.capitalize()
-
-
-def extraer_opciones(pregunta, opciones_modelo=None):
-    if opciones_modelo and isinstance(opciones_modelo, list):
-        limpias = [str(o).strip() for o in opciones_modelo if str(o).strip()]
-        if len(limpias) >= 2 and set(limpias) != {"Sí", "No"}:
-            return [limpia_opcion(x) for x in limpias[:3]]
-
-    q = pregunta.strip().strip("¿?¡!").strip()
-    fillers = [
-        r"^su actividad principal consist[ií]a en\s+",
-        r"^su tarea principal era\s+",
-        r"^su labor principal era\s+",
-        r"^su puesto era de\s+",
-        r"^se dedicaba a\s+",
-        r"^trabajaba en\s+",
-        r"^realizaba tareas de\s+",
-        r"^hac[ií]a funciones de\s+",
-        r"^pasaba la mayor parte del tiempo en\s+",
-        r"^se ocupaba de\s+",
-        r"^hac[ií]a\s+",
-        r"^era\s+",
-        r"^realizaba\s+",
-    ]
-    q_limpia = q
-    for f in fillers:
-        q_limpia = re.sub(f, "", q_limpia, flags=re.IGNORECASE).strip()
-
-    if " o " in q_limpia:
-        partes = [p.strip() for p in re.split(r"\s+o\s+", q_limpia, maxsplit=1) if p.strip()]
-        if len(partes) == 2:
-            op1 = limpia_opcion(partes[0])
-            op2 = limpia_opcion(partes[1])
-            if op1 and op2 and op1.lower() != op2.lower():
-                return [op1, op2]
-
-    return ["Sí", "No"]
-
-
-def interpreta(bruto):
-    texto = re.sub(r"^```(?:json)?|```$", "", (bruto or "").strip(), flags=re.MULTILINE)
-    datos = {}
-    try:
-        datos = json.loads(texto)
-    except Exception:  # noqa: BLE001
-        bloque = re.search(r"\{.*\}", texto, re.S)
-        if bloque:
-            try:
-                datos = json.loads(bloque.group())
-            except Exception:  # noqa: BLE001
-                datos = {}
-    if not datos:
-        ocupaciones, descartadas = verifica(objetos_parciales(texto))
-        return {"ocupaciones": ocupaciones, "pregunta": "", "opciones": [], "descartadas": descartadas}
-
-    ocupaciones, descartadas = verifica(datos.get("ocupaciones"))
-    sugeridos = " ".join(
-        re.findall(r"[a-zñáéíóúü]+", normaliza(str(datos.get("otros_terminos", "") or "")))[:12]
-    )
-    pregunta = str(datos.get("pregunta", "") or "").strip()
-    opciones = extraer_opciones(pregunta, datos.get("opciones")) if pregunta else []
-
-    return {
-        "ocupaciones": ocupaciones,
-        "pregunta": pregunta,
-        "opciones": opciones,
-        "descartadas": descartadas,
-        "mas_terminos": sugeridos,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -1275,7 +278,7 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
                 unsafe_allow_html=True,
             )
             if interactivo:
-                opciones = extraer_opciones(payload.get("pregunta", ""), payload.get("opciones"))
+                opciones = motor.extraer_opciones(payload.get("pregunta", ""), payload.get("opciones"))
                 # El ancho se reparte segun lo que ocupa cada texto. Con el
                 # limite en 44 caracteres hace falta algo mas de holgura que
                 # antes, o el boton vuelve a cortar la frase por su cuenta.
@@ -1286,7 +289,7 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
                 for idx, opc in enumerate(opciones):
                     with cols[idx + 1]:
                         if st.button(opc, key=f"resp_opt_{idx}", use_container_width=True):
-                            st.session_state["respuesta"] = (consulta, payload["pregunta"], opc)
+                            st.session_state["sispe_respuesta"] = (consulta, payload["pregunta"], opc)
                             st.rerun()
 
     # 2. TARJETAS DE OCUPACIONES
@@ -1351,7 +354,7 @@ class cronometra:
 
     def __exit__(self, *_):
         segundos = time.perf_counter() - self.t0
-        st.session_state.setdefault("tiempos", []).append((self.etiqueta, segundos))
+        st.session_state.setdefault("sispe_tiempos", []).append((self.etiqueta, segundos))
         return False
 
 
@@ -1361,7 +364,7 @@ def _basica(encontrados, motivo=""):
     # no llevan la marca de recomendada, porque nadie las ha recomendado.
     return [{
         "codigo": c, "denominacion": d, "nivel": "00",
-        "nivel_texto": NIVELES["00"], "motivo": motivo,
+        "nivel_texto": motor.NIVELES["00"], "motivo": motivo,
         "provisional": True,
     } for _, c, d in encontrados[:5]]
 
@@ -1369,12 +372,12 @@ def _basica(encontrados, motivo=""):
 def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     codigo = texto.strip()
     if re.fullmatch(r"\d{8}", codigo):
-        if codigo in IDX["por_codigo"]:
+        if codigo in motor.IDX["por_codigo"]:
             payload = {"ocupaciones": [{
                 "codigo": codigo,
-                "denominacion": IDX["por_codigo"][codigo],
+                "denominacion": motor.IDX["por_codigo"][codigo],
                 "nivel": "00",
-                "nivel_texto": NIVELES["00"],
+                "nivel_texto": motor.NIVELES["00"],
                 "motivo": "Consulta directa por código.",
             }]}
         else:
@@ -1383,14 +386,14 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
             pinta_resultado(payload)
         return payload
 
-    encontrados = busca(busqueda or texto, tope=N_CANDIDATOS)
+    encontrados = _busca(busqueda or texto, tope=N_CANDIDATOS)
     # Lo que devuelve el buscador para lo que ESCRIBIO la persona, antes de que
     # la IA reinterprete y sustituya `encontrados`. La decision de quien manda
     # tiene que tomarse sobre esto, no sobre la busqueda reescrita por el
     # modelo: ahi las puntuaciones se aplanan y la ventaja real desaparece.
     literales = encontrados[:2]
-    st.session_state["tiempos"] = []
-    cli = cliente() if usar_ia else None
+    st.session_state["sispe_tiempos"] = []
+    cli = ia.cliente() if usar_ia else None
 
     if not encontrados and cli is None:
         payload = {"ocupaciones": []}
@@ -1398,7 +401,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
             pinta_resultado(payload)
         return payload
 
-    memoria = st.session_state["cache"]
+    memoria = st.session_state["sispe_cache"]
     clave = normaliza(texto + contexto)
     if clave in memoria:
         with zona.container():
@@ -1427,7 +430,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
                     "codigo": cod_a,
                     "denominacion": den_a,
                     "nivel": "00",
-                    "nivel_texto": NIVELES["00"],
+                    "nivel_texto": motor.NIVELES["00"],
                     "motivo": "Coincidencia directa con lo que escribiste.",
                 }],
                 "otras": [(c, d) for _, c, d in encontrados[1:9]],
@@ -1449,12 +452,14 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     with zona.container():
         pinta_resultado({}, estado="Interpretando el oficio", avance=0.12)
     with cronometra("1. Interpretar el oficio"):
-        lecturas = interpreta_consulta(cli, texto)
+        lecturas = modelo.interpreta_consulta(
+            cli, texto, st.session_state.setdefault("sispe_interpretaciones", {}),
+        )
     if lecturas:
         fundido, vistos = [], {}
         for orden, (terminos, grupos) in enumerate(lecturas):
             peso = (1.0, 0.88, 0.78)[min(orden, 2)]
-            for puntos, c_cod, denom in busca(terminos, tope=12, grupos=grupos):
+            for puntos, c_cod, denom in _busca(terminos, tope=12, grupos=grupos):
                 if puntos * peso > vistos.get(c_cod, 0):
                     vistos[c_cod] = puntos * peso
                     fundido.append((puntos * peso, c_cod, denom))
@@ -1464,7 +469,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
         )[:N_CANDIDATOS + 4]
 
         if len(mejores) < 3:
-            mejores = busca(
+            mejores = _busca(
                 f"{busqueda or texto} {lecturas[0][0]}",
                 tope=N_CANDIDATOS + 4, grupos=lecturas[0][1],
             )
@@ -1488,19 +493,19 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     def consulta_al_modelo(candidatos, etiqueta):
         bruto, avance = "", 0.10
         arranque = time.perf_counter()
-        for trozo in flujo_modelo(cli, texto + contexto, candidatos):
+        for trozo in modelo.flujo_modelo(cli, texto + contexto, candidatos):
             bruto += trozo
             transcurrido = time.perf_counter() - arranque
-            if transcurrido > ESPERA_MAXIMA:
+            if transcurrido > ia.ESPERA_MAXIMA:
                 raise TimeoutError(
-                    f"El modelo ha tardado más de {ESPERA_MAXIMA} segundos."
+                    f"El modelo ha tardado más de {ia.ESPERA_MAXIMA} segundos."
                 )
-            nuevo = min(0.10 + transcurrido / (ESPERA_MAXIMA * 1.4), 0.92)
+            nuevo = min(0.10 + transcurrido / (ia.ESPERA_MAXIMA * 1.4), 0.92)
             if nuevo - avance > 0.04:
                 avance = nuevo
                 with zona.container():
                     pinta_resultado({}, estado=etiqueta, avance=avance)
-        return interpreta(bruto)
+        return motor.interpreta(bruto)
 
     try:
         lista = "\n".join(f"{c}:{d}" for _, c, d in encontrados)
@@ -1510,7 +515,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
         if payload.get("mas_terminos"):
             with zona.container():
                 pinta_resultado({}, estado="Ampliando la búsqueda", avance=0.45)
-            ampliados = busca(f"{busqueda or texto} {payload['mas_terminos']}",
+            ampliados = _busca(f"{busqueda or texto} {payload['mas_terminos']}",
                               tope=N_CANDIDATOS + 6)
             if ampliados:
                 encontrados = ampliados
@@ -1532,10 +537,10 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
         elegido = payload["ocupaciones"][0]["codigo"]
         if elegido != encontrados[0][1]:
             palabras = [
-                raiz(w) for w in re.findall(r"\w+", normaliza(texto))
-                if len(w) > 3 and w not in VACIAS
+                motor.raiz(w) for w in re.findall(r"\w+", normaliza(texto))
+                if len(w) > 3 and w not in motor.VACIAS
             ]
-            st.session_state.setdefault("refuerzos_por_guardar", []).append(
+            st.session_state.setdefault("sispe_refuerzos_por_guardar", []).append(
                 (elegido, palabras)
             )
 
@@ -1574,7 +579,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
                 "codigo": codigo_c,
                 "denominacion": denom,
                 "nivel": "00",
-                "nivel_texto": NIVELES["00"],
+                "nivel_texto": motor.NIVELES["00"],
                 "motivo": "Mejor coincidencia del catálogo con lo que escribiste.",
             }
             if arrasa:
@@ -1597,11 +602,6 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     return payload
 
 
-# === FIN DEL MOTOR ===
-# No muevas esta línea ni la borres: las pruebas (evaluar.py, estres.py)
-# cargan app.py hasta aquí para probar el buscador sin dibujar pantalla.
-# Todo lo que vaya por debajo es interfaz y no se prueba.
-
 # ---------------------------------------------------------------------------
 # INTERFAZ
 # ---------------------------------------------------------------------------
@@ -1611,17 +611,15 @@ try:
 except Exception:  # noqa: BLE001
     MANTENIMIENTO = False
 
-st.session_state.setdefault("actual", None)
-st.session_state.setdefault("registro", [])
-st.session_state.setdefault("pendiente", None)
-st.session_state.setdefault("usar_ia", True)
-st.session_state.setdefault("cache", {})
-st.session_state.setdefault("lexico", {})
-st.session_state.setdefault("modelo_ok", 0)
-st.session_state.setdefault("respuesta", None)
-st.session_state.setdefault("por_guardar", [])
-st.session_state.setdefault("refuerzos_por_guardar", [])
-st.session_state.setdefault("ultima", "")
+st.session_state.setdefault("sispe_actual", None)
+st.session_state.setdefault("sispe_registro", [])
+st.session_state.setdefault("sispe_pendiente", None)
+st.session_state.setdefault("sispe_usar_ia", True)
+st.session_state.setdefault("sispe_cache", {})
+st.session_state.setdefault("sispe_respuesta", None)
+st.session_state.setdefault("sispe_por_guardar", [])
+st.session_state.setdefault("sispe_refuerzos_por_guardar", [])
+st.session_state.setdefault("sispe_ultima", "")
 st.session_state.setdefault("consulta", "")
 st.session_state.setdefault("cv_experiencias", [])
 st.session_state.setdefault("cv_auto_orden", True)
@@ -1643,15 +641,15 @@ EJEMPLOS = [
 
 def panel_ajustes():
     with st.popover(":material/tune:", use_container_width=True):
-        st.session_state["usar_ia"] = st.toggle(
-            "Afinar con IA", value=st.session_state["usar_ia"],
+        st.session_state["sispe_usar_ia"] = st.toggle(
+            "Afinar con IA", value=st.session_state["sispe_usar_ia"],
             help="Desactivado, muestra las coincidencias del catálogo al instante.",
         )
-        if st.session_state["registro"]:
+        if st.session_state["sispe_registro"]:
             buffer = io.StringIO()
             escritor = csv.writer(buffer, delimiter=";")
             escritor.writerow(["consulta", "codigos"])
-            for fila in st.session_state["registro"]:
+            for fila in st.session_state["sispe_registro"]:
                 escritor.writerow(fila)
             st.download_button(
                 "Descargar sesión", buffer.getvalue().encode("utf-8-sig"),
@@ -1661,12 +659,12 @@ def panel_ajustes():
 
         if not MANTENIMIENTO:
             st.caption(
-                f"{len(IDX['registros'])} ocupaciones del catálogo oficial. "
+                f"{len(motor.IDX['registros'])} ocupaciones del catálogo oficial. "
                 "Describe solo el puesto: sin datos identificativos."
             )
             return
 
-        tiempos = st.session_state.get("tiempos", [])
+        tiempos = st.session_state.get("sispe_tiempos", [])
         if tiempos:
             st.caption("Última consulta, segundo a segundo:")
             for etiqueta, seg in tiempos:
@@ -1674,35 +672,22 @@ def panel_ajustes():
             st.caption(f"· Total esperando al modelo: **{sum(t for _, t in tiempos):.1f} s**")
 
         if st.button("Probar la conexión con la IA", use_container_width=True):
-            prueba = cliente()
-            if prueba is None:
-                st.error(f"No hay clave {AJUSTES['clave']} en los Secrets.")
-            else:
-                try:
-                    cfg = dict(system_instruction="Responde únicamente con la palabra ok.", max_output_tokens=2048)
-                    r = prueba.models.generate_content(
-                        model=modelo_actual(), contents="ok",
-                        config=types.GenerateContentConfig(**cfg),
-                    )
-                    st.success(f"{modelo_actual()}: {(getattr(r, 'text', '') or '').strip()[:60]}")
-                except Exception as e:  # noqa: BLE001
-                    st.error(f"{type(e).__name__}: {e}")
+            correcto, detalle = ia.prueba()
+            (st.success if correcto else st.error)(detalle)
 
-        compartido = lexico_compartido()
-        gist_activo, _ = _credenciales()
-        if gist_activo:
+        if gist.activo():
             st.markdown("**Diccionario compartido**")
-            st.caption(f"{len(compartido)} términos aprendidos.")
+            st.caption(f"{len(aprendizaje.lexico())} términos aprendidos.")
             if st.button("Comprobar que guarda", use_container_width=True):
-                correcto, detalle = prueba_gist()
+                correcto, detalle = aprendizaje.prueba()
                 (st.success if correcto else st.error)(detalle)
 
 
 def usar_ejemplo(texto_ejemplo):
-    st.session_state["pendiente"] = texto_ejemplo
+    st.session_state["sispe_pendiente"] = texto_ejemplo
     st.session_state["consulta"] = ""
-    st.session_state["actual"] = None
-    st.session_state["ultima"] = ""
+    st.session_state["sispe_actual"] = None
+    st.session_state["sispe_ultima"] = ""
 
 
 SUELTAS_ES = ("r", "n", "l", "d", "s", "z", "j")
@@ -1736,63 +721,6 @@ def a_oracion(denom):
     return " ".join(piezas).capitalize()
 
 
-FUNCIONES_IA = """Recibes el nombre de un oficio tras la etiqueta OCUPACIÓN. Devuelve
-en 20-30 palabras las funciones habituales DE ESE OFICIO, en redacción corrida y sin
-viñetas, para la sección de experiencia de un currículo.
-
-REGLAS INNEGOCIABLES:
-- Describe SOLO tareas propias del oficio indicado, en general.
-- NO inventes datos de ninguna persona: ni empresas, ni años, ni cifras, ni logros,
-  ni marcas concretas, ni responsabilidades de mando.
-- No escribas en primera persona ni des por hecho que nadie hiciera todo esto.
-- Empieza directamente por la tarea principal, sin "se encarga de" ni preámbulos.
-- Si tras OCUPACIÓN no viene un oficio reconocible, responde exactamente: SIN OFICIO
-
-No describas nunca tu propio papel ni el de quien te consulta: solo el oficio
-que aparece tras la etiqueta. Devuelve el texto pelado, sin comillas."""
-
-
-def sugiere_funciones(denominacion, motivo=""):
-    """Propone funciones tipicas del puesto. NO son las de la persona.
-
-    Es un punto de partida para que quien no sabe redactar tenga vocabulario,
-    no una descripcion de lo que hizo nadie. Va a un campo editable a proposito:
-    la persona tiene que quitar lo que no hizo antes de que entre en su CV.
-    """
-    oficio = (denominacion or "").strip()
-    if len(oficio) < 3:
-        return ""
-    cli = cliente()
-    if cli is None:
-        return ""
-    peticion = f"OCUPACIÓN: {oficio}"
-    if motivo:
-        peticion += f"\nContexto: {motivo}"
-    try:
-        cfg = dict(system_instruction=FUNCIONES_IA, max_output_tokens=300)
-        if PROVEEDOR == "gemini":
-            try:
-                cfg["thinking_config"] = types.ThinkingConfig(thinking_level="minimal")
-            except Exception:  # noqa: BLE001
-                pass
-            r = cli.models.generate_content(
-                model=modelo_actual(), contents=peticion,
-                config=types.GenerateContentConfig(**cfg),
-            )
-            salida = (getattr(r, "text", "") or "").strip().strip('"')
-            return "" if salida.upper().startswith("SIN OFICIO") else salida
-        r = cli.chat.completions.create(
-            model=modelo_actual(),
-            messages=[{"role": "system", "content": FUNCIONES_IA},
-                      {"role": "user", "content": peticion}],
-            max_tokens=300,
-        )
-        salida = (r.choices[0].message.content or "").strip().strip('"')
-        return "" if salida.upper().startswith("SIN OFICIO") else salida
-    except Exception:  # noqa: BLE001
-        return ""
-
-
 def pon_funciones(codigo):
     for e in st.session_state["cv_experiencias"]:
         if e["codigo"] == codigo:
@@ -1805,7 +733,7 @@ def pon_funciones(codigo):
                     "Escribe primero el puesto y vuelve a pulsar."
                 )
                 return
-            texto = sugiere_funciones(oficio, e.get("motivo", ""))
+            texto = modelo.sugiere_funciones(ia.cliente(), oficio, e.get("motivo", ""))
             if texto:
                 e["funciones"] = texto
                 st.session_state[f"fun_{codigo}"] = texto
@@ -1923,9 +851,9 @@ def botones_carrito(ocupaciones):
 
 
 def empezar_de_nuevo():
-    st.session_state["actual"] = None
+    st.session_state["sispe_actual"] = None
     st.session_state["consulta"] = ""
-    st.session_state["ultima"] = ""
+    st.session_state["sispe_ultima"] = ""
 
 
 # ---------------------------------------------------------------------------
@@ -1934,7 +862,7 @@ def empezar_de_nuevo():
 
 entrada, contexto, busqueda, rotulo = None, "", None, None
 
-respuesta = st.session_state.pop("respuesta", None)
+respuesta = st.session_state.pop("sispe_respuesta", None)
 if respuesta:
     original, pregunta, eleccion = respuesta
     entrada = original
@@ -1947,7 +875,7 @@ if respuesta:
     busqueda = f"{original} {eleccion}"
 
 if not entrada:
-    entrada = st.session_state.pop("pendiente", None)
+    entrada = st.session_state.pop("sispe_pendiente", None)
 
 # ---------------------------------------------------------------------------
 # Banda de cabecera
@@ -1977,12 +905,12 @@ with banda:
 
     escrito = (texto or "").strip()
     if escrito and not entrada:
-        if buscar or escrito != st.session_state.get("ultima", ""):
+        if buscar or escrito != st.session_state.get("sispe_ultima", ""):
             entrada = escrito
             contexto, busqueda, rotulo = "", None, None
 
 if entrada:
-    st.session_state["ultima"] = entrada
+    st.session_state["sispe_ultima"] = entrada
 
 # ---------------------------------------------------------------------------
 # Pestañas
@@ -2007,18 +935,18 @@ with tab_codificador:
         zona = st.empty()
         payload = resuelve(
             entrada, zona,
-            usar_ia=st.session_state["usar_ia"],
+            usar_ia=st.session_state["sispe_usar_ia"],
             contexto=contexto, busqueda=busqueda,
         )
-        st.session_state["actual"] = (rotulo or entrada, payload)
-        st.session_state["registro"].append((
+        st.session_state["sispe_actual"] = (rotulo or entrada, payload)
+        st.session_state["sispe_registro"].append((
             rotulo or entrada,
             " | ".join(o["codigo"] for o in payload.get("ocupaciones", [])),
         ))
         st.rerun()
 
-    elif st.session_state["actual"]:
-        consulta, payload = st.session_state["actual"]
+    elif st.session_state["sispe_actual"]:
+        consulta, payload = st.session_state["sispe_actual"]
         st.markdown(
             f'<div class="consulta-box"><div class="consulta-texto">{consulta}</div></div>',
             unsafe_allow_html=True,
@@ -2211,14 +1139,14 @@ with tab_cv:
             "el paso siguiente; ahí decidiremos qué se recorta si no cabe."
         )
 
-_pendientes = st.session_state.pop("por_guardar", [])
+_pendientes = st.session_state.pop("sispe_por_guardar", [])
 if _pendientes:
     with cronometra("4. Guardar términos aprendidos (GitHub)"):
         for clave, valor in _pendientes:
-            guarda_termino(clave, valor)
+            aprendizaje.guarda_termino(clave, valor)
 
-_refuerzos = st.session_state.pop("refuerzos_por_guardar", [])
+_refuerzos = st.session_state.pop("sispe_refuerzos_por_guardar", [])
 if _refuerzos:
     with cronometra("5. Guardar correcciones de orden (GitHub)"):
         for codigo, palabras in _refuerzos:
-            guarda_refuerzo(codigo, palabras)
+            aprendizaje.guarda_refuerzo(codigo, palabras)
