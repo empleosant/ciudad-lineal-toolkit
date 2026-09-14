@@ -765,7 +765,7 @@ if not entrada:
 # ---------------------------------------------------------------------------
 
 banda = estilo.banda(
-    "sispe", "Catálogo SISPE <span>&middot;</span> SilcoiWeb", "Codificador de ocupaciones",
+    "sispe", "Codificador de ocupaciones",
     "Describe el puesto con las palabras de la persona y te propone el código oficial.",
     al_pulsar_titulo=empezar_de_nuevo,
 )

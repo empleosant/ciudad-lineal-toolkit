@@ -66,7 +66,7 @@ def area(etiqueta, clave, **k):
 # ---------------------------------------------------------------------------
 
 estilo.banda(
-    "cv", "Currículo <span>&middot;</span> con IA en pocos pasos", "Generador de CV",
+    "cv", "Generador de CV",
     "Datos, experiencia, formación y documento. La IA ordena, sugiere y redacta; tú revisas.",
 )
 

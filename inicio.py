@@ -13,8 +13,7 @@ from comun.registro import HERRAMIENTAS
 estilo.aplica()
 
 estilo.banda(
-    "inicio", "Caja de herramientas <span>&middot;</span> orientación laboral",
-    "Herramientas de orientación",
+    "inicio", "Herramientas de orientación",
     "Pequeñas utilidades para el día a día de la oficina, que se pasan datos entre sí.",
 )
 
