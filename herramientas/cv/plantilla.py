@@ -148,9 +148,10 @@ def _periodo_partes(e):
 # más holgados que en el modelo (que los tenía a 0,9-0,95 y sin hueco entre
 # bloques) para que se lea más claro; se aplican al Word en `_aire`.
 _METRICA = {
-    "nombre": (27, True, 0, 0, 0, 1.0),
-    "contacto": (19, False, 35.45, 0, 0, 1.15),
+    "nombre": (27, True, 0, 0, 6, 1.0),
+    "contacto": (19, False, 35.45, 0, 0, 1.0),
     "cabecera": (20, False, 0, 9, 3, 1.15),
+    "cabecera1": (20, False, 0, 1, 3, 1.15),   # la primera, pegada al contacto
     "sector": (20, False, 2.85, 6, 4, 1.0),
     "experiencia": (18, True, 38.85, 6, 0, 1.05),
     "empresa": (16, False, 70.9, 0, 0, 1.05),
@@ -260,6 +261,8 @@ def _escala(elemento, factor):
 def _aire(p, tipo):
     """Aplica al párrafo el espacio antes/después y el interlineado de _METRICA."""
     _, _, _, antes, despues, mult = _METRICA[tipo]
+    if tipo == "cabecera1":
+        mult = _METRICA["cabecera"][5]
     ppr = p.find(qn("w:pPr"))
     sp = ppr.find(qn("w:spacing"))
     if sp is None:
@@ -300,7 +303,11 @@ def genera(cv):
             cuerpo.remove(p)
     sect = cuerpo.find(qn("w:sectPr"))
 
+    primera_cabecera = [True]
+
     def anade(p, tipo):
+        if tipo == "cabecera" and primera_cabecera[0]:
+            tipo, primera_cabecera[0] = "cabecera1", False
         _aire(p, tipo)
         if sect is not None:
             sect.addprevious(p)

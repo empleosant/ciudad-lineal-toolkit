@@ -222,12 +222,14 @@ def _estilo(pt, negrita=False, izq=0, primera=0, antes=0, despues=0, mult=1.0, *
 
 def _pdf_bloques(bloques, f):
     from herramientas.cv.plantilla import _METRICA
-    flujo = []
+    flujo, primera_cabecera = [], True
     for tipo, datos in bloques:
         pt, negrita, sangria, antes, despues, mult = _METRICA[tipo]
+        if tipo == "cabecera" and primera_cabecera:
+            antes, primera_cabecera = _METRICA["cabecera1"][3], False
         pt *= f
         if tipo == "nombre":
-            flujo.append(Paragraph(_esc(datos), _estilo(pt, True, mult=mult)))
+            flujo.append(Paragraph(_esc(datos), _estilo(pt, True, despues=despues, mult=mult)))
         elif tipo == "contacto":
             flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=sangria, mult=mult)))
         elif tipo == "cabecera":
