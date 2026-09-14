@@ -148,10 +148,10 @@ def _periodo_partes(e):
 # más holgados que en el modelo (que los tenía a 0,9-0,95 y sin hueco entre
 # bloques) para que se lea más claro; se aplican al Word en `_aire`.
 _METRICA = {
-    "nombre": (27, True, 0, 0, 6, 1.0),
-    "contacto": (19, False, 35.45, 0, 0, 1.0),
+    "nombre": (27, True, 0, 0, 0, 1.0),
+    "contacto": (19, False, 35.45, 0, 0, 1.15),
     "cabecera": (20, False, 0, 9, 3, 1.15),
-    "cabecera1": (20, False, 0, 1, 3, 1.15),   # la primera, pegada al contacto
+    "cabecera1": (20, False, 0, 0, 3, 1.15),   # la primera, pegada al contacto
     "sector": (20, False, 2.85, 6, 4, 1.0),
     "experiencia": (18, True, 38.85, 6, 0, 1.05),
     "empresa": (16, False, 70.9, 0, 0, 1.05),
