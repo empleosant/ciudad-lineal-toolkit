@@ -51,6 +51,11 @@ st.session_state.setdefault("fmc_resultado", None)
 # ---------------------------------------------------------------------------
 
 st.markdown('<div class="seccion">1 · Catálogo de cursos</div>', unsafe_allow_html=True)
+st.caption(
+    "El Excel de cursos se descarga del portal de formación de la Comunidad de Madrid: "
+    "[vialaboris.comunidad.madrid/Formacion](https://vialaboris.comunidad.madrid/Formacion/). "
+    "Sube aquí ese archivo tal cual."
+)
 archivo = st.file_uploader(
     "Excel o CSV con los cursos", type=["xlsx", "xls", "csv"], key="fmc_w_excel",
     help="Vale cualquier hoja con una fila por curso. Se usan las columnas que tengan contenido.",
@@ -89,6 +94,25 @@ st.caption(
     "Experiencia, formación, intereses, limitaciones de horario o de nivel. "
     "Sin nombre, teléfono ni ningún dato identificativo: el perfil se manda a la IA."
 )
+with st.expander("Cómo obtener el perfil desde Teams (protección de datos)"):
+    st.markdown(
+        "Por protección de datos, en la Comunidad de Madrid **el CV de la persona solo "
+        "puede subirse a Teams**, que es la única herramienta autorizada. El camino es: "
+        "subir el CV al asistente de Teams, pedirle un perfil **sin datos identificativos** "
+        "en Markdown, guardarlo como `.md` y arrastrarlo aquí. Texto de encargo para pegar en Teams:"
+    )
+    st.code(
+        "A partir del CV adjunto, redacta un perfil profesional en Markdown para orientación "
+        "laboral. NO incluyas nombre, apellidos, fecha de nacimiento, DNI, teléfono, correo, "
+        "dirección ni nombres de empresas concretas: sustitúyelos por el tipo de empresa. "
+        "Incluye: experiencia (puestos, años aproximados y funciones), formación, idiomas, "
+        "informática, permisos de conducir y disponibilidad. Devuelve solo el Markdown.",
+        language=None,
+    )
+    st.caption(
+        "Antes de arrastrar el archivo, échale un vistazo: si se ha colado algún dato "
+        "identificativo, bórralo. Aquí lo que llega al cuadro se puede editar."
+    )
 izq, der = st.columns([3, 2], gap="medium")
 with izq:
     md = st.file_uploader("Archivo .md o .txt", type=["md", "txt"], key="fmc_w_md")

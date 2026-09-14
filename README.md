@@ -122,6 +122,15 @@ estructura de columnas) y el perfil de la persona, como archivo `.md` o
 `.txt`, pegado a mano, o tomado del generador de CV. Sin datos
 identificativos: el perfil se manda a la IA.
 
+De dónde sale cada cosa:
+
+- El Excel de cursos, del portal de formación de la Comunidad de Madrid:
+  <https://vialaboris.comunidad.madrid/Formacion/>.
+- El perfil `.md`, de Teams: por protección de datos es la única
+  herramienta autorizada en la Comunidad de Madrid para subir el CV de la
+  persona. Se le pide un perfil sin datos identificativos en Markdown y se
+  arrastra aquí. La pantalla lleva el texto de encargo listo para pegar.
+
 Garantía sobre los cursos: la IA solo elige por número de fila y la app
 muestra los datos reales del Excel. Lo que no corresponda a ninguna fila
 se descarta y se avisa. Si el catálogo tiene más de 60 cursos, se le
