@@ -13,9 +13,10 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 ```
 app.py                         punto de entrada: solo la navegación
 comun/                         lo que comparten varias herramientas
+  registro.py                  la lista de herramientas (nombre, icono, ruta)
   ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)
   gist.py                      almacén compartido en un Gist de GitHub
-  estilo.py                    CSS común: colores, cabecera, bloques repetidos
+  estilo.py                    CSS común y el menú de herramientas de la banda negra
   texto.py                     normaliza()
 herramientas/
   sispe/
@@ -57,8 +58,14 @@ Reglas de la casa:
 
 ## Añadir una herramienta
 
-1. Crea `herramientas/<nombre>/vista.py` con la pantalla.
-2. Añade un `st.Page` a la lista `HERRAMIENTAS` de `app.py`.
+1. Crea `herramientas/<nombre>/vista.py` con la pantalla. Al principio de
+   su banda negra llama a `estilo.menu("<nombre>")`.
+2. Añade una entrada a `HERRAMIENTAS` en `comun/registro.py`. Con eso sale
+   en la navegación y en el menú de todas las páginas.
+
+El menú va dentro de la página, no en la barra lateral de Streamlit: la
+barra se podía plegar y el botón para reabrirla quedaba oculto por el CSS
+de la cabecera. Así no depende de ningún control interno.
 
 Las claves de `st.session_state` de cada herramienta llevan su prefijo
 (`sispe_`, `cv_`) para que dos páginas no se pisen.

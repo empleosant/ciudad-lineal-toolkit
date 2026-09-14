@@ -31,36 +31,27 @@ html,body,[class*="css"],.stMarkdown{
   font-family:'Libre Franklin',system-ui,sans-serif; color:var(--texto);
 }
 .block-container{ padding:0 1rem .4rem !important; max-width:1200px; }
-/* La cabecera de Streamlit no se oculta entera: dentro vive el botón que
-   reabre la barra lateral cuando está plegada, y si desaparece no hay forma
-   de recuperar el menú. Se deja transparente y sin capturar clics, y se
-   ocultan solo sus adornos (menú, botón de desplegar, estado, franja de
-   color). Así funciona sea cual sea el nombre interno del botón. */
-#MainMenu, footer{ visibility:hidden; height:0; }
-header[data-testid="stHeader"]{
-  background:transparent !important; box-shadow:none !important; pointer-events:none;
+/* Sin cabecera de Streamlit ni barra lateral: el menú de herramientas va
+   dentro de la banda negra de cada página y no depende de ningún control
+   interno. Antes se intentó dejar la cabecera transparente y su barra de
+   herramientas seguía capturando los clics de lo que quedaba debajo. */
+#MainMenu, footer, header[data-testid="stHeader"]{ display:none !important; }
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"]{ display:none !important; }
+
+/* ---------- Menú de herramientas, dentro de la banda negra ---------- */
+.st-key-menu{ margin-bottom:.25rem; }
+.st-key-menu div[data-testid="stHorizontalBlock"]{ gap:.35rem !important; flex-wrap:wrap; }
+.st-key-menu div[data-testid="stColumn"]{ flex:0 0 auto !important; width:auto !important; min-width:0 !important; }
+.st-key-menu a[data-testid="stPageLink-NavLink"]{
+  color:#C9C9C9 !important; font-size:.78rem; font-weight:600; letter-spacing:.02em;
+  padding:.18rem .55rem !important; border-radius:3px; border:1px solid transparent;
+  background:transparent !important; text-decoration:none !important;
 }
-header[data-testid="stHeader"] [data-testid="stToolbar"]{ background:transparent !important; }
-header[data-testid="stHeader"] [data-testid="stToolbarActions"],
-header[data-testid="stHeader"] [data-testid="stDecoration"],
-header[data-testid="stHeader"] [data-testid="stStatusWidget"],
-header[data-testid="stHeader"] [data-testid="stAppDeployButton"],
-header[data-testid="stHeader"] [data-testid="stMainMenu"]{ display:none !important; }
-/* Lo único que queda vivo en la cabecera es el botón de reabrir la barra.
-   Pastilla clara con borde: se ve sobre fondo blanco (pantalla ancha) y
-   sobre la banda negra (pantalla estrecha). */
-header[data-testid="stHeader"] button{
-  pointer-events:auto; visibility:visible;
-  color:var(--texto) !important; background:#fff !important;
-  border:1px solid #C4C4C4 !important; border-radius:4px !important;
-  box-shadow:0 1px 3px rgba(0,0,0,.12);
-}
-header[data-testid="stHeader"] button:hover{
-  background:var(--negro) !important; color:#fff !important; border-color:var(--negro) !important;
-}
-@media (max-width:1260px){
-  body:has([data-testid="stExpandSidebarButton"]) .st-key-cabecera,
-  body:has([data-testid="stSidebarCollapsedControl"]) .st-key-cabecera{ padding-left:3.6rem !important; }
+.st-key-menu a[data-testid="stPageLink-NavLink"] *{ color:inherit !important; }
+.st-key-menu a[data-testid="stPageLink-NavLink"]:hover{ color:#fff !important; border-color:#555; }
+.st-key-menu a[data-testid="stPageLink-NavLink"][disabled]{
+  color:#fff !important; background:var(--rojo) !important; border-color:var(--rojo); opacity:1 !important;
 }
 [data-testid="stHeaderActionElements"]{ display:none !important; }
 h1 > a, h2 > a, h3 > a, .stMarkdown a.anchor-link{ display:none !important; }
@@ -227,3 +218,22 @@ div[data-testid="stExpander"] summary{ font-size:.8rem; color:var(--suave); padd
 
 def aplica():
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def menu(actual):
+    """El menú de herramientas. Va dentro de la banda negra de cada página.
+
+    `actual` es el id (ver `comun/registro.py`) de la herramienta que lo
+    pinta: sale marcada en rojo y no es un enlace.
+    """
+    from comun.registro import HERRAMIENTAS
+
+    try:
+        caja = st.container(key="menu")
+    except TypeError:
+        caja = st.container()
+    with caja:
+        cols = st.columns(len(HERRAMIENTAS), gap="small")
+        for col, h in zip(cols, HERRAMIENTAS):
+            col.page_link(h["ruta"], label=h["titulo"], icon=h["icono"],
+                          disabled=(h["id"] == actual))

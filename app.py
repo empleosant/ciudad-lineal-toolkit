@@ -1,40 +1,36 @@
 """
 Punto de entrada de la caja de herramientas.
 
-Aquí solo se define la navegación. Cada herramienta vive en su carpeta
-dentro de `herramientas/` y se registra en la lista de abajo. Añadir una
-herramienta nueva es crear su carpeta y añadir una línea a HERRAMIENTAS.
+Aquí solo se monta la navegación a partir de `comun/registro.py`. Cada
+herramienta vive en su carpeta dentro de `herramientas/`:
 
     herramientas/<nombre>/vista.py   la pantalla (lo único que usa Streamlit)
-    herramientas/<nombre>/motor.py   la lógica, sin Streamlit (paso 2)
+    herramientas/<nombre>/motor.py   la lógica, sin Streamlit
     herramientas/<nombre>/datos/     catálogos, vocabularios, plantillas
     comun/                           lo que comparten varias herramientas
+
+El menú de herramientas no va en la barra lateral de Streamlit sino dentro
+de la banda negra de cada página (ver `comun/estilo.py`): así no depende
+de ningún control interno de Streamlit y se ve igual en móvil.
 """
 
 import streamlit as st
+
+from comun.registro import HERRAMIENTAS
 
 # Única llamada permitida a set_page_config. Las páginas no deben repetirla.
 st.set_page_config(
     page_title="Herramientas · Oficina de Empleo",
     page_icon="◉",
     layout="wide",
-    initial_sidebar_state="auto",
 )
 
-HERRAMIENTAS = [
+paginas = [
     st.Page(
-        "herramientas/sispe/vista.py",
-        title="Codificador SISPE",
-        icon=":material/manage_search:",
-        default=True,   # la página por defecto se sirve en la raíz (/)
-    ),
-    st.Page(
-        "herramientas/cv/vista.py",
-        title="Generador de CV",
-        icon=":material/description:",
-        url_path="cv",
-    ),
+        h["ruta"], title=h["titulo"], icon=h["icono"],
+        url_path=h["url"], default=(h["url"] is None),
+    )
+    for h in HERRAMIENTAS
 ]
 
-pagina = st.navigation({"Herramientas": HERRAMIENTAS})
-pagina.run()
+st.navigation(paginas, position="hidden").run()

@@ -57,6 +57,7 @@ try:
 except TypeError:
     banda = st.container()
 with banda:
+    estilo.menu("cv")
     st.markdown(
         '<div class="rotulo">Currículo <span>&middot;</span> con IA en pocos pasos</div>'
         '<div style="color:#fff;font-size:clamp(1.2rem,1.45vw,1.45rem);font-weight:700;'

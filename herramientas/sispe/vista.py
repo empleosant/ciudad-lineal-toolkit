@@ -768,6 +768,7 @@ except TypeError:
     banda = st.container()
 
 with banda:
+    estilo.menu("sispe")
     st.markdown(
         '<div class="rotulo">Catálogo SISPE <span>&middot;</span> SilcoiWeb</div>',
         unsafe_allow_html=True,
