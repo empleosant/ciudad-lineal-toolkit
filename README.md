@@ -130,10 +130,17 @@ el modelo, hay que revisar los índices de párrafo en `plantilla.py`.
 
 **Una página siempre.** Sin Word en el servidor, la altura se estima con
 métricas de fuente (DejaVu Sans corregida hacia Trebuchet, con holgura) y
-se reduce el tamaño de letra proporcionalmente, hasta un mínimo del 55 %.
-Si hiciera falta bajar del 85 %, se prueba también sin los rótulos de
-sector y se elige la opción que deje la letra más grande. La pantalla
-dice qué ajuste se ha aplicado.
+se reduce el tamaño de letra proporcionalmente. Orden de sacrificios,
+decidido con la oficina:
+
+1. Se mantienen los bloques por sector y la letra baja hasta el 85 %.
+2. Si no basta, se dejan fuera las experiencias más antiguas (las últimas
+   de la lista), una a una, hasta quedarse con tres.
+3. Solo si aun así no cabe, se quitan los rótulos de sector y la letra
+   sigue bajando hasta el 55 %.
+
+La pantalla dice qué se ha aplicado y qué experiencias han quedado fuera;
+una casilla permite forzar que entren todas con la letra más pequeña.
 
 El PDF (`reportlab`) replica el modelo con DejaVu Sans, porque Trebuchet
 MS es de Microsoft y no está en el servidor; para el documento definitivo

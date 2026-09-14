@@ -362,18 +362,30 @@ else:
     vista = motor.texto_plano(cv)
     if vista:
         st.code(vista, language=None)
-        _, factor, con_sectores = plantilla.decide(cv)
+        decision = plantilla.decide(cv)
+        factor = decision["factor"]
         hay_sectores = any((e.get("sector") or "").strip() for e in cv["experiencias"])
         if factor >= 1.0:
             ajuste = "Cabe en una página con el tamaño de letra del modelo."
         else:
             ajuste = f"Para que quepa en una página, la letra va al {round(factor * 100)} % del modelo."
-        if hay_sectores and not con_sectores:
+        if hay_sectores and not decision["con_sectores"]:
             ajuste += " Se han quitado los rótulos de sector para ganar espacio."
         st.caption(
             "El documento sigue el modelo de CV de la oficina: misma estructura, fuentes y "
             f"colores, siempre en una página. {ajuste}"
         )
+        if decision["omitidas"]:
+            st.warning(
+                "Para mantener la letra legible se dejan fuera las experiencias más antiguas: "
+                + "; ".join(f"**{t}**" for t in decision["omitidas"])
+                + ". Si prefieres que entren todas con la letra más pequeña, márcalo abajo."
+            )
+        if len(cv["experiencias"]) > plantilla.MIN_EXPERIENCIAS:
+            cv["todas_experiencias"] = st.checkbox(
+                "Incluir todas las experiencias aunque haya que reducir más la letra",
+                value=cv.get("todas_experiencias", False), key="cv_w_todas",
+            )
     else:
         st.info("Aún no hay nada que mostrar. Rellena los pasos anteriores.")
 

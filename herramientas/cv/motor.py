@@ -24,6 +24,7 @@ def nuevo():
         "experiencias": [],
         "formacion": [],
         "idiomas": "", "informatica": "", "otros": "",
+        "todas_experiencias": False,   # forzar que entren todas aunque baje la letra
     }
 
 
@@ -269,8 +270,8 @@ def _pdf_bloques(bloques, f):
 def documento_pdf(cv):
     """El currículo en PDF, réplica del modelo. Devuelve bytes. Una página."""
     from herramientas.cv import plantilla
-    bloques, factor, _ = plantilla.decide(cv)
-    f = factor
+    decision = plantilla.decide(cv)
+    bloques, f = decision["bloques"], decision["factor"]
     while True:
         salida = io.BytesIO()
         doc = SimpleDocTemplate(

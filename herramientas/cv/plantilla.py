@@ -10,11 +10,21 @@ márgenes exactamente como el modelo.
 
 UNA PÁGINA SIEMPRE. Aquí no hay Word para medir, así que se estima la
 altura del documento con métricas de fuente y se reduce el tamaño de
-letra (todo a la vez, proporcionalmente) hasta que quepa. Si hace falta
-reducir mucho, se prueba también sin los rótulos de sector, y se elige
-la opción que deje la letra más grande.
+letra (todo a la vez, proporcionalmente) hasta que quepa. El orden de
+sacrificios, decidido con la oficina:
 
-    genera(cv) -> (bytes del .docx, factor de escala, con_sectores)
+    1. Se mantienen los bloques por sector y se baja la letra hasta el
+       mínimo legible (FACTOR_LEGIBLE).
+    2. Si no basta, se dejan fuera las experiencias más antiguas (las
+       últimas de la lista), una a una, hasta MIN_EXPERIENCIAS.
+    3. Solo si aun así no cabe, se quitan los rótulos de sector y se
+       sigue bajando la letra hasta FACTOR_MINIMO.
+
+`cv["todas_experiencias"]` salta el paso 2: entran todas aunque la
+letra tenga que bajar más.
+
+    genera(cv) -> (bytes del .docx, decisión)
+    decide(cv) -> decisión: {"bloques", "factor", "con_sectores", "omitidas"}
 """
 
 import copy
@@ -40,7 +50,8 @@ ANCHO_UTIL = (11906 - 567 * 2) / 20
 ALTO_UTIL = (16838 - 567 * 2) / 20
 MARGEN_SEGURIDAD = 14        # puntos que se dejan libres al pie
 FACTOR_MINIMO = 0.55
-FACTOR_SECTORES = 0.85       # por debajo de esto se prueba a quitar los sectores
+FACTOR_LEGIBLE = 0.85        # por debajo de esto se empieza a sacrificar contenido
+MIN_EXPERIENCIAS = 3         # nunca se dejan fuera experiencias por debajo de esto
 ALTURA_LINEA = 1.17          # Trebuchet MS: ascendente + descendente, en ems
 ANCHO_TREBUCHET = 0.92       # DejaVu Sans es más ancha; se corrige
 HOLGURA_AJUSTE = 1.06        # el ajuste por palabras desperdicia algo de línea
@@ -73,8 +84,9 @@ def _ancho_texto(texto, pt, negrita=False):
 # El contenido, como lista de bloques independientes del formato
 # ---------------------------------------------------------------------------
 
-def _bloques(cv, con_sectores):
-    """[(tipo, datos)] en el orden del documento."""
+def _bloques(cv, con_sectores, omitir=0):
+    """[(tipo, datos)] en el orden del documento. `omitir`: cuántas experiencias
+    se dejan fuera por el final de la lista (las más antiguas)."""
     b = [("nombre", (cv.get("nombre") or "Nombre Apellido1 Apellido2").strip())]
     if cv.get("telefono"):
         b.append(("contacto", f"Tlf.: {cv['telefono'].strip()}"))
@@ -83,7 +95,9 @@ def _bloques(cv, con_sectores):
     if cv.get("localidad"):
         b.append(("contacto", cv["localidad"].strip()))
 
-    exps = cv.get("experiencias", [])
+    exps = list(cv.get("experiencias", []))
+    if omitir:
+        exps = exps[:len(exps) - omitir]
     if exps:
         b.append(("cabecera", "EXPERIENCIA LABORAL"))
         agrupadas = motor.experiencias_agrupadas(exps) if con_sectores else [(None, e) for e in exps]
@@ -195,17 +209,43 @@ def _factor_que_cabe(bloques):
 
 
 def decide(cv):
-    """(bloques, factor, con_sectores): la mejor combinación para una página."""
+    """La mejor combinación para una página, siguiendo el orden de sacrificios.
+
+    Devuelve {"bloques", "factor", "con_sectores", "omitidas"}; `omitidas`
+    son los títulos de las experiencias que se han dejado fuera.
+    """
+    exps = cv.get("experiencias", [])
+
+    def resultado(bloques, factor, con_sectores, omitir):
+        return {
+            "bloques": bloques, "factor": factor,
+            "con_sectores": con_sectores and any(t == "sector" for t, _ in bloques),
+            "omitidas": [motor.titulo_experiencia(e) for e in exps[len(exps) - omitir:]] if omitir else [],
+        }
+
+    # 1. Todo, con sectores, letra hasta el mínimo legible.
     con = _bloques(cv, True)
     f_con = _factor_que_cabe(con)
-    hay_sectores = any(t == "sector" for t, _ in con)
-    if not hay_sectores or f_con >= FACTOR_SECTORES:
-        return con, f_con, hay_sectores
-    sin = _bloques(cv, False)
+    if f_con >= FACTOR_LEGIBLE:
+        return resultado(con, f_con, True, 0)
+
+    # 2. Fuera las experiencias más antiguas, una a una, con sectores.
+    omitir = 0
+    if not cv.get("todas_experiencias"):
+        while len(exps) - omitir > MIN_EXPERIENCIAS:
+            omitir += 1
+            con_menos = _bloques(cv, True, omitir)
+            f_menos = _factor_que_cabe(con_menos)
+            if f_menos >= FACTOR_LEGIBLE:
+                return resultado(con_menos, f_menos, True, omitir)
+        con, f_con = _bloques(cv, True, omitir), _factor_que_cabe(_bloques(cv, True, omitir))
+
+    # 3. Último recurso: sin rótulos de sector, y la letra hasta donde haga falta.
+    sin = _bloques(cv, False, omitir)
     f_sin = _factor_que_cabe(sin)
     if f_sin > f_con:
-        return sin, f_sin, False
-    return con, f_con, True
+        return resultado(sin, f_sin, False, omitir)
+    return resultado(con, f_con, True, omitir)
 
 
 # ---------------------------------------------------------------------------
@@ -293,8 +333,9 @@ def _funciones_con_sangria(p):
 
 
 def genera(cv):
-    """El currículo en Word sobre el modelo. (bytes, factor, con_sectores)."""
-    bloques, factor, con_sectores = decide(cv)
+    """El currículo en Word sobre el modelo. (bytes, decisión de `decide`)."""
+    decision = decide(cv)
+    bloques, factor = decision["bloques"], decision["factor"]
     doc = Document(PLANTILLA)
     cuerpo = doc.element.body
     protos = [copy.deepcopy(p._p) for p in doc.paragraphs]
@@ -362,4 +403,4 @@ def genera(cv):
 
     salida = io.BytesIO()
     doc.save(salida)
-    return salida.getvalue(), factor, con_sectores
+    return salida.getvalue(), decision
