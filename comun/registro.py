@@ -32,9 +32,9 @@ HERRAMIENTAS = [
         "titulo": "Generador de CV",
         "icono": ":material/description:",
         "url": "cv",
-        "descripcion": "Un currículo en cuatro pasos. La IA ordena la trayectoria "
-                       "contada de palabra o por escrito, sugiere funciones y redacta "
-                       "el perfil. Sale en Word, listo para retocar.",
+        "descripcion": "Un currículo en cuatro pasos sobre el modelo de la oficina, "
+                       "siempre en una página. La IA ordena la trayectoria contada de "
+                       "palabra o por escrito, sugiere funciones y redacta el objetivo.",
     },
     {
         "id": "formacion",

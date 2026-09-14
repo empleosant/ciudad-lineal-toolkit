@@ -30,7 +30,7 @@ CSS = """<style>
 html,body,[class*="css"],.stMarkdown{
   font-family:'Libre Franklin',system-ui,sans-serif; color:var(--texto);
 }
-.block-container{ padding:0 1rem .4rem !important; max-width:1200px; }
+.block-container{ padding:0 1rem 3.5rem !important; max-width:1100px; }
 /* Sin cabecera de Streamlit ni barra lateral: el menú de herramientas va
    dentro de la banda negra de cada página y no depende de ningún control
    interno. Antes se intentó dejar la cabecera transparente y su barra de
@@ -39,12 +39,34 @@ html,body,[class*="css"],.stMarkdown{
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="stExpandSidebarButton"]{ display:none !important; }
 
-/* ---------- Portada: tarjetas de herramientas ---------- */
-.st-key-tarjetas div[data-testid="stVerticalBlockBorderWrapper"]{
-  background:#fff; border-left:4px solid var(--rojo) !important; border-radius:4px;
+/* ---------- Piezas comunes a todas las herramientas ---------- */
+/* Tarjeta con filo rojo arriba: vías de entrada, herramientas de la portada, pasos */
+.via{ background:#fff; border:1px solid var(--linea); border-top:3px solid var(--rojo);
+      border-radius:6px; padding:.7rem .85rem .5rem; height:100%; }
+.via .t{ font-weight:700; font-size:.92rem; margin:0 0 .15rem; }
+.via .d{ font-size:.8rem; color:var(--suave); line-height:1.4; margin:0 0 .4rem; }
+.via.grande{ padding:1rem 1.1rem .7rem; min-height:8.6rem; }
+.via.grande .t{ font-size:1.05rem; letter-spacing:-.01em; }
+.via.grande .d{ font-size:.86rem; }
+/* Tarjeta de estado: una cifra grande con rótulo y nota */
+.estado-doc{ background:#fff; border:1px solid var(--linea); border-radius:6px; padding:.75rem .9rem; }
+.estado-doc .g{ font-size:1.6rem; font-weight:700; letter-spacing:-.02em; line-height:1; }
+.estado-doc .l{ font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--suave); }
+.estado-doc .n{ font-size:.82rem; color:var(--suave); margin-top:.35rem; line-height:1.4; }
+.chip{ display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+       padding:.1rem .45rem; border-radius:3px; background:var(--gris); color:var(--suave); margin-left:.4rem; }
+.chip.rojo{ background:var(--rojo); color:#fff; }
+.chip.naranja{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
+.ok{ color:#1B6B3A; } .aviso{ color:#C2410C; }
+/* Fichas plegables con filo rojo a la izquierda (experiencias, resultados) */
+.st-key-fichas div[data-testid="stExpander"], .st-key-resultados div[data-testid="stVerticalBlockBorderWrapper"]{
+  background:#fff; border:1px solid var(--linea) !important; border-left:4px solid var(--rojo) !important;
+  border-radius:6px; margin:.35rem 0;
 }
-.tarjeta-titulo{ font-size:1.05rem; font-weight:700; letter-spacing:-.01em; margin:0 0 .25rem; }
-.tarjeta-texto{ font-size:.86rem; color:var(--suave); line-height:1.4; margin:0 0 .6rem; }
+.st-key-fichas div[data-testid="stExpander"] summary{ padding:.5rem .8rem; font-size:.92rem; color:var(--texto); }
+.st-key-fichas div[data-testid="stExpander"] summary p{ font-weight:600; }
+/* Enlaces de página dentro de tarjetas: como un botón discreto */
+.via-enlace a[data-testid="stPageLink-NavLink"]{ font-weight:600; }
 
 /* ---------- Menú de herramientas, dentro de la banda negra ---------- */
 .st-key-menu{ margin:0; }

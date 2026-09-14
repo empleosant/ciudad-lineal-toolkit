@@ -26,16 +26,7 @@ EJEMPLO_MD = open(
 estilo.aplica()
 st.markdown("""
 <style>
-.block-container{ max-width:1040px; padding-bottom:3.5rem !important; }
-.seccion{ margin-top:1.4rem; }
-.st-key-cabecera{ margin-bottom:.4rem; }
-.prioridad{
-  display:inline-block; font-size:.62rem; font-weight:700; letter-spacing:.1em;
-  text-transform:uppercase; padding:.14rem .5rem; border-radius:3px; margin-left:.4rem;
-  background:var(--gris); color:var(--suave); vertical-align:middle;
-}
-.prioridad.alta{ background:var(--rojo); color:#fff; }
-.prioridad.media{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
+.st-key-cabecera{ margin-bottom:.6rem; }
 .curso-titulo{ font-size:1rem; font-weight:700; margin:0 0 .2rem; }
 .curso-campos{ font-size:.8rem; color:var(--suave); line-height:1.45; margin:0 0 .45rem; }
 .curso-porque{ font-size:.9rem; line-height:1.4; margin:0; }
@@ -58,12 +49,26 @@ st.session_state.setdefault("fmc_resultado", None)
 # 1. Catálogo de cursos
 # ---------------------------------------------------------------------------
 
+st.markdown('<div class="seccion">Qué necesita</div>', unsafe_allow_html=True)
+col_cat, col_per = st.columns(2, gap="medium")
+with col_cat:
+    st.markdown(
+        '<div class="via"><div class="t">1 · Catálogo de cursos</div>'
+        '<div class="d">El Excel del buscador de acciones formativas de la Comunidad de Madrid, '
+        'tal cual se descarga de <a href="https://vialaboris.comunidad.madrid/Formacion/" '
+        'target="_blank">vialaboris.comunidad.madrid/Formacion</a>.</div></div>',
+        unsafe_allow_html=True,
+    )
+with col_per:
+    st.markdown(
+        '<div class="via"><div class="t">2 · Perfil de la persona</div>'
+        '<div class="d">Experiencia, formación, intereses y limitaciones. Sin nombre, teléfono ni '
+        'ningún dato identificativo: el perfil se manda a la IA. Sale de Teams, se pega a mano '
+        'o se toma del generador de CV.</div></div>',
+        unsafe_allow_html=True,
+    )
+
 st.markdown('<div class="seccion">1 · Catálogo de cursos</div>', unsafe_allow_html=True)
-st.caption(
-    "El Excel de cursos se descarga del portal de formación de la Comunidad de Madrid: "
-    "[vialaboris.comunidad.madrid/Formacion](https://vialaboris.comunidad.madrid/Formacion/). "
-    "Sube aquí ese archivo tal cual."
-)
 archivo = st.file_uploader(
     "Excel o CSV con los cursos", type=["xlsx", "xls", "csv"], key="fmc_w_excel",
     help="Vale cualquier hoja con una fila por curso. Se usan las columnas que tengan contenido.",
@@ -102,10 +107,6 @@ if cursos:
 # ---------------------------------------------------------------------------
 
 st.markdown('<div class="seccion">2 · Perfil de la persona</div>', unsafe_allow_html=True)
-st.caption(
-    "Experiencia, formación, intereses, limitaciones de horario o de nivel. "
-    "Sin nombre, teléfono ni ningún dato identificativo: el perfil se manda a la IA."
-)
 with st.expander("Cómo obtener el perfil desde Teams (protección de datos)"):
     st.markdown(
         "Por protección de datos, en la Comunidad de Madrid **el CV de la persona solo "
@@ -187,6 +188,10 @@ if res:
         )
     if not res["recs"]:
         st.info("La IA no ha encontrado cursos que encajen. Prueba con un perfil más detallado.")
+    try:
+        resultados = st.container(key="resultados")
+    except TypeError:
+        resultados = st.container()
     for r in res["recs"]:
         c = r["curso"]
         cabecera = " · ".join(x for x in (c.get("tipo"), c.get("codigo_esp")) if x)
@@ -197,10 +202,11 @@ if res:
         )
         if len(c["ediciones"]) > 6:
             ediciones += f"<br>y {len(c['ediciones']) - 6} ediciones más"
-        with st.container(border=True):
+        with resultados, st.container(border=True):
+            clase_chip = {"alta": "rojo", "media": "naranja"}.get(r["prioridad"], "")
             st.markdown(
                 f'<div class="curso-titulo">{c["denominacion"]}'
-                f'<span class="prioridad {r["prioridad"]}">{r["prioridad"]}</span></div>'
+                f'<span class="chip {clase_chip}">{r["prioridad"]}</span></div>'
                 f'<div class="curso-campos">{cabecera}</div>'
                 f'<div class="curso-porque">{r["por_que"]}</div>'
                 + (f'<div class="curso-aviso">⚠ {r["aviso"]}</div>' if r["aviso"] else "")

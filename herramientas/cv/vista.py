@@ -26,7 +26,6 @@ from herramientas.cv import estado, modelo, motor, plantilla
 estilo.aplica()
 st.markdown("""
 <style>
-.block-container{ max-width:1100px; padding-bottom:3.5rem !important; }
 .st-key-cabecera{ margin-bottom:.6rem; }
 .seccion{ margin-top:1.3rem; }
 
@@ -59,22 +58,6 @@ st.markdown("""
 [class*="st-key-paso_"][class*="_activo"] button:focus p{ color:#fff !important; }
 [class*="st-key-paso_"] button:focus:not(:active){ box-shadow:none !important; }
 
-/* ---------- Tarjetas de entrada (paso 2) ---------- */
-.via{ background:#fff; border:1px solid var(--linea); border-top:3px solid var(--rojo);
-      border-radius:6px; padding:.7rem .85rem .5rem; height:100%; }
-.via .t{ font-weight:700; font-size:.92rem; margin:0 0 .15rem; }
-.via .d{ font-size:.8rem; color:var(--suave); line-height:1.4; margin:0 0 .4rem; }
-
-/* fichas de experiencia como desplegables */
-.st-key-fichas div[data-testid="stExpander"]{
-  background:#fff; border:1px solid var(--linea) !important; border-left:4px solid var(--rojo) !important;
-  border-radius:6px; margin:.35rem 0;
-}
-.st-key-fichas div[data-testid="stExpander"] summary{ padding:.5rem .8rem; font-size:.92rem; color:var(--texto); }
-.st-key-fichas div[data-testid="stExpander"] summary p{ font-weight:600; }
-.chip{ display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-       padding:.1rem .45rem; border-radius:3px; background:var(--gris); color:var(--suave); margin-left:.4rem; }
-
 /* ---------- Vista previa como hoja (paso 4) ---------- */
 .hoja{
   background:#fff; border:1px solid #DDD; box-shadow:0 6px 24px rgba(0,0,0,.10);
@@ -94,11 +77,6 @@ st.markdown("""
 .hoja .omitida{ opacity:.35; }
 .hoja::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:12%;
               background:linear-gradient(transparent, #fff 85%); pointer-events:none; }
-.estado-doc{ background:#fff; border:1px solid var(--linea); border-radius:6px; padding:.75rem .9rem; }
-.estado-doc .g{ font-size:1.6rem; font-weight:700; letter-spacing:-.02em; line-height:1; }
-.estado-doc .l{ font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--suave); }
-.estado-doc .n{ font-size:.82rem; color:var(--suave); margin-top:.35rem; line-height:1.4; }
-.ok{ color:#1B6B3A; } .aviso{ color:#C2410C; }
 </style>
 """, unsafe_allow_html=True)
 
