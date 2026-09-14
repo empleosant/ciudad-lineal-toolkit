@@ -764,18 +764,12 @@ if not entrada:
 # Banda de cabecera
 # ---------------------------------------------------------------------------
 
-try:
-    banda = st.container(key="cabecera")
-except TypeError:
-    banda = st.container()
-
+banda = estilo.banda(
+    "sispe", "Catálogo SISPE <span>&middot;</span> SilcoiWeb", "Codificador de ocupaciones",
+    "Describe el puesto con las palabras de la persona y te propone el código oficial.",
+    al_pulsar_titulo=empezar_de_nuevo,
+)
 with banda:
-    estilo.menu("sispe")
-    st.markdown(
-        '<div class="rotulo">Catálogo SISPE <span>&middot;</span> SilcoiWeb</div>',
-        unsafe_allow_html=True,
-    )
-    st.button("Codificador de ocupaciones", key="marca", on_click=empezar_de_nuevo)
     campo, boton, ajustes = st.columns([6.4, 1.1, 0.5], gap="small")
     with campo:
         texto = st.text_input(

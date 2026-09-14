@@ -12,18 +12,11 @@ from comun.registro import HERRAMIENTAS
 
 estilo.aplica()
 
-try:
-    banda = st.container(key="cabecera")
-except TypeError:
-    banda = st.container()
-with banda:
-    estilo.menu("inicio")
-    st.markdown(
-        '<div class="rotulo">Oficina de Empleo <span>&middot;</span> Ciudad Lineal</div>'
-        '<div style="color:#fff;font-size:clamp(1.2rem,1.45vw,1.45rem);font-weight:700;'
-        'letter-spacing:-.025em;margin-bottom:.35rem">Herramientas de orientación</div>',
-        unsafe_allow_html=True,
-    )
+estilo.banda(
+    "inicio", "Caja de herramientas <span>&middot;</span> orientación laboral",
+    "Herramientas de orientación",
+    "Pequeñas utilidades para el día a día de la oficina, que se pasan datos entre sí.",
+)
 
 st.markdown('<div class="seccion">Herramientas</div>', unsafe_allow_html=True)
 

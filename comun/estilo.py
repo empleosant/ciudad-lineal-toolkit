@@ -47,8 +47,9 @@ html,body,[class*="css"],.stMarkdown{
 .tarjeta-texto{ font-size:.86rem; color:var(--suave); line-height:1.4; margin:0 0 .6rem; }
 
 /* ---------- Menú de herramientas, dentro de la banda negra ---------- */
-.st-key-menu{ margin-bottom:.25rem; }
-.st-key-menu div[data-testid="stHorizontalBlock"]{ gap:.35rem !important; flex-wrap:wrap; }
+.st-key-menu{ margin:0; }
+.st-key-menu div[data-testid="stHorizontalBlock"]{ gap:.35rem !important; flex-wrap:wrap; justify-content:flex-end; }
+@media (max-width:640px){ .st-key-menu div[data-testid="stHorizontalBlock"]{ justify-content:flex-start; } }
 .st-key-menu div[data-testid="stColumn"]{ flex:0 0 auto !important; width:auto !important; min-width:0 !important; }
 .st-key-menu a[data-testid="stPageLink-NavLink"]{
   color:#C9C9C9 !important; font-size:.78rem; font-weight:600; letter-spacing:.02em;
@@ -75,27 +76,52 @@ div[data-testid="stCustomComponentV1"] iframe {
   display: block !important;
 }
 
-/* ---------- Cabecera fluida ---------- */
+/* ---------- Banda de cabecera ---------- */
 .st-key-cabecera{
-  background:var(--negro);
-  padding:clamp(0.55rem, 1vh, 0.8rem) clamp(1rem, 2vw, 1.8rem);
-  margin-bottom:clamp(0.25rem, 0.6vh, 0.45rem);
-  box-shadow:0 2px 10px rgba(0,0,0,0.06);
+  background:linear-gradient(135deg, #0A0A0A 0%, #1F1F22 100%);
+  padding:clamp(0.7rem, 1.2vh, 1rem) clamp(1.1rem, 2vw, 1.9rem) clamp(0.9rem, 1.4vh, 1.2rem);
+  margin-bottom:clamp(0.4rem, 0.8vh, 0.7rem);
+  border-radius:0 0 12px 12px; border-bottom:3px solid var(--rojo);
+  box-shadow:0 8px 22px rgba(0,0,0,0.14);
 }
+.st-key-cabecera div[data-testid="stHorizontalBlock"]{ align-items:center; }
+.marca-oficina{
+  display:flex; align-items:center; gap:.55rem; color:#B8B8B8;
+  font-size:clamp(0.62rem, 0.7vw, 0.7rem); font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; white-space:nowrap; padding:.2rem 0;
+}
+.marca-oficina .cuadro{
+  width:.7rem; height:.7rem; background:var(--rojo); border-radius:2px; flex:0 0 auto;
+  box-shadow:0 0 0 3px rgba(209,18,46,.22);
+}
+.marca-oficina b{ color:#fff; font-weight:700; }
+.st-key-titulo{
+  border-left:4px solid var(--rojo); padding-left:.85rem;
+  margin:clamp(0.6rem, 1vh, 0.9rem) 0 clamp(0.3rem, 0.6vh, 0.5rem);
+}
+.st-key-titulo div[data-testid="stMarkdown"], .st-key-titulo div[data-testid="stElementContainer"]{ margin:0 !important; }
 .rotulo{
   color:#8A8A8A; font-size:clamp(0.58rem, 0.65vw, 0.66rem); font-weight:600;
   letter-spacing:.16em; text-transform:uppercase; margin:0 0 .1rem;
 }
 .rotulo span{ color:var(--rojo); font-weight:700; }
+.titulo-banda{
+  color:#fff; font-size:clamp(1.35rem, 1.7vw, 1.7rem); font-weight:700;
+  letter-spacing:-.025em; line-height:1.15; margin:0;
+}
+.subtitulo-banda{
+  color:#C4C4C4; font-size:clamp(0.82rem, 0.9vw, 0.92rem); margin:.2rem 0 0; line-height:1.35;
+}
 
 /* Título */
 .st-key-marca button{
   background:transparent !important; border:none !important; box-shadow:none !important;
-  padding:0 !important; justify-content:flex-start !important; margin-bottom:.35rem;
+  padding:0 !important; justify-content:flex-start !important; margin:0 !important;
+  min-height:0 !important; height:auto !important;
 }
 .st-key-marca button p{
-  color:#fff !important; font-size:clamp(1.2rem, 1.45vw, 1.45rem) !important;
-  font-weight:700 !important; letter-spacing:-.025em; margin:0 !important;
+  color:#fff !important; font-size:clamp(1.35rem, 1.7vw, 1.7rem) !important;
+  font-weight:700 !important; letter-spacing:-.025em; margin:0 !important; line-height:1.15 !important;
   text-align:left !important; border-bottom:2px solid transparent; transition:border-color .15s ease;
 }
 .st-key-marca button:hover p{ border-bottom-color:var(--rojo); }
@@ -225,6 +251,43 @@ div[data-testid="stExpander"] summary{ font-size:.8rem; color:var(--suave); padd
 
 def aplica():
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def banda(actual, rotulo, titulo, subtitulo="", al_pulsar_titulo=None):
+    """La banda negra de cabecera, igual en todas las páginas.
+
+    Arriba, la marca de la oficina y el menú de herramientas; debajo, el
+    rótulo pequeño, el título y una frase de qué hace la herramienta. Se
+    devuelve el contenedor para que cada página añada dentro lo suyo (el
+    codificador, su buscador). `al_pulsar_titulo`, si se da, convierte el
+    título en botón (el codificador lo usa para volver al principio).
+    """
+    try:
+        caja = st.container(key="cabecera")
+    except TypeError:
+        caja = st.container()
+    with caja:
+        izq, der = st.columns([2, 3], gap="small")
+        izq.markdown(
+            '<div class="marca-oficina"><span class="cuadro"></span>'
+            'Oficina de Empleo <b>Ciudad Lineal</b></div>',
+            unsafe_allow_html=True,
+        )
+        with der:
+            menu(actual)
+        try:
+            fila = st.container(key="titulo")
+        except TypeError:
+            fila = st.container()
+        with fila:
+            st.markdown(f'<div class="rotulo">{rotulo}</div>', unsafe_allow_html=True)
+            if al_pulsar_titulo:
+                st.button(titulo, key="marca", on_click=al_pulsar_titulo)
+            else:
+                st.markdown(f'<div class="titulo-banda">{titulo}</div>', unsafe_allow_html=True)
+            if subtitulo:
+                st.markdown(f'<div class="subtitulo-banda">{subtitulo}</div>', unsafe_allow_html=True)
+    return caja
 
 
 def menu(actual):

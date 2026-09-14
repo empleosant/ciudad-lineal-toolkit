@@ -65,18 +65,10 @@ def area(etiqueta, clave, **k):
 # Cabecera y selector de paso
 # ---------------------------------------------------------------------------
 
-try:
-    banda = st.container(key="cabecera")
-except TypeError:
-    banda = st.container()
-with banda:
-    estilo.menu("cv")
-    st.markdown(
-        '<div class="rotulo">Currículo <span>&middot;</span> con IA en pocos pasos</div>'
-        '<div style="color:#fff;font-size:clamp(1.2rem,1.45vw,1.45rem);font-weight:700;'
-        'letter-spacing:-.025em;margin-bottom:.35rem">Generador de CV</div>',
-        unsafe_allow_html=True,
-    )
+estilo.banda(
+    "cv", "Currículo <span>&middot;</span> con IA en pocos pasos", "Generador de CV",
+    "Datos, experiencia, formación y documento. La IA ordena, sugiere y redacta; tú revisas.",
+)
 
 if st.session_state.get("cv_paso") not in PASOS:
     st.session_state["cv_paso"] = PASOS[0]
