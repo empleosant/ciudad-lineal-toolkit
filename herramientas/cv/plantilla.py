@@ -143,17 +143,20 @@ def _periodo_partes(e):
 # ---------------------------------------------------------------------------
 
 # Por tipo de bloque: (tamaño pt, negrita, sangría izquierda pt, espacio antes,
-#                      espacio después, interlineado múltiple). Del modelo.
+#                      espacio después, interlineado múltiple).
+# Tamaños y sangrías son los del modelo. Espacios e interlineado van algo
+# más holgados que en el modelo (que los tenía a 0,9-0,95 y sin hueco entre
+# bloques) para que se lea más claro; se aplican al Word en `_aire`.
 _METRICA = {
     "nombre": (27, True, 0, 0, 0, 1.0),
     "contacto": (19, False, 35.45, 0, 0, 1.15),
-    "cabecera": (20, False, 0, 0, 0, 1.15),
-    "sector": (20, False, 2.85, 6, 6, 0.95),
-    "experiencia": (18, True, 38.85, 0, 0, 0.95),
-    "empresa": (16, False, 70.9, 0, 0, 0.95),
-    "funciones": (16, False, 35.45, 0, 0, 0.95),
-    "formacion": (16, False, 36, 6, 0, 0.9),
-    "otros": (16, False, 33.15, 6, 0, 1.0),
+    "cabecera": (20, False, 0, 9, 3, 1.15),
+    "sector": (20, False, 2.85, 6, 4, 1.0),
+    "experiencia": (18, True, 38.85, 6, 0, 1.05),
+    "empresa": (16, False, 70.9, 0, 0, 1.05),
+    "funciones": (16, False, 35.45, 0, 0, 1.05),
+    "formacion": (16, False, 36, 6, 0, 1.0),
+    "otros": (16, False, 33.15, 6, 0, 1.05),
 }
 
 
@@ -241,12 +244,31 @@ def _runs(proto):
 
 
 def _escala(elemento, factor):
-    """Multiplica todos los w:sz y w:szCs que cuelguen del elemento."""
+    """Multiplica tamaños de letra y espacios entre párrafos que cuelguen del elemento."""
     for tag in ("w:sz", "w:szCs"):
         for sz in elemento.iter(qn(tag)):
             v = sz.get(qn("w:val"))
             if v and v.isdigit():
                 sz.set(qn("w:val"), str(max(8, round(int(v) * factor))))
+    for sp in elemento.iter(qn("w:spacing")):
+        for atributo in ("w:before", "w:after"):
+            v = sp.get(qn(atributo))
+            if v and v.isdigit():
+                sp.set(qn(atributo), str(round(int(v) * factor)))
+
+
+def _aire(p, tipo):
+    """Aplica al párrafo el espacio antes/después y el interlineado de _METRICA."""
+    _, _, _, antes, despues, mult = _METRICA[tipo]
+    ppr = p.find(qn("w:pPr"))
+    sp = ppr.find(qn("w:spacing"))
+    if sp is None:
+        sp = etree.SubElement(ppr, qn("w:spacing"))
+    sp.set(qn("w:before"), str(round(antes * 20)))
+    sp.set(qn("w:after"), str(round(despues * 20)))
+    sp.set(qn("w:line"), str(round(mult * 240)))
+    sp.set(qn("w:lineRule"), "auto")
+    return p
 
 
 def _funciones_con_sangria(p):
@@ -278,7 +300,8 @@ def genera(cv):
             cuerpo.remove(p)
     sect = cuerpo.find(qn("w:sectPr"))
 
-    def anade(p):
+    def anade(p, tipo):
+        _aire(p, tipo)
         if sect is not None:
             sect.addprevious(p)
         else:
@@ -296,22 +319,22 @@ def genera(cv):
 
     for tipo, datos in bloques:
         if tipo == "nombre":
-            anade(_parrafo_como(protos[P_NOMBRE], [(r_nombre, datos)]))
+            anade(_parrafo_como(protos[P_NOMBRE], [(r_nombre, datos)]), tipo)
         elif tipo == "contacto":
-            anade(_parrafo_como(protos[P_CONTACTO], [(r_contacto, datos)], con_tab=True))
+            anade(_parrafo_como(protos[P_CONTACTO], [(r_contacto, datos)], con_tab=True), tipo)
         elif tipo == "cabecera":
-            anade(_parrafo_como(protos[P_CABECERA], [(r_cabecera, datos)]))
+            anade(_parrafo_como(protos[P_CABECERA], [(r_cabecera, datos)]), tipo)
         elif tipo == "sector":
-            anade(_parrafo_como(protos[P_SECTOR], [(r_sector, datos)]))
+            anade(_parrafo_como(protos[P_SECTOR], [(r_sector, datos)]), tipo)
         elif tipo == "experiencia":
             titulo, (a, fechas, c) = datos
             anade(_parrafo_como(protos[P_EXPERIENCIA], [
                 (rx[0], titulo), (rx[1], " " if fechas else ""), (rx[2], a), (rx[3], fechas), (rx[4], c),
-            ]))
+            ]), tipo)
         elif tipo == "empresa":
-            anade(_parrafo_como(protos[P_EMPRESA], [(r_empresa, datos)]))
+            anade(_parrafo_como(protos[P_EMPRESA], [(r_empresa, datos)]), tipo)
         elif tipo == "funciones":
-            anade(_funciones_con_sangria(_parrafo_como(protos[P_FUNCIONES], [(r_funciones, datos)])))
+            anade(_funciones_con_sangria(_parrafo_como(protos[P_FUNCIONES], [(r_funciones, datos)])), tipo)
         elif tipo == "formacion":
             titulo, centro, anio = datos
             cola = f" {anio}." if anio else ("." if not centro else "")
@@ -319,9 +342,9 @@ def genera(cv):
                 (rf[0], f"{titulo} –" if (centro or anio) else titulo),
                 (rf[1], " " if centro else ""), (rf[2], f"{centro}," if (centro and anio) else centro),
                 (rf[3], cola),
-            ]))
+            ]), tipo)
         elif tipo == "otros":
-            anade(_parrafo_como(protos[P_OTROS], [(r_otros, datos)]))
+            anade(_parrafo_como(protos[P_OTROS], [(r_otros, datos)]), tipo)
 
     if factor < 1.0:
         _escala(cuerpo, factor)

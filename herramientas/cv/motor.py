@@ -233,7 +233,7 @@ def _pdf_bloques(bloques, f):
         elif tipo == "cabecera":
             flujo.append(Paragraph(
                 f'<font color="white">{_esc(datos)}</font>',
-                _estilo(pt, antes=4, mult=mult, backColor=_AZUL, borderPadding=(1, 2, 2, 2)),
+                _estilo(pt, antes=antes, despues=despues, mult=mult, backColor=_AZUL, borderPadding=(1, 2, 2, 2)),
             ))
         elif tipo == "sector":
             flujo.append(Paragraph(f"<u>{_esc(datos)}</u>", _estilo(pt, izq=sangria, antes=antes, despues=despues, mult=mult)))
@@ -242,7 +242,8 @@ def _pdf_bloques(bloques, f):
             cola = f" {_esc(a)}<i>{_esc(fechas)}</i>{_esc(c)}" if fechas else ""
             flujo.append(Paragraph(
                 f"<b>{_esc(titulo)}</b>{cola}",
-                _estilo(pt, izq=sangria, mult=mult, bulletIndent=sangria - 18, bulletFontSize=pt), bulletText="•",
+                _estilo(pt, izq=sangria, antes=antes, mult=mult, bulletIndent=sangria - 18, bulletFontSize=pt),
+                bulletText="•",
             ))
         elif tipo == "empresa":
             flujo.append(Paragraph(_esc(datos), _estilo(pt, izq=0, primera=35.45, mult=mult, alignment=4)))
