@@ -10,11 +10,18 @@ datos reales del Excel.
 Claves de sesión con prefijo `fmc_`; las de widgets, `fmc_w_`.
 """
 
+import os
+
 import streamlit as st
 
 from comun import estilo, ia
 from herramientas.cv import estado as cv_estado
 from herramientas.formacion import modelo, motor
+
+EJEMPLO_MD = open(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos", "perfil_ejemplo.md"),
+    encoding="utf-8",
+).read()
 
 estilo.aplica()
 st.markdown("""
@@ -117,6 +124,10 @@ with st.expander("Cómo obtener el perfil desde Teams (protección de datos)"):
     st.caption(
         "Antes de arrastrar el archivo, échale un vistazo: si se ha colado algún dato "
         "identificativo, bórralo. Aquí lo que llega al cuadro se puede editar."
+    )
+    st.download_button(
+        "Descargar un perfil de ejemplo (.md)", EJEMPLO_MD, file_name="perfil_ejemplo.md",
+        mime="text/markdown", help="Para ver el nivel de detalle que funciona bien.",
     )
 izq, der = st.columns([3, 2], gap="medium")
 with izq:
