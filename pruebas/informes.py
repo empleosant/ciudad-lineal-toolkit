@@ -8,8 +8,10 @@ y tenerlo delante. Aquí se comprueba midiendo el PDF, no mirándolo.
 Lo que se prueba:
 
   · Que cabe en dos páginas, incluso con el contenido en el tope de lo que el
-    prompt le permite devolver a la IA.
+    prompt le permite devolver a la IA, y aunque la IA se pase de largo.
   · Que no encoge la letra más de la cuenta para conseguirlo.
+  · Que la segunda página cierra con un hueco en blanco para tomar notas
+    durante la cita, y que cada bloque del punto 4 lleva su guion.
   · Que el papel sale sin firma, sin logotipo, sin mención institucional y con
     los metadatos sin autoría.
   · Que la frase de cautela va siempre y no se duplica.
@@ -28,7 +30,8 @@ USO
     python informes.py              todas las pruebas
     python informes.py --detalle    enseña lo que falla, caso a caso
 
-No llama a la IA ni gasta cuota. Tarda un par de segundos.
+No llama a la IA ni gasta cuota. Tarda unos segundos: las fichas
+desbordadas obligan al motor a recorrer todo el ajuste.
 """
 
 import os
@@ -131,6 +134,19 @@ def corriente():
     return f
 
 
+def desbordada(veces=3):
+    """Mucho más de lo que el prompt permite, para probar el tope de dos hojas.
+
+    El doble del máximo todavía entra encogiendo la letra; con el triple hay
+    que recortar, y el motor recorta antes que abrir una tercera página.
+    """
+    f = tope()
+    for lista in ("preguntas", "acciones", "trayectoria"):
+        f[lista] = f[lista] * veces
+    f["hipotesis"] = pal(110 * veces)
+    return f
+
+
 RARA = {
     "entradilla": "Con <caracteres> & raros \"y\" 'comillas'",
     "trayectoria": [{"periodo": "2020", "que": "R&D <b>no</b> es etiqueta", "duracion": "1 a."}],
@@ -165,7 +181,7 @@ def texto_del_documento(ficha):
             for x in cosa:
                 yield from recorre(x)
 
-    return " ".join(recorre(motor._flujo(ficha, 1.0)))
+    return " ".join(recorre(motor._flujo(ficha, 1.0, motor._Notas())))
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +194,11 @@ def cabe():
              ("del tamaño corriente", corriente(), 2),
              ("con caracteres raros", RARA, 2),
              ("sólo con la entradilla", {"entradilla": "Perfil."}, 1),
-             ("completamente vacía", {}, 1)]
+             ("completamente vacía", {}, 1),
+             # Dos páginas es condición: si la IA se pasa de largo, el motor
+             # encoge y, en último extremo, recorta. Nunca una tercera hoja.
+             ("al doble del tope", desbordada(2), 2),
+             ("al triple del tope", desbordada(3), 2)]
     malas = []
     for etiqueta, ficha, esperadas in casos:
         _, d = motor.documento_pdf(ficha, con_detalle=True)
@@ -258,6 +278,50 @@ def secciones():
     if "Hipótesis de partida" not in texto:
         malas.append("no sale la sección 2 habiendo hipótesis")
     return anota("Las secciones vacías no se pintan", not malas), malas
+
+
+@prueba("La segunda página cierra con hueco de notas")
+def hueco_de_notas():
+    """El blanco del final es el sitio para escribir durante la cita.
+
+    No lleva rayas ni puntos —el documento no se rellena a mano en su sitio—
+    pero tiene que ser un hueco de verdad: si no llega al mínimo, el motor
+    encoge la letra hasta que llega.
+    """
+    minimo = motor.NOTAS_MINIMO / motor.mm
+    malas = []
+    for etiqueta, ficha in (("del tamaño corriente", corriente()),
+                            ("en el tope del prompt", tope())):
+        _, d = motor.documento_pdf(ficha, con_detalle=True)
+        if d["hueco"] < motor.NOTAS_MINIMO:
+            malas.append(f"{etiqueta}: {d['hueco'] / motor.mm:.0f} mm de hueco, "
+                         f"mínimo {minimo:.0f} mm")
+    if "Notas de la cita" not in texto_del_documento(corriente()):
+        malas.append("no sale la sección 6 habiendo segunda página")
+    # En un folio no hay blanco que aprovechar: el recuadro no se pinta.
+    if "Notas de la cita" in texto_del_documento({"entradilla": "Perfil."}):
+        malas.append("sale la sección 6 en un documento de una página")
+    return anota("La segunda página cierra con hueco de notas", not malas,
+                 f"mínimo del motor: {minimo:.0f} mm"), malas
+
+
+@prueba("Cada bloque del punto 4 lleva su guion")
+def guiones():
+    """Se busca de un vistazo mientras se habla: el guion marca dónde empieza."""
+    from reportlab.platypus import Paragraph
+
+    ficha = {"preguntas": [{"rotulo": f"Bloque {i}", "texto": pal(30)}
+                           for i in range(6)]}
+    bloques = [e for e in motor._flujo(ficha, 1.0)
+               if isinstance(e, Paragraph) and "Bloque" in e.text]
+    malas = []
+    if len(bloques) != 6:
+        malas.append(f"salen {len(bloques)} bloques de 6")
+    sin = [b for b in bloques if getattr(b, "bulletText", None) != "–"]
+    if sin:
+        malas.append(f"{len(sin)} bloques sin guion")
+    return anota("Cada bloque del punto 4 lleva su guion", not malas,
+                 f"{len(bloques) - len(sin)}/{len(bloques)} bloques"), malas
 
 
 @prueba("El expediente va y vuelve entero")

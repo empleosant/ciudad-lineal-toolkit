@@ -296,7 +296,7 @@ versión: se sustituye entero.
 | Página | Contenido |
 |---|---|
 | 1 | Título y entradilla · § 1 La trayectoria en una lectura · recuadro con la tensión central · § 2 Hipótesis de partida · § 3 Direcciones posibles |
-| 2 | § 4 Lo que hay que preguntar · § 5 Acciones de arranque · recuadro con el riesgo a evitar |
+| 2 | § 4 Lo que hay que preguntar · § 5 Acciones de arranque · recuadro con el riesgo a evitar · § 6 Notas de la cita |
 
 La forma está copiada de los documentos que se venían haciendo a mano, midiendo
 los PDF buenos. Cada pieza es como es por algo:
@@ -312,20 +312,24 @@ los PDF buenos. Cada pieza es como es por algo:
 - **Las direcciones** van en una tabla de tres columnas —qué acredita ya, qué
   falta y por dónde entrar— con el papel y la familia en la primera
   («Principal — Limpieza») y debajo las variantes concretas.
-- **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita: una
-  lista para acordarse de qué preguntar mientras se habla con la persona. El
-  rótulo nombra lo que pasa en ese caso («El hueco de 1992 a 2012»), no una
-  etiqueta genérica.
+- **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita y
+  un guion delante de cada uno: una lista para acordarse de qué preguntar
+  mientras se habla con la persona, y el guion marca dónde empieza cada bloque
+  cuando se busca de un vistazo. El rótulo nombra lo que pasa en ese caso («El
+  hueco de 1992 a 2012»), no una etiqueta genérica.
 
-  **Nada del documento se rellena a mano.** Llevó dos renglones de puntos bajo
-  cada pregunta, copiados de los documentos que se hacían antes, y se quitaron:
-  nadie escribía en ellos. Lo que se recoge de la sesión se vuelca luego en la
-  pestaña de la cita, no en el papel. Si alguna vez se vuelve a plantear, el
-  precio está medido: con renglones escribibles de 8 mm caben cinco bloques de
-  preguntas en vez de ocho.
+  **Nada del documento se rellena a mano en su sitio.** Llevó dos renglones de
+  puntos bajo cada pregunta, copiados de los documentos que se hacían antes, y
+  se quitaron: nadie escribía en ellos. Lo que se recoge de la sesión se vuelca
+  luego en la pestaña de la cita.
 
-- **El riesgo a evitar** cierra la segunda página en un recuadro, y se escribe
-  siempre.
+- **El riesgo a evitar** va en un recuadro, y se escribe siempre.
+- **Las notas de la cita** cierran la segunda página: un recuadro vacío, sin
+  rayas ni puntos, para escribir durante la entrevista quien quiera hacerlo.
+  Hace dos cosas a la vez, porque se queda con todo el blanco que sobre al
+  final: da sitio y remata la hoja, que antes se quedaba abierta. Si no hay
+  segunda página no se pinta, y si el hueco no llega a 34 mm el motor baja la
+  letra hasta que llegue.
 
 La IA puede marcar **negrita** y *cursiva* en cualquier campo de texto; el
 motor lo traduce a marcado de `reportlab` **después** de escapar el texto, que
@@ -352,11 +356,22 @@ tiene que bajar la letra un punto.
 > por línea. Si algún día da problemas, se puede borrar el archivo: la
 > aplicación funciona sin él, con la fuente de reserva.
 
-**Dos páginas siempre**: si el contenido se pasa, se baja la letra y se vuelve a
-montar, igual que el generador de CV con su página única. Los topes que se le
-piden al modelo están calculados para que el peor caso quepa bajando poco
-(factor 0,88, aún a tamaño legible), y `pruebas/informes.py` lo comprueba
-midiendo.
+**Dos páginas siempre**, y es condición, no preferencia: un documento de tres
+hojas ya no se lleva impreso a la entrevista, que es para lo que existe. Si el
+contenido se pasa, se baja la letra y se vuelve a montar, igual que el
+generador de CV con su página única. El ajuste va en tres escalones, y cada uno
+solo entra cuando el anterior no basta:
+
+1. Se baja la letra hasta el **tope cómodo** (factor 0,82) buscando que quepa
+   todo *y* que el hueco de notas llegue a sus 34 mm. Con el máximo que el
+   prompt permite hace falta 0,98, y quedan 46 mm de hueco.
+2. Si ni al tope cómodo cabe el recuadro de notas, manda el documento: se
+   rehace sin recuadro y se puede bajar hasta el **tope duro** (factor 0,70).
+   El doble del máximo del prompt entra aquí.
+3. Si ni así, se **recorta** la lista más larga por el final —la octava
+   pregunta aporta menos que la primera— hasta que entre. Hace falta el triple
+   del máximo del prompt para llegar a esto; la pantalla avisa cuando pasa, y
+   `pruebas/informes.py` lo comprueba midiendo.
 
 El anexo del protocolo describe la otra cadena, HTML → `wkhtmltopdf`, con su
 factor de 1,307 para compensar que `wkhtmltopdf` maquete a 1038 px en vez de
@@ -512,10 +527,12 @@ solo detectó dos casos raros. La prueba de convergencia lo canta entero.
 **`informes.py` — el documento cabe y el expediente aguanta.** El protocolo
 pide dos páginas A4 y lo dice en serio: un documento de tres deja de servir para
 lo que sirve, que es llevarlo impreso y tenerlo delante. Comprueba que cabe
-incluso con el contenido en el tope de lo que el prompt permite devolver, que
-para conseguirlo no encoge la letra más de la cuenta, que el papel sale sin
-membrete y con los metadatos sin autoría, que la frase de cautela va siempre, y
-que un `&` del currículo no deja un párrafo sin pintar. Todo medido, no mirado.
+incluso con el contenido en el tope de lo que el prompt permite devolver y
+aunque la IA lo triplique, que para conseguirlo no encoge la letra más de la
+cuenta, que la segunda página cierra con el hueco de notas y cada bloque del
+punto 4 con su guion, que el papel sale sin membrete y con los metadatos sin
+autoría, que la frase de cautela va siempre, y que un `&` del currículo no deja
+un párrafo sin pintar. Todo medido, no mirado.
 
 Comprueba también el expediente: que va y vuelve entero, y que uno estropeado
 —editado a mano, de otra versión, con un número donde va texto— no deja la

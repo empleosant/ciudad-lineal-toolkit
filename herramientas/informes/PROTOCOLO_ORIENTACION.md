@@ -84,16 +84,23 @@ Estructura fija:
   de que todo es hipótesis hasta la entrevista) · § 1 La trayectoria en una lectura (tabla
   cronológica con duraciones) · recuadro de aviso con la tensión central · § 2 Hipótesis de
   partida · § 3 Direcciones posibles (tabla de tres columnas).
-- **Página 2** — § 4 Lo que hay que preguntar (bloques de recordatorio: rótulo de lo que
-  pasa en este caso y la duda en prosa) · § 5 Acciones de arranque · recuadro de aviso con
-  el riesgo a evitar.
+- **Página 2** — § 4 Lo que hay que preguntar (bloques de recordatorio con guion: rótulo
+  de lo que pasa en este caso y la duda en prosa) · § 5 Acciones de arranque · recuadro de
+  aviso con el riesgo a evitar · § 6 Notas de la cita (recuadro en blanco).
 
 Reglas de contenido del PDF:
 
-- **Nada que haya que rellenar a mano.** Ni hoja de sesión, ni casillas al final, ni
-  líneas de puntos bajo las preguntas. Se probaron las tres y sobran: el documento se lee
-  antes y durante la entrevista, no se rellena. Lo que se recoge de la sesión se vuelca
+- **Nada que haya que rellenar a mano en su sitio.** Ni hoja de sesión, ni casillas al
+  final, ni líneas de puntos bajo las preguntas. Se probaron las tres y sobran: el
+  documento se lee antes y durante la entrevista. Lo que se recoge de la sesión se vuelca
   luego en la herramienta, no en el papel.
+- **Un hueco al final para las notas de la cita.** La § 6 es un recuadro vacío, sin rayas
+  ni puntos, que se queda con todo el blanco que sobre en la segunda página: sirve para
+  escribir durante la entrevista y remata la hoja. Si el hueco no llega a 34 mm, el motor
+  baja la letra hasta que llegue.
+- **Dos páginas, nunca tres.** Es condición del documento: de tres hojas ya no se lleva
+  impreso. Si el modelo se pasa de largo, primero se baja la letra y en último extremo se
+  recorta la lista más larga por el final.
 - **Una dirección principal y una secundaria**, más una tercera «de apoyo» o «a explorar»
   como máximo. Nunca una lista de opciones: el trabajo es cerrar, no abrir.
 - El objetivo declarado por la persona **no se descarta, se reconduce** a su versión

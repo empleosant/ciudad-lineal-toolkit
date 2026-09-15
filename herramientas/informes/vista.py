@@ -287,9 +287,9 @@ with fase1:
                     unsafe_allow_html=True)
         nombre = motor.nombre_archivo(ficha.get("rasgo"))
         try:
-            pdf = motor.documento_pdf(ficha)
+            pdf, medidas = motor.documento_pdf(ficha, con_detalle=True)
         except Exception as e:  # noqa: BLE001
-            pdf = None
+            pdf, medidas = None, {}
             st.error(f"No he podido generar el PDF. {type(e).__name__}: {e}")
         if pdf:
             st.download_button(
@@ -297,8 +297,17 @@ with fase1:
                 mime="application/pdf", use_container_width=True, type="primary",
             )
             _chip("ficha")
-            st.caption("Imprímelo y llévatelo a la entrevista. Si la cita es otro "
-                       "día, guarda también el expediente, ahí arriba.")
+            st.caption("Imprímelo y llévatelo a la entrevista. La última sección va "
+                       "en blanco para tomar notas durante la cita. Si la cita es "
+                       "otro día, guarda también el expediente, ahí arriba.")
+            # Recortar es el ultimo recurso del motor para no abrir una tercera
+            # hoja, y pasa cuando la IA se pasa de largo. Conviene saberlo.
+            if medidas.get("recortes"):
+                st.warning(
+                    f"La IA ha devuelto más de lo que cabe y he dejado fuera "
+                    f"{medidas['recortes']} elemento"
+                    f"{'s' if medidas['recortes'] > 1 else ''} del final. Si te "
+                    f"importa lo que falta, vuelve a pulsar «Preparar la cita».")
         if MANTENIMIENTO:
             with st.expander("Ver lo que ha devuelto la IA"):
                 st.json(ficha, expanded=False)

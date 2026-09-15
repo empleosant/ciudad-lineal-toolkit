@@ -369,6 +369,10 @@ INTERLINEADO = 1.43
 FACTOR_MINIMO = 0.82        # por debajo de esto ya no se lee cómodo en papel.
                             # El peor caso que el prompt permite necesita 0,88,
                             # así que sobra margen; medido, no estimado.
+TOPE_DURO = 0.70            # dos páginas es condición, no preferencia: antes
+                            # que una tercera hoja, la letra baja de lo cómodo.
+NOTAS_MINIMO = 34 * mm      # menos hueco que esto no da para tomar notas, y
+                            # entonces vale más quitar el recuadro.
 
 # La frase no la escribe la IA: es la misma en todos los documentos y cierra
 # siempre la entradilla, para que nadie confunda una hipotesis con un informe.
@@ -504,6 +508,38 @@ class _Numero(Flowable):
         c.drawCentredString(self.d / 2, self.d / 2 - self.pt * 0.35, self.n)
 
 
+class _Notas(Flowable):
+    """El hueco de la última sección: un recuadro vacío, sin rayas ni puntos.
+
+    Hace dos cosas a la vez. Da sitio para escribir durante la cita —en el
+    papel, en el margen o donde se quiera, que para eso va limpio— y se come
+    el blanco que sobra al final de la segunda página, que antes quedaba
+    suelto. Como se queda con todo lo que le deje el marco, nunca provoca un
+    salto de página; `alto` guarda lo que le ha tocado, y con eso decide
+    `documento_pdf` si el recuadro compensa o estorba.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.alto = 0.0
+
+    def wrap(self, ancho, disponible):
+        # Una pizca menos de lo que queda: por redondeo, pedir el hueco
+        # exacto puede acabar en una tercera página.
+        self.width = ancho
+        self.height = max(0.0, disponible - 0.4)
+        self.alto = self.height
+        return self.width, self.height
+
+    def draw(self):
+        if self.height < 6 * mm:
+            return
+        c = self.canv
+        c.setStrokeColor(FILETE)
+        c.setLineWidth(0.5)
+        c.roundRect(0, 0, self.width, self.height, 1.6 * mm, stroke=1, fill=0)
+
+
 def _seccion(n, texto, f, antes=6 * mm):
     """Número en su círculo, título en verde y filete debajo."""
     diametro = 4.2 * mm * f
@@ -623,8 +659,13 @@ def _tabla_direcciones(filas, f):
     return tabla
 
 
-def _flujo(ficha, f):
-    """Los dos folios, como lista de elementos de reportlab."""
+def _flujo(ficha, f, hueco=None):
+    """Los dos folios, como lista de elementos de reportlab.
+
+    `hueco`, si se pasa, es el recuadro de notas de la sección 6, que se pone
+    al final y sólo si hay segunda página: en una ficha que cabe en un folio
+    no hay blanco que aprovechar.
+    """
     entradilla = (ficha.get("entradilla") or "").strip()
     entradilla = f"{entradilla} {CAUTELA}" if entradilla else CAUTELA
     elementos = [
@@ -658,34 +699,44 @@ def _flujo(ficha, f):
             ))
         elementos.append(_tabla_direcciones(direcciones, f))
 
-    elementos.append(PageBreak())
+    # La segunda pagina se arma aparte para saber si existe: un salto de pagina
+    # sin nada detras dejaria un folio en blanco.
+    segunda = []
 
     preguntas = ficha.get("preguntas") or []
     if preguntas:
-        elementos += _seccion(4, "Lo que hay que preguntar", f, antes=0)
-        # Mas aire entre bloques que entre las lineas de un bloque: quitadas las
-        # rayas, lo unico que separa una pregunta de la siguiente es el blanco.
-        est_pregunta = _estilo(CUERPO * f, color=PROSA, despues=4 * mm * f)
+        segunda += _seccion(4, "Lo que hay que preguntar", f, antes=0)
         # Una lista de recordatorios, no un formulario: el documento se lee
-        # antes y durante la entrevista, no se rellena. Llevaba dos renglones de
-        # puntos por bloque y se han quitado — nadie escribia en ellos.
+        # antes y durante la entrevista, no se rellena. El guion marca donde
+        # empieza cada bloque, que es lo que se busca de un vistazo mientras se
+        # habla con la persona.
+        est_pregunta = _estilo(CUERPO * f, color=PROSA, leftIndent=5.4 * mm,
+                               despues=3.2 * mm * f, bulletIndent=1.4 * mm,
+                               bulletFontName=TEXTO_R, bulletFontSize=CUERPO * f)
         for b in preguntas:
-            elementos.append(
-                _con_rotulo(b.get("rotulo"), b.get("texto"), est_pregunta))
+            segunda.append(_con_rotulo(b.get("rotulo"), b.get("texto"),
+                                       est_pregunta, vineta="–"))
 
     acciones = ficha.get("acciones") or []
     if acciones:
-        elementos += _seccion(5, "Acciones de arranque", f)
+        segunda += _seccion(5, "Acciones de arranque", f)
         est = _estilo(CUERPO * f, color=PROSA, leftIndent=5.4 * mm,
                       despues=1.6 * mm * f, bulletIndent=1.4 * mm,
                       bulletFontName=TEXTO_R, bulletFontSize=CUERPO * f)
         for a in acciones:
-            elementos.append(
+            segunda.append(
                 _con_rotulo(a.get("rotulo"), a.get("texto"), est, vineta="•"))
 
     riesgo = ficha.get("riesgo") or {}
-    elementos += _recuadro(riesgo.get("rotulo") or "El riesgo a evitar",
-                           riesgo.get("texto"), f)
+    segunda += _recuadro(riesgo.get("rotulo") or "El riesgo a evitar",
+                         riesgo.get("texto"), f)
+
+    if segunda:
+        elementos.append(PageBreak())
+        elementos += segunda
+        if hueco is not None:
+            elementos += _seccion(6, "Notas de la cita", f, antes=4.4 * mm)
+            elementos.append(hueco)
     return elementos
 
 
@@ -696,27 +747,92 @@ def documento_pdf(ficha, con_detalle=False):
     persona: es material de trabajo, no un documento de la oficina. Los
     metadatos van sin autoría por lo mismo.
 
-    Con `con_detalle`, devuelve tambien (paginas, factor): lo usa la bateria
-    de pruebas para medir el ajuste sin volver a abrir el PDF.
+    Dos páginas no es una preferencia: un documento de tres hojas ya no se
+    lleva impreso a la entrevista, que es para lo que existe. Así que se
+    encoge la letra hasta el tope cómodo, y si ni así entra —porque el modelo
+    ha devuelto mucho más de lo que el prompt le permite— se encoge hasta el
+    tope duro y, en último extremo, se recorta la lista más larga por el
+    final. El doble del máximo que permite el prompt entra sin recortar nada;
+    hace falta el triple para llegar a esto, y aun así el papel manda.
+
+    Con `con_detalle` devuelve también las medidas: páginas, factor de letra,
+    hueco de notas y cuántos elementos se han recortado, que es lo que mira la
+    pantalla para avisar.
     """
-    f = 1.0
-    while True:
-        salida = io.BytesIO()
-        doc = BaseDocTemplate(
-            salida, pagesize=A4,
-            leftMargin=MARGEN_LADO, rightMargin=MARGEN_LADO,
-            topMargin=MARGEN_ALTO, bottomMargin=MARGEN_PIE,
-            title="Preparación de sesión", author="", subject="", creator="",
-        )
-        # El marco va sin relleno propio: SimpleDocTemplate le pone 6 pt por
-        # cada lado y los margenes acababan siendo 18 mm en vez de 16.
-        doc.addPageTemplates([PageTemplate(id="hoja", frames=[Frame(
-            MARGEN_LADO, MARGEN_PIE, ANCHO_UTIL, A4[1] - MARGEN_ALTO - MARGEN_PIE,
-            leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0, id="hoja",
-        )])])
-        doc.build(_flujo(ficha, f))
-        if doc.page <= 2 or f <= FACTOR_MINIMO:
-            if con_detalle:
-                return salida.getvalue(), {"paginas": doc.page, "factor": f}
-            return salida.getvalue()
-        f = round(f - 0.02, 2)
+    trabajo, recortes = ficha, 0
+    salida = _ajusta(trabajo)
+    while salida[1]["paginas"] > 2:
+        menor = _recorta(trabajo)
+        if menor is None:
+            break       # Nada que recortar: toda la parrafada en un bloque.
+        trabajo, recortes = menor, recortes + 1
+        # Al tope duro sólo para ver si ya entra; el ajuste fino, al final.
+        if _arma(trabajo, TOPE_DURO, False)[1]["paginas"] <= 2:
+            salida = _ajusta(trabajo)
+    salida[1]["recortes"] = recortes
+    return salida if con_detalle else salida[0]
+
+
+def _ajusta(ficha):
+    """Encoge la letra hasta que quepa. Devuelve (bytes, medidas).
+
+    Dos vueltas. La primera con el recuadro de notas, bajando mientras el
+    hueco no llegue al mínimo útil. Si ni al tope cómodo lo alcanza, el
+    documento manda sobre el hueco: se rehace sin recuadro, y esa segunda
+    vuelta puede bajar hasta el tope duro antes que abrir una tercera página.
+    """
+    ultimo = None
+    for con_hueco in (True, False):
+        f, suelo = 1.0, FACTOR_MINIMO if con_hueco else TOPE_DURO
+        while True:
+            ultimo = _arma(ficha, f, con_hueco)
+            cabe = ultimo[1]["paginas"] <= 2
+            if cabe and (not con_hueco or ultimo[1]["hueco"] >= NOTAS_MINIMO):
+                return ultimo
+            if f <= suelo:
+                break
+            f = round(f - 0.02, 2)
+    return ultimo
+
+
+# Se recorta por el final y de la lista más larga, que es donde está la
+# repetición: la octava pregunta aporta menos que la primera, y la trayectoria
+# vieja menos que la reciente. Las secciones de prosa no se tocan.
+RECORTABLES = ("preguntas", "acciones", "trayectoria", "direcciones")
+
+
+def _recorta(ficha):
+    """Quita un elemento de la lista más larga. `None` si ya no hay de dónde."""
+    cual, largo = None, 1
+    for nombre in RECORTABLES:
+        n = len(ficha.get(nombre) or [])
+        if n > largo:
+            cual, largo = nombre, n
+    if cual is None:
+        return None
+    menor = dict(ficha)
+    menor[cual] = list(ficha[cual])[:-1]
+    return menor
+
+
+def _arma(ficha, f, con_hueco):
+    """Escribe el PDF a un factor dado. Devuelve (bytes, medidas)."""
+    hueco = _Notas() if con_hueco else None
+    salida = io.BytesIO()
+    doc = BaseDocTemplate(
+        salida, pagesize=A4,
+        leftMargin=MARGEN_LADO, rightMargin=MARGEN_LADO,
+        topMargin=MARGEN_ALTO, bottomMargin=MARGEN_PIE,
+        title="Preparación de sesión", author="", subject="", creator="",
+    )
+    # El marco va sin relleno propio: SimpleDocTemplate le pone 6 pt por
+    # cada lado y los margenes acababan siendo 18 mm en vez de 16.
+    doc.addPageTemplates([PageTemplate(id="hoja", frames=[Frame(
+        MARGEN_LADO, MARGEN_PIE, ANCHO_UTIL, A4[1] - MARGEN_ALTO - MARGEN_PIE,
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0, id="hoja",
+    )])])
+    doc.build(_flujo(ficha, f, hueco))
+    return salida.getvalue(), {
+        "paginas": doc.page, "factor": f,
+        "hueco": hueco.alto if hueco is not None else 0.0,
+    }
