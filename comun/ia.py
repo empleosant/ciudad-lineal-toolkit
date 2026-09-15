@@ -18,7 +18,8 @@ compatibles con OpenAI hace falta un modelo de transcripción aparte
 
 La lista de modelos es una cadena de relevo: si el primero agota la cuota,
 el siguiente. Qué modelo está respondiendo se recuerda en la sesión
-(`ia_modelo_ok`) para no volver a tropezar en la misma piedra.
+(`ia_modelo_ok`) para no volver a tropezar en la misma piedra, y el que
+acaba contestando se apunta aparte (`ultimo_uso()`) para poder enseñarlo.
 
 Usa Streamlit para los Secrets, la caché del cliente y la memoria de sesión.
 """
@@ -84,6 +85,23 @@ def modelo_actual():
     return MODELOS[min(st.session_state.get("ia_modelo_ok", 0), len(MODELOS) - 1)]
 
 
+def apunta_uso(modelo):
+    """Quien ha respondido de verdad, para poder enseñarlo en pantalla.
+
+    Sin esto el relevo es invisible: el primer modelo de la cadena podria
+    llevar una semana caido y la herramienta pareceria ir igual de bien."""
+    st.session_state["ia_ultimo_proveedor"] = PROVEEDOR
+    st.session_state["ia_ultimo_modelo"] = modelo
+
+
+def ultimo_uso():
+    """(proveedor, modelo) del ultimo que contesto, o ("", "") si nadie."""
+    return (
+        st.session_state.get("ia_ultimo_proveedor", ""),
+        st.session_state.get("ia_ultimo_modelo", ""),
+    )
+
+
 def sin_cuota(e):
     t = str(e)
     return "429" in t or "RESOURCE_EXHAUSTED" in t or "quota" in t.lower()
@@ -126,20 +144,23 @@ def _config_gemini(sistema, max_tokens, json, nivel):
 
 def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False):
     """Una llamada, una respuesta en texto. Lanza la excepción si falla."""
+    m = modelo_actual()
     if PROVEEDOR == "gemini":
         cfg = _config_gemini(sistema, max_tokens, json, None if pensar else "minimal")
         r = cli.models.generate_content(
-            model=modelo_actual(), contents=entrada,
+            model=m, contents=entrada,
             config=types.GenerateContentConfig(**cfg),
         )
+        apunta_uso(m)
         return (getattr(r, "text", "") or "").strip()
 
     extra = {"response_format": {"type": "json_object"}} if json else {}
     r = cli.chat.completions.create(
-        model=modelo_actual(),
+        model=m,
         messages=[{"role": "system", "content": sistema}, {"role": "user", "content": entrada}],
         max_tokens=max_tokens, temperature=0, **extra,
     )
+    apunta_uso(m)
     return (r.choices[0].message.content or "").strip()
 
 
@@ -164,6 +185,7 @@ def _flujo_gemini(cli, sistema, entrada, max_tokens, json):
                     if not emitido:
                         st.session_state["ia_modelo_ok"] = m
                         st.session_state["ia_cfg"] = i
+                        apunta_uso(MODELOS[m])
                         emitido = True
                     if getattr(trozo, "text", None):
                         yield trozo.text
@@ -179,16 +201,21 @@ def _flujo_gemini(cli, sistema, entrada, max_tokens, json):
 
 def _flujo_openai(cli, sistema, entrada, max_tokens, json):
     extra = {"response_format": {"type": "json_object"}} if json else {}
+    m = modelo_actual()
     flujo = cli.chat.completions.create(
-        model=modelo_actual(),
+        model=m,
         messages=[{"role": "system", "content": sistema}, {"role": "user", "content": entrada}],
         max_tokens=max_tokens, temperature=0, stream=True, **extra,
     )
+    emitido = False
     for trozo in flujo:
         if not trozo.choices:
             continue
         texto = trozo.choices[0].delta.content
         if texto:
+            if not emitido:
+                apunta_uso(m)
+                emitido = True
             yield texto
 
 

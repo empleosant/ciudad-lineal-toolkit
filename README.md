@@ -210,6 +210,12 @@ Añade `?mantenimiento=1` a la dirección para ver correcciones manuales,
 diccionarios aprendidos y diagnóstico. Sin ese parámetro la herramienta se ve
 limpia.
 
+Sin ese parámetro sí se ve una cosa: bajo los resultados del codificador, un
+chip gris con el modelo que ha contestado y lo que se ha esperado
+(«Gemini 3.5 Flash Lite · 3.5 s»). Cuando el resultado sale del catálogo sin
+pasar por la IA, el chip dice «Coincidencia directa»; y si la IA ha fallado y
+se enseña el catálogo sin afinar, no hay chip.
+
 ## Dónde se toca cada cosa
 
 - **Modelo de IA**: bloque `PROVEEDORES` de `comun/ia.py`. Es una lista con relevo automático.

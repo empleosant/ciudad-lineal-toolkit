@@ -230,6 +230,19 @@ div[data-testid="stTextInput"] input{
 .nota{ font-size:.74rem; color:var(--suave); margin:.15rem 0; }
 .separa{ height:1px; background:var(--linea); margin:clamp(0.25rem, 0.5vh, 0.4rem) 0; }
 
+/* Chip de proveedor: qué modelo ha contestado y cuánto ha tardado */
+.chip-proveedor{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:.62rem; font-weight:600; color:var(--tenue);
+  background:var(--gris); border:1px solid var(--linea);
+  border-radius:12px; padding:.15rem .55rem; margin:.2rem auto;
+  letter-spacing:.03em;
+}
+.chip-proveedor-punto{
+  width:5px; height:5px; border-radius:50%; background:#16A34A;
+  display:inline-block;
+}
+
 /* Botón de reinicio */
 .st-key-reinicio,
 .st-key-reinicio > div,

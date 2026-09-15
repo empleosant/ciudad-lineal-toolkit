@@ -337,6 +337,44 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
             unsafe_allow_html=True,
         )
 
+    pinta_chip(payload)
+
+
+def pinta_chip(payload):
+    """El pie del resultado: quién ha contestado y cuánto se ha esperado.
+
+    Sin esto no hay forma de saber, mirando la pantalla, si ha respondido el
+    primero de la cadena o el de repuesto, ni si la espera ha sido de uno o de
+    diez segundos. Con `fallo` no se pinta: ahí no ha contestado nadie y lo
+    que se ve es el catálogo sin afinar.
+    """
+    nombre = payload.get("modelo", "")
+    if nombre and not payload.get("fallo"):
+        # Nombre legible: "gemini-3.5-flash-lite" -> "Gemini 3.5 Flash Lite"
+        partes = nombre.replace("-preview", "").replace("-latest", "").split("-")
+        rotulo = " ".join(p.capitalize() for p in partes if not p.isdigit() and len(p) > 1)
+        if not rotulo:
+            rotulo = nombre.split("-")[0].capitalize()
+        total = payload.get("espera", 0.0)
+        reloj = f" · {total:.1f}s" if total > 0 else ""
+        st.markdown(
+            f'<div style="text-align:center">'
+            f'<span class="chip-proveedor">'
+            f'<span class="chip-proveedor-punto"></span>'
+            f'{rotulo}{reloj}'
+            f'</span></div>',
+            unsafe_allow_html=True,
+        )
+    elif any(o.get("motivo", "").startswith("Coincidencia directa")
+             for o in payload.get("ocupaciones", [])):
+        st.markdown(
+            '<div style="text-align:center">'
+            '<span class="chip-proveedor">'
+            '<span class="chip-proveedor-punto" style="background:#3B82F6"></span>'
+            'Coincidencia directa</span></div>',
+            unsafe_allow_html=True,
+        )
+
 
 # ---------------------------------------------------------------------------
 # LOGICA DE CONSULTA
@@ -599,6 +637,13 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
 
     elegidos = {o["codigo"] for o in payload["ocupaciones"]}
     payload["otras"] = [(c, d) for _, c, d in encontrados if c not in elegidos][:8]
+
+    # Quien ha contestado y cuanto se ha esperado viajan DENTRO del resultado,
+    # no en la sesion: el resultado se guarda en cache y se vuelve a pintar en
+    # reruns posteriores, y leyendo la sesion el chip acababa atribuyendo a la
+    # IA respuestas que habia dado el catalogo en una consulta anterior.
+    payload["modelo"] = ia.ultimo_uso()[1]
+    payload["espera"] = sum(t for _, t in st.session_state["sispe_tiempos"])
 
     zona.empty()
     pinta_resultado(payload)
