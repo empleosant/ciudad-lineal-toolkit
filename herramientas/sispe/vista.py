@@ -152,10 +152,38 @@ function copiarTexto(texto, boton){
 }
 
 function alto(){
-  parent.postMessage(
-    {type:'streamlit:setFrameHeight', height: document.documentElement.scrollHeight + 2},
-    '*'
-  );
+  // El alto del marco lo fija Python, que no sabe el ancho de la pantalla:
+  // calcula el caso peor (una columna) y aqui se ajusta al real. Se mide la
+  // rejilla y no el documento, porque scrollHeight nunca baja del alto del
+  // propio marco y asi no se podria encoger.
+  const rejilla = document.querySelector('.rejilla');
+  if (!rejilla) return;
+  const h = Math.ceil(rejilla.getBoundingClientRect().height) + 2;
+
+  // srcdoc: el marco es del mismo origen que la pagina, asi que se puede
+  // tocar. El postMessage de abajo solo lo escuchan los componentes
+  // declarados con declare_component, no components.html.
+  try {
+    const marco = window.frameElement;
+    if (marco && Math.abs(marco.getBoundingClientRect().height - h) > 1) {
+      // Con prioridad: el alto de arranque entra por media query, que si no
+      // le ganaria a un estilo en linea normal y el ajuste no serviria.
+      marco.style.setProperty('height', h + 'px', 'important');
+      // Streamlit le pasa el alto al contenedor, y no como 'height' sino
+      // como flex-basis: el contenedor es un hijo flexible en columna, asi
+      // que manda la base y no la altura. Tocando solo 'height' el marco
+      // encogia pero el hueco se quedaba.
+      const caja = marco.parentElement;
+      if (caja) {
+        caja.style.setProperty('height', h + 'px', 'important');
+        caja.style.setProperty('flex', '0 0 ' + h + 'px', 'important');
+      }
+    }
+  } catch (e) {
+    // Si algun dia deja de ser del mismo origen queda el alto de Python:
+    // sobrara espacio debajo, pero no se cortara ninguna tarjeta.
+  }
+  parent.postMessage({type:'streamlit:setFrameHeight', height: h}, '*');
 }
 
 document.querySelectorAll('.copiar').forEach(b => {
@@ -180,9 +208,14 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// Se vigila la rejilla, no el body: el body no encoge por debajo del alto
+// del marco y el observador nunca se enteraria de que sobra sitio.
 const observador = new ResizeObserver(() => alto());
-observador.observe(document.body);
+const rejilla = document.querySelector('.rejilla');
+if (rejilla) observador.observe(rejilla);
 window.addEventListener('load', alto);
+window.addEventListener('resize', alto);
+alto();
 """
 
 
@@ -230,23 +263,60 @@ def pinta_tarjetas(ocupaciones):
             f'</div>'
         )
 
-    def mide(o):
-        lineas_denom = max(1, math.ceil(len(o["denominacion"]) / 48))
-        lineas_motivo = max(1, math.ceil(len(o["motivo"]) / 52)) if o.get("motivo") else 0
-        h_denom = lineas_denom * 17
-        h_motivo = (lineas_motivo * 15 + 2) if lineas_motivo else 0
-        h_base = 54
-        return h_base + h_denom + h_motivo
+    # El alto del marco se fija desde Python, y aqui no se sabe el ancho de la
+    # pantalla. Se calculan tres, uno por tramo, y los elige el CSS de abajo:
+    # el de escritorio va en el propio componente y los otros dos entran por
+    # media query. El guion de dentro ajusta luego al alto exacto, pero si
+    # aqui se manda un solo numero el otro lado da un salto de medio metro de
+    # pantalla mientras carga. Antes se calculaba siempre a dos columnas y en
+    # el movil, donde las tarjetas se apilan, el marco se quedaba a la mitad:
+    # la segunda tarjeta no se veia y la primera salia cortada.
+    #
+    # Los caracteres por linea estan medidos sobre el catalogo entero: son el
+    # mayor valor con el que la cuenta nunca se queda corta de lineas.
+    ALTO_FIJO = 58                 # codigo, boton, etiquetas y margenes
+    ALTO_LINEA_DENOMINACION = 17
+    ALTO_LINEA_MOTIVO = 15
+    SEPARACION = 6                 # el gap de la rejilla
 
-    alturas = [mide(o) for o in ocupaciones]
-    filas = [alturas[i:i + 2] for i in range(0, len(alturas), 2)]
-    estimada = sum(max(f) for f in filas) + 6 * max(0, len(filas) - 1) + 4
+    def estima(caracteres_denom, caracteres_motivo, columnas):
+        def mide(o):
+            lineas_denom = max(1, math.ceil(len(o["denominacion"]) / caracteres_denom))
+            lineas_motivo = (math.ceil(len(o["motivo"]) / caracteres_motivo)
+                             if o.get("motivo") else 0)
+            return (ALTO_FIJO
+                    + lineas_denom * ALTO_LINEA_DENOMINACION
+                    + lineas_motivo * ALTO_LINEA_MOTIVO)
+
+        alturas = [mide(o) for o in ocupaciones]
+        filas = [alturas[i:i + columnas] for i in range(0, len(alturas), columnas)]
+        return sum(max(f) for f in filas) + SEPARACION * max(0, len(filas) - 1) + 4
+
+    escritorio = estima(48, 52, 2)       # dos columnas de unos 530 px
+    columna_ancha = estima(50, 100, 1)   # tableta o ventana estrecha
+    movil = estima(20, 38, 1)            # una columna y el texto ocupando más
 
     components.html(
         f"<style>{ESTILO_TARJETAS}</style>"
         f"<div class=\"rejilla\">{''.join(trozos)}</div>"
         f"<script>{GUION_INTERACTIVO}</script>",
-        height=estimada,
+        height=escritorio,
+    )
+    # El marco de las tarjetas es el unico de la pagina, asi que no hace falta
+    # marcarlo: 792 px de ventana son 760 de marco, que es donde la rejilla de
+    # dentro pasa a una columna. Se toca tambien flex-basis porque Streamlit le
+    # pasa el alto al contenedor por ahi y no por 'height'.
+    st.markdown(
+        "<style>"
+        + "".join(
+            f"@media (max-width:{ventana}px){{"
+            f"iframe.stIFrame,"
+            f"div[data-testid=\"stElementContainer\"]:has(> iframe.stIFrame)"
+            f"{{height:{px}px !important;flex-basis:{px}px !important;}}}}"
+            for ventana, px in ((792, columna_ancha), (552, movil))
+        )
+        + "</style>",
+        unsafe_allow_html=True,
     )
 
 
@@ -326,7 +396,7 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
         st.markdown('<div class="nota">Resultados del catálogo, sin afinar.</div>', unsafe_allow_html=True)
         if MANTENIMIENTO:
             with st.expander("Ver el motivo"):
-                st.code(payload["fallo"], language=None)
+                st.code(payload["fallo"], language=None, wrap_lines=True)
 
     if payload.get("descartadas"):
         st.markdown(
@@ -747,35 +817,45 @@ def botones_carrito(ocupaciones):
     """
     if not ocupaciones:
         return
-    st.markdown('<div class="seccion">Añadir al currículo</div>', unsafe_allow_html=True)
-    for o in ocupaciones:
-        ya = cv_estado.en_lista(o["codigo"])
-        boton, texto = st.columns([1.5, 8.5], gap="small")
-        boton.button(
-            "Añadido" if ya else "+ CV",
-            key=f"addcv_{o['codigo']}", use_container_width=True, disabled=ya,
-            type="secondary" if ya else "primary",
-            on_click=cv_estado.anade_experiencia,
-            args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
-        )
-        # El nombre oficial manda, pero entre parentesis va como se llamaria el
-        # puesto en un curriculo. De momento sale de convertir la denominacion;
-        # el nombre de mercado de verdad ("montador de placa de pladur") lo
-        # tiene que proponer el modelo, y eso va en el paso siguiente.
-        sugerencia = cv_motor.a_oracion(o["denominacion"])
-        texto.markdown(
-            f'<div style="padding-top:.35rem;line-height:1.3">'
-            f'<span style="font-size:.82rem;font-weight:600">{o["denominacion"]}</span><br>'
-            f'<span style="font-size:.78rem;color:var(--suave)">'
-            f'En el currículo: <b>{sugerencia}</b> · {o["codigo"]}</span></div>',
-            unsafe_allow_html=True,
-        )
-    n = len(cv_estado.experiencias())
-    if n:
-        st.page_link(
-            cv_estado.PAGINA, icon=":material/description:",
-            label=f"Abrir el generador de CV ({n} experiencia{'s' if n != 1 else ''})",
-        )
+    # La clave la usa el CSS de comun/estilo.py: en el movil, donde Streamlit
+    # apila las columnas, invierte cada fila para que el nombre vaya ENCIMA de
+    # su boton. Sin eso el boton salia primero, pegado al nombre del anterior,
+    # y no se sabia a cual de los dos pertenecia.
+    try:
+        zona = st.container(key="carrito")
+    except TypeError:
+        zona = st.container()
+    with zona:
+        st.markdown('<div class="seccion">Añadir al currículo</div>', unsafe_allow_html=True)
+        for o in ocupaciones:
+            ya = cv_estado.en_lista(o["codigo"])
+            boton, texto = st.columns([1.5, 8.5], gap="small")
+            boton.button(
+                "Añadido" if ya else "+ CV",
+                key=f"addcv_{o['codigo']}", use_container_width=True, disabled=ya,
+                type="secondary" if ya else "primary",
+                on_click=cv_estado.anade_experiencia,
+                args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
+            )
+            # El nombre oficial manda, pero entre parentesis va como se llamaria
+            # el puesto en un curriculo. De momento sale de convertir la
+            # denominacion; el nombre de mercado de verdad ("montador de placa
+            # de pladur") lo tiene que proponer el modelo, y eso va en el paso
+            # siguiente.
+            sugerencia = cv_motor.a_oracion(o["denominacion"])
+            texto.markdown(
+                f'<div style="padding-top:.35rem;line-height:1.3">'
+                f'<span style="font-size:.82rem;font-weight:600">{o["denominacion"]}</span><br>'
+                f'<span style="font-size:.78rem;color:var(--suave)">'
+                f'En el currículo: <b>{sugerencia}</b> · {o["codigo"]}</span></div>',
+                unsafe_allow_html=True,
+            )
+        n = len(cv_estado.experiencias())
+        if n:
+            st.page_link(
+                cv_estado.PAGINA, icon=":material/description:",
+                label=f"Abrir el generador de CV ({n} experiencia{'s' if n != 1 else ''})",
+            )
 
 
 def empezar_de_nuevo():
@@ -873,18 +953,26 @@ elif st.session_state["sispe_actual"]:
 else:
     st.markdown('<div class="seccion">Prueba con</div>', unsafe_allow_html=True)
     arranque = "Una persona que "
-    for i in range(0, len(EJEMPLOS), 2):
-        fila = EJEMPLOS[i:i + 2]
-        cols = st.columns(2, gap="small")
-        for col, ej in zip(cols, fila):
-            rotulo_ej = (
-                f"{arranque}**{ej[len(arranque):]}**"
-                if ej.startswith(arranque) else f"**{ej}**"
-            )
-            col.button(
-                rotulo_ej, use_container_width=True, key=f"ej_{i}_{ej[-14:]}",
-                on_click=usar_ejemplo, args=(ej,),
-            )
+    # La clave la usa el CSS de comun/estilo.py para dejar que estos rotulos
+    # pasen a dos lineas: en un movil estrecho no cabian y Streamlit los
+    # cortaba con puntos suspensivos ("...organiza eventos para e...").
+    try:
+        zona_ej = st.container(key="ejemplos")
+    except TypeError:
+        zona_ej = st.container()
+    with zona_ej:
+        for i in range(0, len(EJEMPLOS), 2):
+            fila = EJEMPLOS[i:i + 2]
+            cols = st.columns(2, gap="small")
+            for col, ej in zip(cols, fila):
+                rotulo_ej = (
+                    f"{arranque}**{ej[len(arranque):]}**"
+                    if ej.startswith(arranque) else f"**{ej}**"
+                )
+                col.button(
+                    rotulo_ej, use_container_width=True, key=f"ej_{i}_{ej[-14:]}",
+                    on_click=usar_ejemplo, args=(ej,),
+                )
 
 # Estas dos escrituras van a la API de GitHub y ocurren AL TERMINAR la
 # busqueda, cuando el usuario ya cree que ha acabado. No se veian en el panel

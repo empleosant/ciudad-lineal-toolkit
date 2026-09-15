@@ -237,7 +237,7 @@ with col_per:
             "dirección ni nombres de empresas concretas: sustitúyelos por el tipo de empresa. "
             "Incluye: experiencia (puestos, años aproximados y funciones), formación, idiomas, "
             "informática, permisos de conducir y disponibilidad. Devuelve solo el Markdown.",
-            language=None,
+            language=None, wrap_lines=True,
         )
         st.download_button(
             "Descargar un perfil de ejemplo (.md)", EJEMPLO_MD, file_name="perfil_ejemplo.md",
@@ -442,7 +442,9 @@ if res:
         lineas += ["", res["obs"]]
     with st.expander("Texto para copiar en un correo o en la ficha"):
         st.caption("Sale con las propuestas que has dejado y en el orden que les has dado.")
-        st.code("\n".join(lineas), language=None)
+        # wrap_lines: en el movil el cuadro no cabe a lo ancho y sin esto hay
+        # que arrastrarlo de lado para leer cada linea.
+        st.code("\n".join(lineas), language=None, wrap_lines=True)
 
 # ---------------------------------------------------------------------------
 # El indicador de pasos, ya con todo contado

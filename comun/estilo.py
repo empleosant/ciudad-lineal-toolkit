@@ -95,15 +95,35 @@ html,body,[class*="css"],.stMarkdown{
 h1 > a, h2 > a, h3 > a, .stMarkdown a.anchor-link{ display:none !important; }
 div[data-testid="InputInstructions"]{ display:none !important; }
 
-/* Eliminación de márgenes fantasma entre iframe y contenedor */
-div[data-testid="stCustomComponentV1"] {
+/* Un bloque que solo lleva un <style> no pinta nada, pero sigue siendo un
+   hijo de la columna flexible y se lleva su separacion: un hueco de 16 px
+   por cada hoja de estilo que se inyecta. */
+div[data-testid="stElementContainer"]:has(style:only-child){ display:none !important; }
+
+/* Eliminación de márgenes fantasma entre iframe y contenedor.
+   El data-testid cambió de nombre al actualizar Streamlit (stCustomComponentV1
+   -> stIFrame) y la regla se había quedado sin efecto. Se dejan los dos. */
+div[data-testid="stCustomComponentV1"],
+div[data-testid="stElementContainer"]:has(> iframe) {
   margin-bottom: 0px !important;
   padding-bottom: 0px !important;
 }
-div[data-testid="stCustomComponentV1"] iframe {
+div[data-testid="stCustomComponentV1"] iframe,
+iframe.stIFrame {
   margin-bottom: 0px !important;
   padding-bottom: 0px !important;
   display: block !important;
+}
+
+/* Botones "+ CV" bajo las tarjetas del codificador. A partir de 640 px
+   Streamlit apila las columnas, y el botón quedaba ENCIMA de la ocupación a
+   la que pertenece, pegado al nombre de la anterior. Invertida la fila, cada
+   nombre va justo antes de su botón. */
+@media (max-width:640px){
+  .st-key-carrito div[data-testid="stHorizontalBlock"]{
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+  }
 }
 
 /* ---------- Banda de cabecera ---------- */
@@ -222,6 +242,15 @@ div[data-testid="stTextInput"] input{
   background:#fff; border:1px solid var(--negro); font-weight:600; border-radius:4px;
   padding:.32rem .75rem; min-height:34px; font-size:.84rem; transition:all .15s ease;
   white-space:normal !important; height:auto !important;
+}
+/* Streamlit pone el "nowrap" en el parrafo de dentro, no en el boton: sin
+   esta linea el rotulo se corta con puntos suspensivos en pantallas
+   estrechas aunque el boton sí sepa crecer. */
+.st-key-pregunta .stButton button p,
+.st-key-ejemplos .stButton button p{ white-space:normal !important; }
+.st-key-ejemplos .stButton button{
+  white-space:normal !important; height:auto !important; min-height:38px;
+  line-height:1.25;
 }
 .st-key-pregunta .stButton button:hover{
   background:var(--negro); color:#fff; border-color:var(--negro);
