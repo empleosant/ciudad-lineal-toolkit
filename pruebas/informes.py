@@ -15,6 +15,8 @@ Lo que se prueba:
   · Que la frase de cautela va siempre y no se duplica.
   · Que el texto ajeno se escapa antes de convertirlo en marcado.
   · Que una ficha incompleta o rara no revienta.
+  · Que el expediente va y vuelve entero, y que uno estropeado no deja la
+    pantalla sin arrancar.
 
 Las fichas de prueba son inventadas, pero con la misma forma y la misma
 densidad de texto que los documentos reales: con palabras largas de relleno el
@@ -254,6 +256,88 @@ def secciones():
     if "Hipótesis de partida" not in texto:
         malas.append("no sale la sección 2 habiendo hipótesis")
     return anota("Las secciones vacías no se pintan", not malas), malas
+
+
+@prueba("El expediente va y vuelve entero")
+def expediente_ida_y_vuelta():
+    """Sin esto no hay continuidad entre la preparación y la cita."""
+    import json
+    lleno = {c: f"valor de {c}" for c in motor.CAMPOS_EXPEDIENTE}
+    lleno.update({"ficha": {"rasgo": "comercio_limpieza", "entradilla": "Perfil."},
+                  "motivacion": "Desgastada", "encaje": "A medias"})
+    vuelta, error = motor.lee_expediente(motor.expediente(lleno))
+    malas = [f"al releer: {error}"] if error else []
+    malas += [f"«{c}» vuelve como {vuelta.get(c)!r}, se guardó {lleno[c]!r}"
+              for c in motor.CAMPOS_EXPEDIENTE if vuelta.get(c) != lleno[c]]
+    # Lo que no es del expediente no se cuela de vuelta.
+    colado, _ = motor.lee_expediente(
+        json.dumps({"notas": "ok", "loquesea": "no soy del expediente"}).encode())
+    if "loquesea" in colado:
+        malas.append("se cuela un campo que no es del expediente")
+    return anota("El expediente va y vuelve entero", not malas,
+                 f"{len(motor.CAMPOS_EXPEDIENTE)} campos"), malas
+
+
+@prueba("Un expediente estropeado no tumba la pantalla")
+def expediente_roto():
+    """Es un archivo suelto en el disco: puede llegar editado o a medio copiar.
+
+    Lo que no sea de su tipo tiene que quedarse fuera, porque luego se le pasa
+    tal cual al widget que lo espera y ahí ya no hay red.
+    """
+    import json
+    casos = [
+        ("no es JSON", b"{roto", None),
+        ("no es un objeto", b"[1, 2, 3]", None),
+        ("versión del futuro", json.dumps({"version": 99, "notas": "x"}).encode(), None),
+        ("número donde va texto", json.dumps({"cv": 12345, "notas": "x"}).encode(), "12345"),
+        ("lista donde va texto", json.dumps({"cv": ["a"], "notas": "x"}).encode(), None),
+        ("booleano", json.dumps({"cv": True, "notas": "x"}).encode(), None),
+        ("ficha que no es objeto", json.dumps({"ficha": "no", "notas": "x"}).encode(), None),
+        ("motivación inventada", json.dumps({"motivacion": "Ninguna", "notas": "x"}).encode(), None),
+    ]
+    malas = []
+    for etiqueta, crudo, esperado_cv in casos:
+        try:
+            datos, error = motor.lee_expediente(crudo)
+        except Exception as e:  # noqa: BLE001
+            malas.append(f"{etiqueta}: revienta con {type(e).__name__}")
+            continue
+        if not isinstance(datos, dict):
+            malas.append(f"{etiqueta}: no devuelve un diccionario")
+            continue
+        if error and datos:
+            malas.append(f"{etiqueta}: devuelve datos y error a la vez")
+        # Todo lo que sobreviva tiene que ser del tipo que espera la pantalla.
+        for campo, valor in datos.items():
+            tipo = dict if campo == "ficha" else str
+            if not isinstance(valor, tipo):
+                malas.append(f"{etiqueta}: «{campo}» sale como {type(valor).__name__}")
+        if esperado_cv is not None and datos.get("cv") != esperado_cv:
+            malas.append(f"{etiqueta}: «cv» sale {datos.get('cv')!r}, esperado {esperado_cv!r}")
+        if datos.get("motivacion") and datos["motivacion"] not in motor.MOTIVACIONES:
+            malas.append(f"{etiqueta}: motivación fuera de vocabulario")
+    return anota("Un expediente estropeado no tumba la pantalla", not malas,
+                 f"{len(casos) - len(malas)}/{len(casos)} casos"), malas
+
+
+@prueba("Lo acordado llega al prompt")
+def acordado():
+    texto = motor.lo_acordado({
+        "objetivo1": "Camarera de piso", "objetivo2": "", "zona": "Ciudad Lineal",
+        "adjuntos": "", "motivacion": "Desgastada"})
+    malas = []
+    if "Camarera de piso" not in texto:
+        malas.append("falta el objetivo principal")
+    if "Ciudad Lineal" not in texto:
+        malas.append("falta la zona, que es la que decide las empresas")
+    if "desgastada" not in texto:
+        malas.append("falta la motivación")
+    if "Objetivo secundario" in texto or "Va adjunto" in texto:
+        malas.append("se cuela una etiqueta de un campo vacío")
+    if motor.lo_acordado({}) != "":
+        malas.append("sin datos no devuelve cadena vacía")
+    return anota("Lo acordado llega al prompt", not malas), malas
 
 
 def main():

@@ -3,7 +3,7 @@ Prompts y llamadas a la IA del generador de informes de orientación.
 
     lee_cv(cli, cv)                      la lectura en prosa, para la pantalla
     prepara(cli, cv, lectura)            el contenido del documento de dos páginas
-    escribe_correo(cli, datos, ...)      el correo de cierre, en markdown
+    escribe_correo(cli, cv, lectura, notas, ...)   el correo de cierre, en markdown
 
 Las tres lanzan la excepción si el proveedor falla: la pantalla decide qué
 contar. El CV que llega aquí viene ya tachado por `motor.limpia_datos_personales`.
@@ -150,28 +150,57 @@ Si la trayectoria es larga, aprieta la hipótesis y las direcciones: la primera 
 lleva las dos cosas."""
 
 
-CORREO = """Escribes el correo que un orientador laboral envía a la persona atendida
-después de la sesión. Recibes lo que se recogió en la entrevista y los materiales que van
-adjuntos.
+CIERRE = """Escribes el correo que un orientador laboral envía a la persona atendida
+después de la cita. No es un resumen de la entrevista: es lo que se lleva puesto para
+moverse las semanas siguientes. Va a copiarse y pegarse en Outlook tal cual.
+
+Recibes el currículo, la lectura que se hizo antes de la cita, lo que el orientador
+anotó DESPUÉS de hablar con la persona, y el objetivo que acordaron.
+
+MANDA LA CITA. Si lo anotado después contradice la lectura previa, gana lo anotado: la
+lectura eran hipótesis sobre un papel y la cita es lo que pasó de verdad. No arrastres
+una hipótesis que la cita ya ha desmentido, y no le cuentes a la persona lo que suponías
+antes de conocerla.
 
 ESTRUCTURA, en este orden y sin numerarla ni titularla:
-1. Recordatorio breve de lo acordado en la sesión, incluido el objetivo elegido.
+1. Saludo y recordatorio breve de lo acordado, con el objetivo por su nombre.
 2. Lo que puede hacer ya mismo con lo que tiene, sin esperar a ninguna formación.
-3. Los entregables que van adjuntos y para qué sirve cada uno.
-4. Dos o tres acciones concretas con plazo. Nada más: si son diez, no hace ninguna.
-5. Canal de contacto para dudas, sin generar expectativa de respuesta obligatoria.
+3. **Las empresas para autocandidatura**, en lista. Instrucciones abajo.
+4. Cómo presentarse: a quién preguntar, qué decir en dos frases, y en qué horario ir.
+5. Dos o tres acciones concretas con plazo. Nada más: si son diez, no hace ninguna.
+6. Canal de contacto para dudas, sin generar expectativa de respuesta obligatoria.
+7. La firma, con el nombre que se indique.
+
+LAS EMPRESAS
+- Entre 6 y 10, en lista con guion, agrupadas por dirección profesional si hay dos.
+- Cada una en una línea: **nombre en negrita**, después el tipo de empresa y la zona.
+  Ejemplo: «- **Clece** — contrata de limpieza y servicios auxiliares. Oficinas en el
+  polígono de Julián Camarillo (San Blas), a un paso de Ciudad Lineal.»
+- El tipo y la zona son obligatorios y valen tanto como el nombre: si la persona no
+  encuentra esa empresa concreta, con el tipo y la zona sabe qué buscar.
+- Madrid capital, y cuanto más cerca de donde vive o busca, mejor. Se indica dónde busca:
+  respétalo. Si no se indica, Madrid capital y alrededores.
+- Mezcla tamaños: cadenas y empresas grandes que contratan de continuo, y comercio o
+  servicios de barrio de la zona que se indique.
+- Que sean del sector del objetivo acordado, no de cualquier sector.
+- No pongas direcciones postales, ni teléfonos, ni webs, ni personas de contacto.
+- Después de la lista, UNA sola frase diciendo que conviene confirmar que siguen
+  contratando antes de acercarse. Una vez, sin repetirlo ni ponerse solemne.
 
 CÓMO SE ESCRIBE
 - En segunda persona y en lenguaje llano, sin jerga de orientación.
 - Nunca aparecen las casillas de la matriz, la tipología ni el diagnóstico técnico.
-- Nada de urls ni de enlaces: nombra el recurso y di que hay que comprobarlo antes de
-  usarlo. Tampoco cifras, plazos de convocatoria ni nombres de cursos concretos.
+  Tampoco «tu perfil presenta», «hemos detectado» ni nada que suene a informe.
+- Nada de urls ni de enlaces. Tampoco cifras, plazos de convocatoria ni nombres de
+  cursos concretos: si hace falta formación, se dice que se mira en la próxima cita.
 - No prometas resultados ni plazas, y no des por hecho nada que no venga en los datos.
 - Firma el orientador con el nombre que se indique, nunca la oficina ni el organismo.
-- Entre 200 y 320 palabras.
+- Ningún dato identificativo de la persona: ni su nombre, ni teléfono, ni correo. El
+  saludo es «Hola:» a secas.
+- Entre 350 y 500 palabras.
 
 FORMATO: markdown sencillo, con párrafos, negritas con ** y listas con guion. Sin
-encabezados de sección, sin tablas y sin líneas de asunto. Empieza por el saludo y
+encabezados de sección, sin tablas y sin línea de asunto. Empieza por el saludo y
 termina por la firma. Devuelve el texto pelado."""
 
 
@@ -194,14 +223,21 @@ def prepara(cli, cv, lectura):
     return ficha if isinstance(ficha, dict) else {}
 
 
-def escribe_correo(cli, datos, adjuntos, firma, canal):
-    """El correo de cierre, en markdown para pegarlo con el formato puesto."""
+def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal):
+    """El correo de cierre, en markdown para pegarlo con el formato puesto.
+
+    Le llega todo el hilo: el curriculo, la lectura previa y lo que se anoto
+    despues de la cita. Asi es como se venia trabajando —una conversacion por
+    persona, el contexto acumulandose— y sin ese hilo el cierre no sabria de
+    donde viene.
+    """
     peticion = (
-        f"LO RECOGIDO EN LA SESIÓN:\n{datos or '(sin anotaciones)'}\n\n"
-        "ENTREGABLES QUE VAN ADJUNTOS:\n"
-        + ("\n".join(f"- {a}" for a in adjuntos) if adjuntos else "- Ninguno")
-        + f"\n\nFIRMA EL CORREO: {firma}"
+        f"CURRÍCULO:\n{cv or '(no consta)'}\n\n"
+        f"LECTURA HECHA ANTES DE LA CITA (hipótesis):\n{lectura or '(no se hizo)'}\n\n"
+        f"LO QUE SE HABLÓ EN LA CITA (esto manda):\n{notas or '(sin anotaciones)'}\n\n"
+        f"LO ACORDADO:\n{acordado or '(no consta)'}\n\n"
+        f"FIRMA EL CORREO: {firma}"
         + (f"\nCANAL DE CONTACTO: {canal}" if canal else
            "\nCANAL DE CONTACTO: no se ha indicado; ofrece responder a este mismo correo.")
     )
-    return ia.genera(cli, CORREO, peticion, max_tokens=1400, pensar=True)
+    return ia.genera(cli, CIERRE, peticion, max_tokens=2048, pensar=True)

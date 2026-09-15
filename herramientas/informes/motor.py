@@ -5,7 +5,8 @@ Motor del generador de informes de orientación. Python puro: no importa Streaml
     en_horario_laboral(ahora)         lunes a viernes, de 8:30 a 14:30
     nombre_archivo(rasgo)             Preparacion_sesion_<rasgo>
     documento_pdf(ficha)              el documento de dos páginas A4, en bytes
-    texto_de_la_sesion(datos)         lo recogido en la sala, en texto para la IA
+    lo_acordado(datos)                los campos duros de la cita, para el prompt
+    expediente(datos) / lee_expediente(crudo)   guardar y recuperar entre citas
     fila_calibracion(datos)           la fila de la hoja de calibración, en CSV
 
 El documento sale SIEMPRE en dos páginas: si el contenido se pasa, se baja la
@@ -14,6 +15,7 @@ letra hasta que quepa, igual que hace el generador de CV con su página única.
 
 import csv
 import io
+import json
 import os
 import re
 from datetime import datetime
@@ -84,68 +86,105 @@ def nombre_archivo(rasgo):
 # ---------------------------------------------------------------------------
 # Lo que se recoge en la sala
 # ---------------------------------------------------------------------------
-
-# Los cuatro primeros condicionan todo lo demas: sin ellos, cualquier
-# itinerario que se dibuje encima puede ser inviable.
-BLOQUES_SESION = (
-    ("documental", "Situación documental", True,
-     "Nacionalidad, autorización de trabajo, trámite en curso y plazos, "
-     "homologación de titulaciones. Tipo de demanda dada de alta."),
-    ("economica", "Situación económica", True,
-     "Prestación o subsidio y fecha de fin, u otros ingresos. Fija el horizonte "
-     "de planificación y decide si hace falta un empleo puente."),
-    ("duros", "Condicionantes duros", True,
-     "Cargas de cuidado, salud y limitaciones físicas, discapacidad reconocida, "
-     "situación habitacional."),
-    ("marco", "Marco real de la búsqueda", True,
-     "Disponibilidad horaria verdadera, no la declarada. Turnos que acepta, radio "
-     "de desplazamiento, carné y vehículo, idiomas funcionales."),
-    ("digital", "Competencia digital real", False,
-     "Correo funcional o solo móvil, capacidad de inscribirse en portales, de usar "
-     "la sede electrónica. Decide qué se le puede pedir que haga."),
-    ("herramientas", "Herramientas con nombre y apellidos", False,
-     "Sistemas de gestión, nivel real de Excel, maquinaria, carnés. Sin esto no se "
-     "puede reescribir un CV que compita."),
-    ("busqueda", "Búsqueda hasta ahora", False,
-     "Cuántas candidaturas, por qué canal, con qué respuesta, y cómo consiguió sus "
-     "empleos anteriores. Si todos salieron por contacto personal, ese es el canal "
-     "a reforzar y no los portales."),
-)
+# Lo que se habló en la cita entra en prosa, no en un formulario: se sale de
+# una entrevista y lo último que apetece es rellenar nueve cajas. El guion de
+# lo que hay que preguntar ya va impreso en la §4 del documento de preparación,
+# que es donde sirve.
+#
+# Solo se piden aparte los datos que no se pueden dejar a interpretación: el
+# objetivo que se acordó y la zona donde busca, que es la que decide qué
+# empresas tienen sentido.
 
 MOTIVACIONES = ("Sin anotar", "Activa", "Desgastada", "Desenganchada")
 ENCAJES = ("Sin anotar", "Sí", "A medias", "No")
 
-ENTREGABLES = (
-    ("cv", "Reescritura del CV",
-     "Versiones completas, listas para copiar y pegar, una por dirección "
-     "profesional u organización destinataria."),
-    ("empresas", "Listado de empresas de Madrid para autocandidatura",
-     "Por dirección profesional."),
-    ("formacion", "Formación",
-     "Solo si el objetivo ya está fijado y la formación es corta, acreditada y con "
-     "retorno claro. Se ofrece el buscador y cómo inscribirse, no un curso elegido "
-     "por nosotros."),
-    ("proximidad", "Recursos de proximidad y programas de colectivo",
-     "Verificados y con plazo abierto."),
-)
 
-
-def texto_de_la_sesion(datos):
-    """Lo anotado en la fase 2, en texto corrido para mandárselo a la IA."""
+def lo_acordado(datos):
+    """Los campos duros de la cita, en texto para el prompt de cierre."""
     piezas = []
-    for clave, rotulo, _, _ in BLOQUES_SESION:
+    for clave, rotulo in (("objetivo1", "Objetivo principal acordado"),
+                          ("objetivo2", "Objetivo secundario"),
+                          ("zona", "Dónde busca empleo y hasta dónde se mueve"),
+                          ("adjuntos", "Va adjunto al correo")):
         valor = (datos.get(clave) or "").strip()
         if valor:
             piezas.append(f"{rotulo}: {valor}")
     motivacion = datos.get("motivacion") or MOTIVACIONES[0]
     if motivacion != MOTIVACIONES[0]:
-        piezas.append(f"Motivación observada: {motivacion.lower()}")
-    for clave, rotulo in (("objetivo1", "Objetivo principal elegido"),
-                          ("objetivo2", "Objetivo secundario")):
-        valor = (datos.get(clave) or "").strip()
-        if valor:
-            piezas.append(f"{rotulo}: {valor}")
+        piezas.append(f"Motivación observada en la cita: {motivacion.lower()}")
     return "\n".join(piezas)
+
+
+# ---------------------------------------------------------------------------
+# El expediente
+# ---------------------------------------------------------------------------
+# Entre preparar la sesión y tener la cita pasan días, y Streamlit se olvida de
+# todo al cerrar la pestaña. El expediente es un archivo que se descarga y se
+# vuelve a subir: reproduce el hilo con el que se venía trabajando —el CV, la
+# lectura y las notas de la cita, todo junto— sin que nada de la persona se
+# quede en ningún servidor, que es lo único compatible con protección de datos.
+
+VERSION_EXPEDIENTE = 1
+
+CAMPOS_EXPEDIENTE = (
+    "cv", "lectura", "ficha", "notas", "objetivo1", "objetivo2", "zona",
+    "adjuntos", "firma", "canal", "casilla", "motivacion", "encaje",
+)
+
+
+def expediente(datos):
+    """El expediente en JSON, listo para descargar."""
+    cuerpo = {"version": VERSION_EXPEDIENTE,
+              "guardado": datetime.now().strftime("%Y-%m-%d %H:%M")}
+    cuerpo.update({c: datos.get(c) for c in CAMPOS_EXPEDIENTE})
+    return json.dumps(cuerpo, ensure_ascii=False, indent=1).encode("utf-8")
+
+
+# Un expediente es un archivo que anda suelto por el disco: puede llegar
+# editado a mano, a medio copiar o de otra version. Cada campo se acepta solo
+# si es de su tipo, y lo que no encaje se queda fuera en vez de tumbar la
+# pantalla al dibujar el widget que lo espera.
+VOCABULARIOS = {"motivacion": MOTIVACIONES, "encaje": ENCAJES}
+
+
+def _valor_valido(campo, valor):
+    """El valor si sirve para su campo, o None."""
+    if valor is None:
+        return None
+    if campo == "ficha":
+        return valor if isinstance(valor, dict) else None
+    if isinstance(valor, bool) or not isinstance(valor, (str, int, float)):
+        return None
+    texto = str(valor)
+    if campo in VOCABULARIOS and texto not in VOCABULARIOS[campo]:
+        return None
+    return texto
+
+
+def lee_expediente(crudo):
+    """(datos, error) de un expediente subido. No revienta con basura."""
+    try:
+        cuerpo = json.loads(crudo.decode("utf-8-sig", "replace"))
+    except Exception:  # noqa: BLE001
+        return {}, "Eso no es un expediente: no se entiende como JSON."
+    if not isinstance(cuerpo, dict):
+        return {}, "Eso no es un expediente."
+    version = cuerpo.get("version", 1)
+    if isinstance(version, (int, float)) and version > VERSION_EXPEDIENTE:
+        return {}, ("El expediente viene de una versión más nueva de la "
+                    "herramienta. Actualiza la aplicación.")
+    datos = {}
+    for campo in CAMPOS_EXPEDIENTE:
+        valor = _valor_valido(campo, cuerpo.get(campo))
+        if valor is not None:
+            datos[campo] = valor
+    if not datos:
+        return {}, "El expediente está vacío o no trae nada aprovechable."
+    return datos, ""
+
+
+def nombre_expediente(rasgo):
+    return nombre_archivo(rasgo).replace("Preparacion_sesion", "Expediente")
 
 
 def trayectoria_desde_cv(cv):

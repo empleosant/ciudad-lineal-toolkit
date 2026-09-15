@@ -208,24 +208,61 @@ el texto de encargo para pedir allí el volcado ya anonimizado.
 Salen dos cosas: la lectura de la trayectoria en prosa, para leerla en
 pantalla, y un **PDF de dos páginas A4** para llevar impreso a la entrevista.
 
-**2 · La sesión.** El guion de lo que hay que preguntar y las cajas donde
-se vuelca después. Los cuatro primeros bloques —documental, económica,
-condicionantes duros y marco real de la búsqueda— condicionan todo lo demás.
-La motivación no se deduce del CV: se anota lo que se vio en la sala. De aquí
-sale también la fila para la hoja de calibración de la matriz, en CSV.
+**2 · La cita.** Lo que se habló entra **en prosa o dictado por el micrófono**,
+en bruto: se sale de una entrevista y lo último que apetece es rellenar nueve
+cajas. El guion de lo que hay que preguntar ya va impreso en la §4 del documento
+de preparación, que es donde sirve. Aparte se piden solo los datos que no se
+pueden dejar a interpretación: el objetivo acordado y **dónde busca empleo**, que
+es lo que decide qué empresas tienen sentido. Y la fila de calibración de la
+matriz, en CSV.
 
-**3 · Cierre.** El correo a la persona, en segunda persona y sin jerga:
+**3 · Cierre.** El cuerpo del correo para la persona, con las recomendaciones y
+**las empresas para autocandidatura dentro**. En segunda persona y sin jerga:
 nunca aparecen las casillas de la matriz ni el diagnóstico técnico. Firma el
-orientador, no la oficina. Sale en markdown, se selecciona y se pega en
-Outlook con el formato puesto. Sin enlaces: nada se publica sin haberlo leído
-en la fuente, y esta herramienta no lee fuentes.
+orientador, no la oficina. Sale en markdown, se selecciona y se pega en Outlook
+con el formato puesto.
+
+El correo se escribe viendo **todo el hilo**: el currículo, la lectura previa y
+lo anotado en la cita. Y lo anotado en la cita manda: si contradice la lectura,
+gana la cita, porque la lectura eran hipótesis sobre un papel.
+
+## El expediente
+
+Entre preparar la cita y tenerla pasan días, y Streamlit se olvida de todo al
+cerrar la pestaña. El expediente es un `.json` que se descarga y se vuelve a
+subir: recupera el currículo, la lectura, el documento y lo que llevaras anotado.
+Se nombra por el rasgo del perfil, como el PDF, y **se queda en el equipo de
+quien lo descarga**: aquí no se guarda nada de nadie, que es lo único compatible
+con protección de datos.
+
+Un expediente es un archivo suelto en un disco: puede llegar editado a mano, a
+medio copiar o de otra versión. `lee_expediente` acepta cada campo solo si es de
+su tipo y descarta el resto, porque lo que pase de ahí se le entrega tal cual al
+widget que lo espera y ahí ya no hay red.
+
+## Las empresas para autocandidatura
+
+**Las propone la IA de su memoria, y puede equivocarse.** Es una decisión
+tomada a sabiendas: un listado verificado sería mejor, pero no lo hay. Lo que se
+hace para que el riesgo sea manejable:
+
+- Cada empresa va con **su tipo y su zona**, no solo con el nombre. Si el nombre
+  falla, con «contrata de limpieza, polígono de Julián Camarillo» la búsqueda
+  sigue sirviendo.
+- Se le pasa **dónde vive y hasta dónde se mueve** la persona, que se pregunta
+  en cada caso, para que lo que proponga esté a su alcance.
+- Sin direcciones postales, sin teléfonos, sin webs y sin personas de contacto:
+  ahí es donde la invención hace daño de verdad.
+- El correo dice una vez que conviene confirmarlas, y la pantalla avisa al
+  orientador de que las repase antes de enviar.
 
 ## Datos personales
 
 El protocolo pide el CV ya anonimizado, pero llega como llega. Lo que se
 cuele se avisa y, si es un identificador —correo, teléfono, DNI o NIE—, se
 tacha antes de que el texto salga hacia la IA, de modo que no puede aparecer
-en ninguna salida. Las fechas, las empresas, las localidades y las
+en ninguna salida. **Lo mismo con las notas de la cita**, que se escriben
+deprisa y son donde es más fácil que se escape un nombre. Las fechas, las empresas, las localidades y las
 titulaciones se quedan: de ahí sale el diagnóstico. Una dirección postal solo
 se avisa, porque tacharla se llevaría por delante la localidad. **El nombre
 propio no hay forma de detectarlo**, y eso se dice en pantalla.
@@ -399,13 +436,17 @@ Hace falta porque `evaluar.py` no lo ve todo. El 21/08/2026 un cambio en el
 lematizador dejó 216 ocupaciones inalcanzables desde el singular y `evaluar.py`
 solo detectó dos casos raros. La prueba de convergencia lo canta entero.
 
-**`informes.py` — el documento cabe.** El protocolo pide dos páginas A4 y lo
-dice en serio: un documento de tres deja de servir para lo que sirve, que es
-llevarlo impreso y escribir encima. Comprueba que cabe incluso con el contenido
-en el tope de lo que el prompt permite devolver, que para conseguirlo no encoge
-la letra más de la cuenta, que el papel sale sin membrete y con los metadatos
-sin autoría, que la frase de cautela va siempre, y que un `&` del currículo no
-deja un párrafo sin pintar. Todo medido, no mirado.
+**`informes.py` — el documento cabe y el expediente aguanta.** El protocolo
+pide dos páginas A4 y lo dice en serio: un documento de tres deja de servir para
+lo que sirve, que es llevarlo impreso y escribir encima. Comprueba que cabe
+incluso con el contenido en el tope de lo que el prompt permite devolver, que
+para conseguirlo no encoge la letra más de la cuenta, que el papel sale sin
+membrete y con los metadatos sin autoría, que la frase de cautela va siempre, y
+que un `&` del currículo no deja un párrafo sin pintar. Todo medido, no mirado.
+
+Comprueba también el expediente: que va y vuelve entero, y que uno estropeado
+—editado a mano, de otra versión, con un número donde va texto— no deja la
+pantalla sin arrancar.
 
 Sus fichas de prueba llevan los mismos topes que la sección MEDIDA de
 `herramientas/informes/modelo.py`: **si allí se suben, hay que subirlos aquí**,
