@@ -10,6 +10,7 @@ dirección en la variable de entorno URL.
 
 import os
 import sys
+import time
 
 from playwright.sync_api import sync_playwright
 
@@ -17,6 +18,30 @@ SENALES = (
     "input, textarea, button, "
     "[data-testid='stAppViewContainer'], [data-testid='stMain']"
 )
+
+
+def interfaz_cargada(pagina, plazo_s):
+    """
+    Busca la interfaz en la página y en todos sus marcos.
+
+    Streamlit Cloud sirve la aplicación dentro de un iframe, así que mirar
+    solo el marco principal da siempre un falso negativo: la app está
+    despierta y cargada, pero ninguna de las SENALES aparece arriba. Con la
+    app principal, que sabemos que funciona, saltaba igualmente el aviso.
+    """
+    limite = time.monotonic() + plazo_s
+
+    while time.monotonic() < limite:
+        for marco in pagina.frames:
+            try:
+                if marco.query_selector(SENALES) is not None:
+                    return True
+            except Exception:
+                # Un marco puede desaparecer mientras la página se recarga.
+                continue
+        pagina.wait_for_timeout(1000)
+
+    return False
 
 
 def main():
@@ -58,13 +83,10 @@ def main():
         else:
             print("No aparece la pantalla de hibernacion.")
 
-        try:
-            pagina.wait_for_selector(SENALES, timeout=45000)
+        if interfaz_cargada(pagina, 45):
             print("La aplicacion responde: la interfaz esta cargada.")
             navegador.close()
             return 0
-        except Exception:
-            pass
 
         # No se rinde con error: la app puede estar arrancando todavia y un
         # correo de fallo cada doce horas acabaria en la carpeta de ignorados.
