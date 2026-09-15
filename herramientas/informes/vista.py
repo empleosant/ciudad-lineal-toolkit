@@ -3,9 +3,15 @@ Generador de informes de orientación: la pantalla.
 
 El flujo de una orientación individual, en tres pestañas:
 
-    1 · Preparación   el CV anonimizado -> la lectura en prosa + el PDF de dos páginas
+    1 · Preparación   el CV anonimizado -> el PDF de dos páginas + la lectura
     2 · La cita       lo que se habló, en prosa o dictado, y lo que se acordó
     3 · Cierre        el cuerpo del correo para la persona, listo para pegar en Outlook
+
+REGLA DE LA PANTALLA: lo obligatorio, a la vista; lo opcional, plegado. Esto no
+lo usa solo quien lo montó: la calibración de la matriz, la firma o el
+expediente son cosas que no hacen falta para el trabajo de un día corriente, y
+teniéndolas delante la herramienta parece mucho más difícil de lo que es. Quien
+las necesita abre su desplegable.
 
 Entre la preparación y la cita pasan días y Streamlit se olvida de todo al
 cerrar la pestaña: por eso el expediente, que se descarga y se vuelve a subir.
@@ -46,6 +52,11 @@ estilo.banda(
     "y cierra con el correo a la persona.",
 )
 
+try:
+    MANTENIMIENTO = st.query_params.get("mantenimiento") == "1"
+except Exception:  # noqa: BLE001
+    MANTENIMIENTO = False
+
 st.session_state.setdefault("inf_lectura", "")
 st.session_state.setdefault("inf_ficha", None)
 st.session_state.setdefault("inf_correo", "")
@@ -82,9 +93,9 @@ def _cliente():
 class _cronometra:
     """Apunta quién ha contestado y cuánto ha tardado, para el chip.
 
-    Cada fase tiene su marca: las tres llamadas son de tamaños muy distintos y
-    un único cronómetro no diría nada. El modelo se lee DESPUÉS de la llamada,
-    que es cuando `ia` sabe cuál de la cadena de relevo acabó respondiendo.
+    Cada fase tiene su marca: las llamadas son de tamaños muy distintos y un
+    único cronómetro no diría nada. El modelo se lee DESPUÉS de la llamada, que
+    es cuando `ia` sabe cuál de la cadena de relevo acabó respondiendo.
     """
 
     def __init__(self, fase):
@@ -117,14 +128,26 @@ def _estado():
 
 
 # ---------------------------------------------------------------------------
-# El expediente, encima de todo: vale para las tres fases
+# Lo de arriba: cómo funciona y el expediente. Los dos, plegados.
 # ---------------------------------------------------------------------------
-with st.expander("Expediente · guardar para otro día o recuperar lo guardado"):
+with st.expander("Cómo funciona esto"):
+    st.markdown(
+        "**1 · Antes de la cita.** Pega el currículo de la persona, sin nombre ni "
+        "teléfono, y pulsa el botón. Sale un PDF de dos páginas para imprimir y "
+        "llevártelo a la entrevista: la trayectoria, lo que hay que preguntar y unas "
+        "líneas de puntos para escribir encima.\n\n"
+        "**2 · Después de la cita.** En la segunda pestaña cuentas qué hablasteis, "
+        "escribiendo o por el micrófono, y apuntas el objetivo que acordasteis y por "
+        "dónde busca empleo.\n\n"
+        "**3 · Para cerrar.** En la tercera sale el correo para la persona, con "
+        "empresas a las que presentarse. Se copia y se pega en Outlook.\n\n"
+        "Si la cita es otro día, **guarda el expediente** ahí abajo al terminar el "
+        "paso 1 y súbelo cuando vuelvas: si no, hay que empezar de nuevo."
+    )
+
+with st.expander("Guardar para otro día, o recuperar lo guardado"):
     st.caption(
-        "Entre preparar la cita y tenerla pasan días, y al cerrar la pestaña se "
-        "pierde todo. Descarga el expediente al terminar la preparación y súbelo el "
-        "día de la cita: vuelve el currículo, la lectura y lo que llevaras anotado. "
-        "El archivo se queda en tu equipo; aquí no se guarda nada de nadie."
+        "El archivo se queda en tu equipo. Aquí no se guarda nada de nadie."
     )
     guarda, recupera = st.columns(2, gap="medium")
     with guarda:
@@ -165,21 +188,18 @@ fase1, fase2, fase3 = st.tabs(["1 · Preparación", "2 · La cita", "3 · Cierre
 # ---------------------------------------------------------------------------
 with fase1:
     estilo.pasos([
-        ("El currículo", "Anonimizado, pegado o arrastrado",
+        ("El currículo", "Pégalo o arrástralo",
          "hecho" if (st.session_state.get("inf_w_cv") or "").strip() else "activo"),
-        ("La lectura", "Trayectoria, tensión central e hipótesis",
-         "hecho" if st.session_state["inf_lectura"] else ""),
-        ("El documento", "Dos páginas A4 para llevar impresas",
+        ("El documento", "Dos páginas para imprimir",
          "hecho" if st.session_state["inf_ficha"] else ""),
+        ("La cita", "Se cuenta en la pestaña 2",
+         "hecho" if (st.session_state.get("inf_w_notas") or "").strip() else ""),
     ])
 
     st.markdown('<div class="seccion">El currículo, sin datos personales</div>',
                 unsafe_allow_html=True)
-    st.caption(
-        "Sin nombre, sin teléfono, sin correo, sin dirección y sin DNI o NIE. Las "
-        "fechas, las empresas, las localidades y las titulaciones se quedan: de ahí "
-        "sale el diagnóstico."
-    )
+    st.caption("Sin nombre, teléfono, correo, dirección ni DNI. Las fechas, las "
+               "empresas y las localidades sí: de ahí sale el diagnóstico.")
 
     izq, der = st.columns([1, 1], gap="medium")
     with izq:
@@ -198,7 +218,7 @@ with fase1:
             st.session_state["inf_w_cv"] = motor.trayectoria_desde_cv(cv_estado.cv())
             st.rerun()
 
-        with st.expander("Cómo sacarlo de Teams o de Copilot (protección de datos)"):
+        with st.expander("Cómo sacarlo de Teams o de Copilot"):
             st.markdown(
                 "Por protección de datos, en la Comunidad de Madrid **el CV de la "
                 "persona solo puede subirse a Teams**, que es la única herramienta "
@@ -232,66 +252,39 @@ with fase1:
         st.markdown('<div class="aviso-clave">Datos personales en el texto</div>',
                     unsafe_allow_html=True)
         st.warning(
-            "He visto " + ", ".join(hallazgos) + ". Se trabaja igualmente: los "
-            "identificadores se tachan antes de salir hacia la IA y no aparecerán en "
-            "ninguna salida. Aun así, quítalos del original, porque el nombre propio "
-            "no hay forma de detectarlo."
+            "He visto " + ", ".join(hallazgos) + ". Se tacha antes de salir hacia la "
+            "IA, pero el nombre propio no hay forma de detectarlo: quítalo del original."
         )
 
-    if st.button("Leer el CV y preparar la cita", type="primary",
-                 use_container_width=True, disabled=not cv.strip()):
+    # Un solo botón para las dos llamadas. Eran dos —leer y luego montar— y el
+    # paso intermedio no decidía nada: quien prepara una cita quiere el papel.
+    if st.button("Preparar la cita", type="primary", use_container_width=True,
+                 disabled=not cv.strip()):
         cli = _cliente()
         if cli is not None:
             limpio, _ = motor.limpia_datos_personales(cv)
-            with st.spinner("Leyendo la trayectoria…"):
-                try:
+            st.session_state["inf_ficha"] = None
+            st.session_state.pop("inf_uso_ficha", None)
+            try:
+                with st.spinner("Leyendo la trayectoria…"):
                     with _cronometra("lectura"):
                         st.session_state["inf_lectura"] = modelo.lee_cv(cli, limpio)
-                    st.session_state["inf_ficha"] = None
-                    st.session_state.pop("inf_uso_ficha", None)
-                except Exception as e:  # noqa: BLE001
-                    st.error(f"No he podido leer el CV. {type(e).__name__}: {e}")
-
-    lectura = st.session_state["inf_lectura"]
-    if lectura:
-        st.markdown('<div class="seccion">La lectura</div>', unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown(lectura)
-        _chip("lectura")
-        st.caption(
-            "Todo esto es hipótesis hasta la entrevista. La motivación no se deduce "
-            "del CV: es lo primero que hay que leer en la sala."
-        )
-
-        st.markdown('<div class="seccion">El documento de dos páginas</div>',
-                    unsafe_allow_html=True)
-        st.caption(
-            "Para llevarlo impreso y escribir encima: la trayectoria con sus huecos, "
-            "la tensión central, la hipótesis de partida, las direcciones posibles, "
-            "lo que hay que preguntar y el riesgo a evitar. Sin firma, sin logotipo "
-            "y sin el nombre de la persona."
-        )
-        if st.button("Preparar el documento", use_container_width=True):
-            cli = _cliente()
-            if cli is not None:
-                limpio, _ = motor.limpia_datos_personales(cv)
                 with st.spinner("Montando las dos páginas…"):
-                    try:
-                        with _cronometra("ficha"):
-                            ficha = modelo.prepara(cli, limpio, lectura)
-                    except Exception as e:  # noqa: BLE001
-                        ficha = {}
-                        st.error(f"No he podido montar el documento. {type(e).__name__}: {e}")
+                    with _cronometra("ficha"):
+                        ficha = modelo.prepara(cli, limpio,
+                                               st.session_state["inf_lectura"])
                 if ficha.get("entradilla"):
                     st.session_state["inf_ficha"] = ficha
-                elif ficha or not st.session_state["inf_ficha"]:
-                    st.warning(
-                        "La IA no ha devuelto un documento completo. Vuelve a pulsar: "
-                        "suele salir a la segunda."
-                    )
+                else:
+                    st.warning("La IA no ha devuelto un documento completo. Vuelve a "
+                               "pulsar: suele salir a la segunda.")
+            except Exception as e:  # noqa: BLE001
+                st.error(f"No he podido preparar la cita. {type(e).__name__}: {e}")
 
     ficha = st.session_state["inf_ficha"]
     if ficha:
+        st.markdown('<div class="seccion">El documento de dos páginas</div>',
+                    unsafe_allow_html=True)
         nombre = motor.nombre_archivo(ficha.get("rasgo"))
         try:
             pdf = motor.documento_pdf(ficha)
@@ -304,26 +297,26 @@ with fase1:
                 mime="application/pdf", use_container_width=True, type="primary",
             )
             _chip("ficha")
-            st.caption(
-                "El archivo se nombra por el rasgo del perfil, nunca por la persona, y "
-                "no lleva sufijo de versión: se sustituye entero. **Guarda también el "
-                "expediente, ahí arriba**, para no perder esto hasta el día de la cita."
-            )
-        with st.expander("Ver el contenido antes de imprimir"):
-            st.json(ficha, expanded=False)
+            st.caption("Imprímelo y escribe encima durante la entrevista. Si la cita "
+                       "es otro día, guarda también el expediente, ahí arriba.")
+        if MANTENIMIENTO:
+            with st.expander("Ver lo que ha devuelto la IA"):
+                st.json(ficha, expanded=False)
+
+    lectura = st.session_state["inf_lectura"]
+    if lectura:
+        st.markdown('<div class="seccion">La lectura</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown(lectura)
+        _chip("lectura")
+        st.caption("Todo esto es hipótesis hasta la entrevista.")
 
 # ---------------------------------------------------------------------------
 # FASE 2 — Lo que se habló en la cita
 # ---------------------------------------------------------------------------
 with fase2:
     st.markdown('<div class="seccion">Qué hablasteis</div>', unsafe_allow_html=True)
-    st.caption(
-        "En bruto, como se lo contarías a un compañero: no hace falta ordenarlo. "
-        "Lo que se decidió aquí manda sobre cualquier hipótesis de la preparación. "
-        "Conviene que salga la situación documental y económica, los condicionantes "
-        "duros, la disponibilidad real, las herramientas que maneja y cómo ha "
-        "buscado hasta ahora — que es el guion de la §4 del documento impreso."
-    )
+    st.caption("En bruto, como se lo contarías a un compañero. Puedes dictarlo.")
 
     grabacion = st.audio_input(
         "Grabar con el micrófono", key="inf_w_audio",
@@ -357,15 +350,17 @@ with fase2:
                     "se le acaba en marzo. Cuida de su madre por las mañanas, así que "
                     "solo puede tardes. Dice que de comercio ya se olvida…",
     )
+    st.caption("Lo que cuentes aquí manda sobre cualquier hipótesis de la preparación. "
+               "Conviene que salgan la situación documental y económica, las cargas, la "
+               "disponibilidad real y cómo ha buscado hasta ahora.")
 
     _, hallazgos_notas = motor.limpia_datos_personales(notas)
     if hallazgos_notas:
         st.markdown('<div class="aviso-clave">Datos personales en las notas</div>',
                     unsafe_allow_html=True)
         st.warning(
-            "He visto " + ", ".join(hallazgos_notas) + " en lo que has escrito. Se "
-            "tacha antes de salir hacia la IA, pero el nombre propio no hay forma de "
-            "detectarlo: no lo escribas."
+            "He visto " + ", ".join(hallazgos_notas) + ". Se tacha antes de salir hacia "
+            "la IA, pero el nombre propio no hay forma de detectarlo: no lo escribas."
         )
 
     st.markdown('<div class="seccion">Lo que se acordó</div>', unsafe_allow_html=True)
@@ -381,86 +376,82 @@ with fase2:
         help="Decide qué empresas tienen sentido proponerle. Cuanto más concreto, mejor.",
     )
 
-    st.markdown('<div class="seccion">Calibración de la matriz</div>', unsafe_allow_html=True)
-    st.caption(
-        "Qué casilla se acabó asignando y si el caso encajaba de verdad en esa "
-        "tipología. Clasificando treinta o cuarenta casos se ve qué casilla sobra y "
-        "cuál hay que partir en dos; sin eso, la matriz se queda en versión de trabajo."
-    )
-
-    # La que propuso la IA viene precargada, para confirmarla o cambiarla. Es una
-    # hipótesis salida de un papel: quien cierra la casilla es quien estuvo en la sala.
-    # Solo se precarga si no hay ninguna elegida, y una sola vez por propuesta: si se
-    # cambia a mano, el cambio manda y no se vuelve a pisar en el siguiente refresco.
-    _propuesta = (st.session_state.get("inf_ficha") or {}).get("casilla")
-    _rotulo = next((r for r in motor.CASILLAS_ROTULO
-                    if motor.codigo_de_casilla(r) == str(_propuesta or "").upper()), "")
-    if _rotulo and st.session_state.get("inf_propuesta") != _rotulo:
-        st.session_state["inf_propuesta"] = _rotulo
-        if st.session_state.get("inf_w_casilla", motor.SIN_CASILLA) == motor.SIN_CASILLA:
-            st.session_state["inf_w_casilla"] = _rotulo
-
-    casilla, motivacion = st.columns([3, 4], gap="medium")
-    casilla.selectbox(
-        "Casilla asignada", CASILLAS, key="inf_w_casilla",
-        help="La propone la IA en la preparación y la cierras tú aquí." if _rotulo
-             else "De la matriz de tipologías.",
-    )
-    motivacion.radio("Motivación observada", motor.MOTIVACIONES, key="inf_w_motivacion",
-                     horizontal=True,
-                     help="Atraviesa la matriz entera: el mismo perfil activo se "
-                          "resuelve en dos sesiones y desenganchado puede llevar meses.")
-    encaja, referencia = st.columns([3, 4], gap="medium")
-    encaja.radio("¿Encajaba en la tipología?", motor.ENCAJES, key="inf_w_encaje",
-                 horizontal=True)
-    referencia.text_input("Referencia del caso", key="inf_w_referencia",
-                          placeholder="Cita 15/09 · perfil de logística",
-                          help="Cómo reconoces tú el caso en tu hoja. Sin nombres.")
-    st.text_input("Observaciones", key="inf_w_observaciones",
-                  placeholder="Encaja en A2, pero el hueco de dos años pesa como si "
-                              "fuera B1.")
-
-    _casilla = st.session_state.get("inf_w_casilla") or motor.SIN_CASILLA
-    if motor.codigo_de_casilla(_casilla):
-        st.download_button(
-            "Descargar la fila de calibración",
-            motor.fila_calibracion({
-                clave: st.session_state.get(f"inf_w_{clave}")
-                for clave in ("casilla", "motivacion", "encaje", "referencia",
-                              "observaciones")
-            }),
-            file_name="calibracion_matriz.csv", mime="text/csv",
-            use_container_width=True,
-            help="Una fila con las columnas de la hoja de calibración, para pegarla "
-                 "tal cual.",
+    # La calibración es investigación, no trabajo del día: va plegada. El
+    # documento y el correo salen igual sin tocarla, porque la casilla la
+    # propone la IA por dentro.
+    with st.expander("Calibración de la matriz de tipologías · opcional"):
+        st.caption(
+            "Para la hoja de calibración. Clasificando treinta o cuarenta casos se ve "
+            "qué casilla sobra y cuál hay que partir en dos. No hace falta para que "
+            "salgan el documento ni el correo."
         )
+
+        # La que propuso la IA viene precargada, para confirmarla o cambiarla. Es una
+        # hipótesis salida de un papel: quien cierra la casilla es quien estuvo en la
+        # sala. Solo se precarga si no hay ninguna elegida, y una sola vez por
+        # propuesta: si se cambia a mano, el cambio manda y no se vuelve a pisar.
+        _propuesta = (st.session_state.get("inf_ficha") or {}).get("casilla")
+        _rotulo = next((r for r in motor.CASILLAS_ROTULO
+                        if motor.codigo_de_casilla(r) == str(_propuesta or "").upper()), "")
+        if _rotulo and st.session_state.get("inf_propuesta") != _rotulo:
+            st.session_state["inf_propuesta"] = _rotulo
+            if st.session_state.get("inf_w_casilla", motor.SIN_CASILLA) == motor.SIN_CASILLA:
+                st.session_state["inf_w_casilla"] = _rotulo
+
+        casilla, motivacion = st.columns([3, 4], gap="medium")
+        casilla.selectbox(
+            "Casilla asignada", CASILLAS, key="inf_w_casilla",
+            help="La propone la IA al preparar la cita y la cierras tú aquí." if _rotulo
+                 else "De la matriz de tipologías.",
+        )
+        motivacion.radio("Motivación observada", motor.MOTIVACIONES,
+                         key="inf_w_motivacion", horizontal=True)
+        encaja, referencia = st.columns([3, 4], gap="medium")
+        encaja.radio("¿Encajaba en la tipología?", motor.ENCAJES, key="inf_w_encaje",
+                     horizontal=True)
+        referencia.text_input("Referencia del caso", key="inf_w_referencia",
+                              placeholder="Cita 15/09 · perfil de logística",
+                              help="Cómo reconoces tú el caso en tu hoja. Sin nombres.")
+        st.text_input("Observaciones", key="inf_w_observaciones",
+                      placeholder="Encaja en A2, pero el hueco de dos años pesa como si "
+                                  "fuera B1.")
+
+        _casilla = st.session_state.get("inf_w_casilla") or motor.SIN_CASILLA
+        if motor.codigo_de_casilla(_casilla):
+            st.download_button(
+                "Descargar la fila de calibración",
+                motor.fila_calibracion({
+                    clave: st.session_state.get(f"inf_w_{clave}")
+                    for clave in ("casilla", "motivacion", "encaje", "referencia",
+                                  "observaciones")
+                }),
+                file_name="calibracion_matriz.csv", mime="text/csv",
+                use_container_width=True,
+                help="Una fila con las columnas de la hoja, para pegarla tal cual.",
+            )
 
 # ---------------------------------------------------------------------------
 # FASE 3 — El correo de cierre
 # ---------------------------------------------------------------------------
 with fase3:
-    st.markdown('<div class="seccion">Quién firma</div>', unsafe_allow_html=True)
-    quien, donde = st.columns(2, gap="medium")
-    quien.text_input("Firma", key="inf_w_firma", placeholder="Álvaro, orientador laboral")
-    donde.text_input("Canal de contacto", key="inf_w_canal",
-                     placeholder="Respondiendo a este correo")
-    st.text_input(
-        "Qué va adjunto, si va algo", key="inf_w_adjuntos",
-        placeholder="El currículo reescrito para hostelería.",
-        help="Lo que adjuntes a mano en Outlook. El correo lo mencionará; si lo dejas "
-             "vacío, no habla de adjuntos.",
-    )
-    st.caption(
-        "Lo que adjuntes va sin firmar: sin encabezado, sin pie y sin mención de la "
-        "oficina ni de la Comunidad de Madrid. Material de uso genérico."
-    )
+    with st.expander("Tu firma y lo que adjuntes · opcional"):
+        quien, donde = st.columns(2, gap="medium")
+        quien.text_input("Firma", key="inf_w_firma",
+                         placeholder="Álvaro, orientador laboral")
+        donde.text_input("Canal de contacto", key="inf_w_canal",
+                         placeholder="Respondiendo a este correo")
+        st.text_input(
+            "Qué va adjunto, si va algo", key="inf_w_adjuntos",
+            placeholder="El currículo reescrito para hostelería.",
+            help="Lo que adjuntes a mano en Outlook. El correo lo mencionará; si lo "
+                 "dejas vacío, no habla de adjuntos.",
+        )
+        st.caption("Lo que adjuntes va sin firmar y sin mención de la oficina.")
 
     objetivo = (st.session_state.get("inf_w_objetivo1") or "").strip()
     if not objetivo:
-        st.caption(
-            "Escribe el objetivo principal en la pestaña de la cita: el correo se "
-            "ordena alrededor de él."
-        )
+        st.info("Escribe el objetivo principal en la pestaña de la cita: el correo se "
+                "ordena alrededor de él.")
 
     if st.button("Redactar el correo", type="primary", use_container_width=True,
                  disabled=not objetivo):
@@ -489,19 +480,15 @@ with fase3:
 
     correo = st.session_state["inf_correo"]
     if correo:
-        st.markdown('<div class="seccion">El correo</div>', unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(correo)
         _chip("correo")
         st.warning(
-            "**Las empresas las propone la IA de memoria, y puede equivocarse de nombre "
-            "o proponer alguna que ya no exista.** Repásalas antes de enviar: cada una "
-            "lleva su tipo y su zona, así que lo que no cuadre se sustituye sin "
-            "rehacer el correo."
+            "**Repasa las empresas antes de enviar.** Las propone la IA y puede "
+            "equivocarse de nombre o proponer alguna que ya no exista. Cada una lleva "
+            "su tipo y su zona, así que lo que no cuadre se sustituye sin rehacer nada."
         )
-        st.caption(
-            "Selecciónalo y cópialo: al pegarlo en Outlook conserva las negritas y las "
-            "listas. Léelo antes de enviarlo, que lo firmas tú."
-        )
+        st.caption("Selecciónalo, cópialo y pégalo en Outlook: conserva negritas y "
+                   "listas. Léelo antes de enviarlo, que lo firmas tú.")
         with st.expander("Verlo en texto plano"):
             st.code(correo, language=None, wrap_lines=True)

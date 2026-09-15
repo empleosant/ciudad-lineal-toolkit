@@ -200,6 +200,14 @@ fases, una por pestaña, y la del medio no la escribe la máquina.
 El protocolo entero está en `herramientas/informes/PROTOCOLO_ORIENTACION.md`,
 que es de donde salen los prompts. Si cambia el protocolo, cambian los prompts.
 
+**Regla de la pantalla: lo obligatorio a la vista, lo opcional plegado.** Esto
+no lo usa solo quien lo montó. La calibración de la matriz, la firma o el
+expediente no hacen falta para el trabajo de un día corriente, y teniéndolos
+delante la herramienta parece mucho más difícil de lo que es. Quien los
+necesita abre su desplegable. Para el trabajo del día quedan a la vista once
+controles: el currículo y un botón; las notas, el objetivo y la zona; y otro
+botón.
+
 **1 · Preparación.** Entra el currículo **sin datos personales**: pegado,
 arrastrado como `.md` o `.txt`, o tomado del generador de CV. Como con el
 asesor de formación, el CV de la persona solo puede subirse a Teams, que es
@@ -217,7 +225,11 @@ pueden dejar a interpretación: el objetivo acordado y **dónde busca empleo**, 
 es lo que decide qué empresas tienen sentido. Y la fila de calibración de la
 matriz, en CSV.
 
-Cada una de las tres llamadas a la IA lleva debajo su chip: qué modelo ha
+Un solo botón hace las dos llamadas —leer y montar— y salen el PDF arriba y la
+lectura debajo. Eran dos botones, pero el paso intermedio no decidía nada: quien
+prepara una cita quiere el papel.
+
+Cada una de las llamadas a la IA lleva debajo su chip: qué modelo ha
 contestado y cuánto ha tardado. Son de tamaños muy distintos, así que un único
 cronómetro no diría nada. Al recuperar un expediente de otro día no sale chip:
 el tiempo de entonces no se guarda y no se inventa.
@@ -382,6 +394,9 @@ hoja de calibración no se le esté colando al modelo.
   activa, acuerdos exigentes; desgastada, acuerdos más pequeños y verificables y
   se nombra lo ya conseguido; desenganchada, un correo corto con una sola cosa
   pequeña. Atraviesa la matriz entera y no se deduce del currículo.
+- **La calibración va plegada en la pantalla**, en un desplegable cerrado de la
+  pestaña de la cita. Es investigación, no trabajo del día: el documento y el
+  correo salen igual sin tocarla, porque la casilla la propone la IA por dentro.
 - **Los campos que filtran recursos** —prestación y su fecha de fin, movilidad,
   disponibilidad real, discapacidad, distrito y radio, idiomas, cargas— no
   cambian la casilla, pero deciden qué se puede proponer. Por eso van entre las
