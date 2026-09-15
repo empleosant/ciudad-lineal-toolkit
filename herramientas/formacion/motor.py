@@ -117,16 +117,30 @@ def lee_filas(datos, nombre="cursos.xlsx", hoja=None):
     return filas, hojas
 
 
-def columnas(filas):
-    """{clave: nombre de columna} para las columnas que se reconocen."""
+def cabeceras(filas):
+    """Los nombres de columna que aparecen en el archivo, en orden."""
     if not filas:
-        return {}
+        return []
     nombres = list(filas[0]["campos"].keys())
     for f in filas[1:20]:
         for c in f["campos"]:
             if c not in nombres:
                 nombres.append(c)
-    salida = {}
+    return nombres
+
+
+def columnas_detalle(filas):
+    """(cols, deducidas). `deducidas` son las claves adivinadas, no reconocidas.
+
+    Se separa de `columnas()` porque el catalogo cambia en cada descarga y hay
+    que poder decirle al orientador que ha entendido la aplicacion de ESTE
+    archivo: una cosa es haber encontrado la columna por su nombre y otra
+    haberla adivinado a la desesperada.
+    """
+    nombres = cabeceras(filas)
+    if not nombres:
+        return {}, set()
+    salida, deducidas = {}, set()
     for clave, pistas in PISTAS.items():
         # Las pistas van de más a menos específica: "denominaci" antes que
         # "acción formativa", que también casa con "Tipo de Acción Formativa".
@@ -139,7 +153,13 @@ def columnas(filas):
         # la columna de texto más largo
         medias = {c: sum(len(f["campos"].get(c, "")) for f in filas[:200]) for c in nombres}
         salida["denominacion"] = max(medias, key=medias.get)
-    return salida
+        deducidas.add("denominacion")
+    return salida, deducidas
+
+
+def columnas(filas):
+    """{clave: nombre de columna} para las columnas que se reconocen."""
+    return columnas_detalle(filas)[0]
 
 
 def agrupa(filas):
@@ -271,3 +291,167 @@ def perfil_desde_cv(cv):
         if cv.get(clave):
             partes.append(f"- {rotulo}: {cv[clave]}")
     return "\n".join(partes)
+
+
+# ---------------------------------------------------------------------------
+# Fechas: de un texto suelto a "empieza en 12 días"
+# ---------------------------------------------------------------------------
+# El Excel no siempre trae la fecha igual. Con python_calamine llega como
+# fecha de verdad y `_limpia` la deja en AAAA-MM-DD; en un CSV llega tal cual
+# la escribieron, casi siempre DD/MM/AAAA. Se aceptan las dos y, si no se
+# entiende, no se inventa nada: se devuelve None y la etiqueta no sale.
+
+def fecha(texto):
+    """date, o None si el texto no es una fecha reconocible."""
+    t = (texto or "").strip()
+    if not t:
+        return None
+    m = re.match(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", t)
+    if m:
+        a, me, d = (int(x) for x in m.groups())
+    else:
+        m = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})", t)
+        if not m:
+            return None
+        d, me, a = (int(x) for x in m.groups())
+        if a < 100:                       # "26" es 2026, no el año 26
+            a += 2000
+    try:
+        return date(a, me, d)
+    except ValueError:                    # 31 de febrero y demás
+        return None
+
+
+def dias_hasta(texto, desde=None):
+    """Días que faltan (negativo si ya pasó), o None si no hay fecha."""
+    f = fecha(texto)
+    return None if f is None else (f - (desde or date.today())).days
+
+
+def cuando(texto, desde=None):
+    """(etiqueta, clase) para pintar la fecha en cristiano.
+
+    clase: "pronto" si aún no ha empezado, "tarde" si ya empezó, "" si no
+    se sabe. La vista la usa para el color; aquí no se sabe nada de colores.
+    """
+    d = dias_hasta(texto, desde)
+    if d is None:
+        return "", ""
+    if d == 0:
+        return "empieza hoy", "pronto"
+    if d == 1:
+        return "empieza mañana", "pronto"
+    if d > 0:
+        if d < 21:
+            return f"empieza en {d} días", "pronto"
+        if d < 60:
+            return f"empieza en {round(d / 7)} semanas", "pronto"
+        return f"empieza en {round(d / 30)} meses", "pronto"
+    d = -d
+    if d == 1:
+        return "empezó ayer", "tarde"
+    if d < 21:
+        return f"empezó hace {d} días", "tarde"
+    if d < 60:
+        return f"empezó hace {round(d / 7)} semanas", "tarde"
+    return f"empezó hace {round(d / 30)} meses", "tarde"
+
+
+def mejor_edicion(curso, desde=None):
+    """La edición que tiene sentido enseñar: la primera que aún no ha empezado.
+
+    Si todas empezaron ya, la más reciente. Si ninguna trae fecha, la primera.
+    Se saca de los datos reales del archivo, no de lo que conteste la IA.
+    """
+    eds = curso.get("ediciones") or []
+    if not eds:
+        return None
+    hoy_ = desde or date.today()
+    con_fecha = [(fecha(e["inicio"]), e) for e in eds]
+    futuras = [(f, e) for f, e in con_fecha if f and f >= hoy_]
+    if futuras:
+        return min(futuras, key=lambda x: x[0])[1]
+    pasadas = [(f, e) for f, e in con_fecha if f]
+    if pasadas:
+        return max(pasadas, key=lambda x: x[0])[1]
+    return eds[0]
+
+
+# ---------------------------------------------------------------------------
+# Qué ha entendido la aplicación de ESTE archivo
+# ---------------------------------------------------------------------------
+# El catálogo se descarga otra vez cada pocas semanas y las cabeceras cambian.
+# Esto no arregla el archivo: lo enseña, para que se vea a la primera si se ha
+# quedado sin reconocer algo importante en vez de descubrirlo por las malas.
+
+ROTULOS = {
+    "denominacion": "Denominación",
+    "tipo": "Tipo",
+    "codigo_esp": "Código de especialidad",
+    "inicio": "Fecha de inicio",
+    "fin": "Fecha de fin",
+    "modalidad": "Modalidad",
+    "centro": "Centro",
+    "municipio": "Municipio",
+    "cp": "Código postal",
+    "codigo": "Código",
+}
+
+# Sin denominación no hay nada que hacer; las demás solo quitan información.
+IMPRESCINDIBLES = ("denominacion",)
+
+
+def informe_columnas(filas):
+    """Qué columnas se han reconocido, cuáles se han adivinado y cuáles faltan.
+
+    {"reconocidas": [(rótulo, columna)], "deducidas": [(rótulo, columna)],
+     "ausentes": [rótulo], "sobrantes": [columna]}
+    """
+    cols, deducidas = columnas_detalle(filas)
+    reconocidas, deduc = [], []
+    for clave in PISTAS:
+        if clave not in cols:
+            continue
+        (deduc if clave in deducidas else reconocidas).append((ROTULOS[clave], cols[clave]))
+    usadas = set(cols.values())
+    return {
+        "reconocidas": reconocidas,
+        "deducidas": deduc,
+        "ausentes": [ROTULOS[c] for c in PISTAS if c not in cols],
+        "sobrantes": [c for c in cabeceras(filas) if c not in usadas],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Datos personales en el perfil
+# ---------------------------------------------------------------------------
+# El perfil se manda a la IA, así que no puede llevar nada identificativo. La
+# pantalla ya lo advertía; esto lo comprueba. Ojo con lo que NO cubre: los
+# nombres propios no se detectan, y se dice en la pantalla para no dar una
+# sensación de seguridad que no existe.
+
+_SONDAS = (
+    ("correo electrónico", r"[\w.+-]+@[\w-]+\.[A-Za-z]{2,}"),
+    ("teléfono", r"(?<!\d)(?:\+34[ .\-]?)?[6-9]\d{2}[ .\-]?\d{2}[ .\-]?\d{2}[ .\-]?\d{2}(?!\d)"),
+    ("DNI o NIE", r"(?<![\w])(?:[XYZxyz][ .\-]?)?\d{7,8}[ .\-]?[A-HJ-NP-TV-Za-hj-np-tv-z](?![\w])"),
+    ("dirección", r"(?i)\b(?:c/|calle|avda\.?|avenida|plaza|pza\.?|paseo|ctra\.?|carretera)\s+[^\n,;.]{2,40}?[ ,]\s*(?:n[ºo°]\.?\s*)?\d{1,3}\b"),
+    ("código postal", r"(?<!\d)(?:0[1-9]|[1-4]\d|5[0-2])\d{3}(?!\d)"),
+)
+
+
+def revisa_perfil(texto):
+    """[(qué es, el trozo encontrado)] de lo que parezca un dato identificativo.
+
+    Vacía si está limpio. Prefiere avisar de más que de menos: es el orientador
+    quien decide, y equivocarse por exceso solo cuesta una mirada.
+    """
+    t = texto or ""
+    hallazgos = []
+    for nombre, patron in _SONDAS:
+        for m in re.finditer(patron, t):
+            trozo = m.group().strip()
+            if (nombre, trozo) not in hallazgos:
+                hallazgos.append((nombre, trozo))
+            if sum(1 for n, _ in hallazgos if n == nombre) >= 3:
+                break
+    return hallazgos
