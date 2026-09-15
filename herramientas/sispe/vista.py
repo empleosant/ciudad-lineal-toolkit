@@ -420,30 +420,10 @@ def pinta_chip(payload):
     """
     nombre = payload.get("modelo", "")
     if nombre and not payload.get("fallo"):
-        # Nombre legible: "gemini-3.5-flash-lite" -> "Gemini 3.5 Flash Lite"
-        partes = nombre.replace("-preview", "").replace("-latest", "").split("-")
-        rotulo = " ".join(p.capitalize() for p in partes if not p.isdigit() and len(p) > 1)
-        if not rotulo:
-            rotulo = nombre.split("-")[0].capitalize()
-        total = payload.get("espera", 0.0)
-        reloj = f" · {total:.1f}s" if total > 0 else ""
-        st.markdown(
-            f'<div style="text-align:center">'
-            f'<span class="chip-proveedor">'
-            f'<span class="chip-proveedor-punto"></span>'
-            f'{rotulo}{reloj}'
-            f'</span></div>',
-            unsafe_allow_html=True,
-        )
+        estilo.chip_ia(nombre, payload.get("espera", 0.0))
     elif any(o.get("motivo", "").startswith("Coincidencia directa")
              for o in payload.get("ocupaciones", [])):
-        st.markdown(
-            '<div style="text-align:center">'
-            '<span class="chip-proveedor">'
-            '<span class="chip-proveedor-punto" style="background:#3B82F6"></span>'
-            'Coincidencia directa</span></div>',
-            unsafe_allow_html=True,
-        )
+        estilo.chip("Coincidencia directa", "#3B82F6")
 
 
 # ---------------------------------------------------------------------------

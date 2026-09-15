@@ -21,6 +21,7 @@ Claves de sesión con prefijo `inf_`; las de widgets, `inf_w_`.
 """
 
 import hashlib
+import time
 
 import streamlit as st
 
@@ -75,6 +76,36 @@ def _cliente():
     return cli
 
 
+class _cronometra:
+    """Apunta quién ha contestado y cuánto ha tardado, para el chip.
+
+    Cada fase tiene su marca: las tres llamadas son de tamaños muy distintos y
+    un único cronómetro no diría nada. El modelo se lee DESPUÉS de la llamada,
+    que es cuando `ia` sabe cuál de la cadena de relevo acabó respondiendo.
+    """
+
+    def __init__(self, fase):
+        self.clave = f"inf_uso_{fase}"
+
+    def __enter__(self):
+        st.session_state.pop(self.clave, None)
+        self.t0 = time.perf_counter()
+        return self
+
+    def __exit__(self, tipo, *_):
+        if tipo is None:
+            st.session_state[self.clave] = (ia.ultimo_uso()[1],
+                                            time.perf_counter() - self.t0)
+        return False
+
+
+def _chip(fase):
+    """El chip de una fase, si esa fase se ha llegado a ejecutar."""
+    uso = st.session_state.get(f"inf_uso_{fase}")
+    if uso:
+        estilo.chip_ia(*uso)
+
+
 def _estado():
     """Lo que hay ahora mismo, con los nombres del expediente."""
     datos = {archivo: st.session_state.get(sesion)
@@ -119,6 +150,8 @@ with st.expander("Expediente · guardar para otro día o recuperar lo guardado")
                         DEL_ARCHIVO[c]: v for c, v in _datos.items() if c in DEL_ARCHIVO
                     }
                     st.session_state["inf_correo"] = ""
+                    for _fase in ("lectura", "ficha", "correo"):
+                        st.session_state.pop(f"inf_uso_{_fase}", None)
                     st.rerun()
 
 fase1, fase2, fase3 = st.tabs(["1 · Preparación", "2 · La cita", "3 · Cierre"])
@@ -209,8 +242,10 @@ with fase1:
             limpio, _ = motor.limpia_datos_personales(cv)
             with st.spinner("Leyendo la trayectoria…"):
                 try:
-                    st.session_state["inf_lectura"] = modelo.lee_cv(cli, limpio)
+                    with _cronometra("lectura"):
+                        st.session_state["inf_lectura"] = modelo.lee_cv(cli, limpio)
                     st.session_state["inf_ficha"] = None
+                    st.session_state.pop("inf_uso_ficha", None)
                 except Exception as e:  # noqa: BLE001
                     st.error(f"No he podido leer el CV. {type(e).__name__}: {e}")
 
@@ -219,6 +254,7 @@ with fase1:
         st.markdown('<div class="seccion">La lectura</div>', unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(lectura)
+        _chip("lectura")
         st.caption(
             "Todo esto es hipótesis hasta la entrevista. La motivación no se deduce "
             "del CV: es lo primero que hay que leer en la sala."
@@ -238,7 +274,8 @@ with fase1:
                 limpio, _ = motor.limpia_datos_personales(cv)
                 with st.spinner("Montando las dos páginas…"):
                     try:
-                        ficha = modelo.prepara(cli, limpio, lectura)
+                        with _cronometra("ficha"):
+                            ficha = modelo.prepara(cli, limpio, lectura)
                     except Exception as e:  # noqa: BLE001
                         ficha = {}
                         st.error(f"No he podido montar el documento. {type(e).__name__}: {e}")
@@ -263,6 +300,7 @@ with fase1:
                 f"Descargar {nombre}.pdf", pdf, file_name=f"{nombre}.pdf",
                 mime="application/pdf", use_container_width=True, type="primary",
             )
+            _chip("ficha")
             st.caption(
                 "El archivo se nombra por el rasgo del perfil, nunca por la persona, y "
                 "no lleva sufijo de versión: se sustituye entero. **Guarda también el "
@@ -406,13 +444,14 @@ with fase3:
             })
             with st.spinner("Buscando empresas y redactando…"):
                 try:
-                    st.session_state["inf_correo"] = modelo.escribe_correo(
-                        cli, cv_limpio, st.session_state.get("inf_lectura") or "",
-                        notas_limpias, acordado,
-                        (st.session_state.get("inf_w_firma") or "").strip()
-                        or "tu orientador laboral",
-                        (st.session_state.get("inf_w_canal") or "").strip(),
-                    )
+                    with _cronometra("correo"):
+                        st.session_state["inf_correo"] = modelo.escribe_correo(
+                            cli, cv_limpio, st.session_state.get("inf_lectura") or "",
+                            notas_limpias, acordado,
+                            (st.session_state.get("inf_w_firma") or "").strip()
+                            or "tu orientador laboral",
+                            (st.session_state.get("inf_w_canal") or "").strip(),
+                        )
                 except Exception as e:  # noqa: BLE001
                     st.error(f"No he podido redactar el correo. {type(e).__name__}: {e}")
 
@@ -421,6 +460,7 @@ with fase3:
         st.markdown('<div class="seccion">El correo</div>', unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(correo)
+        _chip("correo")
         st.warning(
             "**Las empresas las propone la IA de memoria, y puede equivocarse de nombre "
             "o proponer alguna que ya no exista.** Repásalas antes de enviar: cada una "

@@ -19,7 +19,7 @@ comun/                         lo que comparten varias herramientas
   registro.py                  la lista de herramientas (nombre, icono, ruta, descripción)
   ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)
   gist.py                      almacén compartido en un Gist de GitHub
-  estilo.py                    CSS común y el menú de herramientas de la banda negra
+  estilo.py                    CSS común, el menú de la banda negra y el chip de la IA
   texto.py                     normaliza()
 herramientas/
   sispe/
@@ -215,6 +215,11 @@ de preparación, que es donde sirve. Aparte se piden solo los datos que no se
 pueden dejar a interpretación: el objetivo acordado y **dónde busca empleo**, que
 es lo que decide qué empresas tienen sentido. Y la fila de calibración de la
 matriz, en CSV.
+
+Cada una de las tres llamadas a la IA lleva debajo su chip: qué modelo ha
+contestado y cuánto ha tardado. Son de tamaños muy distintos, así que un único
+cronómetro no diría nada. Al recuperar un expediente de otro día no sale chip:
+el tiempo de entonces no se guarda y no se inventa.
 
 **3 · Cierre.** El cuerpo del correo para la persona, con las recomendaciones y
 **las empresas para autocandidatura dentro**. En segunda persona y sin jerga:

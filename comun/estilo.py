@@ -488,6 +488,36 @@ def banda(actual, titulo, subtitulo="", al_pulsar_titulo=None):
     return caja
 
 
+def nombre_modelo(nombre):
+    """«gemini-3.5-flash-lite» -> «Gemini 3.5 Flash Lite»."""
+    partes = (nombre or "").replace("-preview", "").replace("-latest", "").split("-")
+    rotulo = " ".join(p.capitalize() for p in partes if not p.isdigit() and len(p) > 1)
+    return rotulo or (nombre or "").split("-")[0].capitalize()
+
+
+def chip_ia(modelo, segundos=0.0):
+    """Quién ha contestado y cuánto se ha esperado, centrado bajo el resultado.
+
+    Sin esto no hay forma de saber, mirando la pantalla, si ha respondido el
+    primero de la cadena de relevo o el de repuesto, ni si la espera ha sido de
+    uno o de diez segundos.
+    """
+    if not modelo:
+        return
+    reloj = f" · {segundos:.1f}s" if segundos and segundos > 0 else ""
+    chip(f"{nombre_modelo(modelo)}{reloj}")
+
+
+def chip(texto, color="#16A34A"):
+    """Un chip centrado: punto de color y etiqueta."""
+    st.markdown(
+        f'<div style="text-align:center"><span class="chip-proveedor">'
+        f'<span class="chip-proveedor-punto" style="background:{color}"></span>'
+        f"{html.escape(str(texto))}</span></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def menu(actual):
     """El menú de herramientas. Va dentro de la banda negra de cada página.
 
