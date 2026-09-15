@@ -151,10 +151,47 @@ nunca aparecen las casillas de la matriz ni el diagnóstico técnico. Va firmado
 orientador, no por la oficina. Estructura:
 
 1. Recordatorio breve de lo acordado en la sesión, incluido el objetivo elegido.
-2. Lo que puede hacer **ya mismo** con lo que tiene, sin esperar a ninguna formación.
-3. Los entregables que van adjuntos y para qué sirve cada uno.
-4. Dos o tres acciones concretas con plazo. Nada más: si son diez, no hace ninguna.
-5. Canal de contacto para dudas, sin generar expectativa de respuesta obligatoria.
+2. Por qué presentarse sin esperar a que salga la oferta, si el sector contrata así: la
+   mayor parte de esas vacantes no se publica, se cubren con quien pasó a dejar el
+   currículum la semana anterior. Presentarse no es pedir un favor.
+3. Qué lleva encima antes de salir de casa, y una comprobación práctica de las que nadie
+   piensa: que el teléfono del currículo sea el que lleva, que el buzón de voz no esté
+   lleno.
+4. **Dónde ir, por orden de prioridad y por niveles**, no una lista plana. Cada nivel
+   dice cómo se entra ahí —por la puerta, por el formulario permanente de la web, por
+   bolsa del centro—, que es lo que más falta hace y casi nunca se dice. Empezando por
+   su propio barrio y a pie.
+5. Cuándo ir: franjas buenas y franjas que hay que evitar, con el porqué. Entrar cuando
+   hay cola es quedar como alguien que no entiende el negocio.
+6. Qué decir, **con las palabras puestas**: el guion literal en su voz, con su
+   experiencia de verdad, y cuánto dura. Son treinta segundos.
+7. Qué hacer después: apuntar sitio, calle, día y con quién habló, y volver a las tres o
+   cuatro semanas. Esa segunda vuelta es la que funciona.
+8. Dos o tres acciones concretas con plazo, con la cuenta hecha delante —«cinco sitios
+   al día, tres días por semana: en un mes son sesenta puertas»—. Nada más: si son diez,
+   no hace ninguna.
+9. Lo que queda para la próxima cita, y el canal de contacto para dudas, sin generar
+   expectativa de respuesta obligatoria.
+
+### Reglas del correo
+
+- **Lo que se propone tiene que poder ejecutarse el lunes por la mañana.** Si una frase
+  se puede escribir igual para cualquier otra persona, es relleno. «Adapta tu currículo»
+  sobra; «quita la hostelería y deja solo los cuidados» vale.
+- **Cuando lo que se propone choca con un límite de la persona, se dice.** Una residencia
+  va a turnos rotativos: si aun así entra en la lista de quien solo puede mañanas, se
+  advierte y se le dice que pregunte por el turno fijo antes de nada. Proponer en
+  silencio algo que no puede aceptar la manda a perder el tiempo y a fracasar otra vez.
+- **La acreditación no es un curso.** Quien lleva años haciendo un trabajo que hoy exige
+  un certificado que no tiene no tiene un problema de formación: tiene un problema de
+  demostrarlo. Se nombra la vía —acreditación por experiencia, el certificado que pide el
+  sector— como acción principal. Lo que no se pone son cursos concretos, centros, fechas
+  ni plazos: eso se mira en la próxima cita.
+- **Y la acreditación nunca bloquea lo demás.** Las dos cosas a la vez: se presenta desde
+  ya con lo que tiene mientras el trámite avanza. Se dice tal cual, porque si no se queda
+  esperando.
+- **Sin marcar el género.** En segunda persona se cuela en cada adjetivo, y el currículo
+  casi nunca lo dice.
 
 ### Entregables habituales
 

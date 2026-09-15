@@ -23,6 +23,8 @@ Lo que se prueba:
     pantalla sin arrancar.
   · Que la matriz se lee entera de su documento y que la hoja de calibración
     sale con las columnas de la hoja.
+  · Que el prompt del correo de cierre conserva las reglas que salieron de
+    corregir salidas reales.
 
 Las fichas de prueba son inventadas, pero con la misma forma y la misma
 densidad de texto que los documentos reales: con palabras largas de relleno el
@@ -517,6 +519,39 @@ def prompts_enteros():
         except Exception as e:  # noqa: BLE001
             malas.append(f"PREPARACION: el ejemplo de respuesta no es JSON válido ({e})")
     return anota("Los prompts se montan enteros", not malas), malas
+
+
+@prueba("El correo de cierre lleva sus reglas")
+def cierre_con_reglas():
+    """Las reglas del correo salen de fallos vistos en salidas reales.
+
+    Cada una está aquí porque un correo de verdad se equivocó en eso: mandó a
+    entregar currículos a sitios que piden un certificado sin nombrar la vía
+    para conseguirlo, propuso residencias a quien solo puede mañanas sin
+    advertir del turno rotativo, y se olvidó de la fecha de fin del subsidio.
+    Si alguien poda el prompt, que sea a sabiendas.
+    """
+    from herramientas.informes import modelo
+    reglas = {
+        "la acreditación no es un curso": "LA ACREDITACIÓN NO ES UN CURSO",
+        "el choque con un límite se dice": "CHOCA CON UN LÍMITE",
+        "las empresas van por niveles": "NO ES UNA LISTA, SON NIVELES",
+        "el guion va con las palabras puestas": "guion literal",
+        "la fecha de fin marca el horizonte": "fecha de fin de prestación",
+        "no se marca el género": "SIN MARCAR EL GÉNERO",
+        "no se inventan datos": "No inventes",
+        "sin enlaces": "Nada de urls",
+        "la medida del correo": "de 550 a 750 palabras",
+    }
+    malas = [f"no lleva {que}" for que, marca in reglas.items()
+             if marca not in modelo.CIERRE]
+    # El correo se ha alargado; el presupuesto de salida tiene que haber subido
+    # con él, porque Gemini cuenta el razonamiento dentro del mismo.
+    import inspect
+    if "max_tokens=2048" in inspect.getsource(modelo.escribe_correo):
+        malas.append("el presupuesto de salida sigue en 2048 para un correo de 750 palabras")
+    return anota("El correo de cierre lleva sus reglas", not malas,
+                 f"{len(reglas) - len(malas)}/{len(reglas)} reglas"), malas
 
 
 @prueba("Lo acordado llega al prompt")

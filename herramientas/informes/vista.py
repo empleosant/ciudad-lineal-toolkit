@@ -581,9 +581,11 @@ with fase3:
         _chip("correo")
         _copiar(correo)
         st.warning(
-            "**Repasa las empresas antes de enviar.** Las propone la IA y puede "
-            "equivocarse de nombre o proponer alguna que ya no exista. Cada una lleva "
-            "su tipo y su zona, así que lo que no cuadre se sustituye sin rehacer nada."
+            "**Repasa las empresas, las calles y los horarios antes de enviar.** Los "
+            "propone la IA de lo que sabe, sin consultar nada: puede equivocarse de "
+            "nombre, nombrar una empresa que ya cerró o dar una franja horaria que no "
+            "es la de ese sector. Cada empresa lleva su tipo y su zona, así que lo que "
+            "no cuadre se sustituye sin rehacer el correo."
         )
         st.caption("Pégalo en Outlook con «Mantener formato de origen»: llegan las "
                    "negritas y las listas, y la letra la pone tu Outlook. Léelo antes "

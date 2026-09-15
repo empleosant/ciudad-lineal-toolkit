@@ -239,6 +239,49 @@ el tiempo de entonces no se guarda y no se inventa.
 nunca aparecen las casillas de la matriz ni el diagnóstico técnico. Firma el
 orientador, no la oficina.
 
+El prompt está calibrado contra los documentos que se venían escribiendo a mano
+después de una cita, y lo que los hacía útiles no era el consejo sino **la
+concreción operativa**. De ahí salen sus reglas:
+
+- **La prueba que pasa cada frase.** La persona ya sabe que tiene que buscar
+  trabajo; lo que no sabe es qué hacer el lunes por la mañana. Si una frase se
+  puede escribir igual para cualquier otra persona, es relleno. «Adapta tu
+  currículo» sobra; «quita la hostelería y deja solo los cuidados» vale.
+- **Las empresas van por niveles, no en lista plana.** Tres o cuatro grupos por
+  orden de posibilidad, y cada grupo dice **cómo se entra ahí**: por la puerta
+  dejando el currículo en mano, por el formulario permanente que las cadenas
+  tienen en el apartado de empleo de su web, por bolsa del centro. Eso es lo
+  que más falta hace y casi nunca se dice.
+- **El guion, con las palabras puestas.** No «preséntate en dos frases», sino
+  las frases: en primera persona, con su experiencia de verdad, con «[tu
+  nombre]» donde va el nombre, y diciendo cuánto dura.
+- **La hora, con sus franjas malas.** Entrar cuando hay cola es quedar como
+  alguien que no entiende el negocio.
+- **La segunda vuelta.** Apuntar sitio, calle, día y con quién habló, y volver a
+  las tres o cuatro semanas: esa visita es la que funciona.
+- **El compromiso con la cuenta hecha.** «Cinco sitios al día, tres días por
+  semana: en un mes son sesenta puertas.»
+
+Y tres reglas que salieron de corregir correos reales:
+
+- **Cuando lo que propone choca con un límite, lo dice.** Una residencia va a
+  turnos rotativos: si aun así entra en la lista de quien solo puede mañanas, se
+  advierte. Proponer en silencio algo que la persona no puede aceptar es el peor
+  fallo de este correo.
+- **La acreditación no es un curso.** Quien lleva años haciendo un trabajo que
+  hoy exige un certificado que no tiene no tiene un problema de formación, sino
+  de demostrar lo que ya sabe hacer: se nombra la vía —acreditación por
+  experiencia, el certificado que pide el sector— como acción principal. Lo que
+  sigue fuera son cursos concretos, centros, fechas y plazos. Y nunca bloquea lo
+  demás: se presenta desde ya mientras el trámite avanza.
+- **Sin marcar el género**, que en segunda persona se cuela en cada adjetivo.
+
+**Nada de enlaces, ni aquí ni en ningún sitio.** La aplicación no consulta
+fuentes, así que un enlace suyo sería inventado. Decir que una cadena tiene
+formulario de empleo en su web sí se dice —eso es describir un canal, no dar una
+dirección—, y la pantalla avisa de repasar empresas, calles y horarios antes de
+enviar.
+
 El correo se escribe viendo **todo el hilo**: el currículo, la lectura previa y
 lo anotado en la cita. Y lo anotado en la cita manda: si contradice la lectura,
 gana la cita, porque la lectura eran hipótesis sobre un papel.
@@ -550,6 +593,13 @@ un párrafo sin pintar. Todo medido, no mirado.
 Comprueba también el expediente: que va y vuelve entero, y que uno estropeado
 —editado a mano, de otra versión, con un número donde va texto— no deja la
 pantalla sin arrancar.
+
+Y vigila el prompt del correo de cierre. Cada una de sus reglas está ahí porque
+un correo de verdad se equivocó en eso: mandó a entregar currículos a sitios que
+piden un certificado sin nombrar la vía para conseguirlo, propuso residencias a
+quien solo puede mañanas sin advertir del turno rotativo, y se olvidó de la
+fecha de fin del subsidio. La prueba no juzga la redacción —eso no se puede
+medir sin llamar a la IA—, pero si alguien poda el prompt, que sea a sabiendas.
 
 Sus fichas de prueba llevan los mismos topes que la sección MEDIDA de
 `herramientas/informes/modelo.py`: **si allí se suben, hay que subirlos aquí**,
