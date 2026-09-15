@@ -47,6 +47,21 @@ st.markdown("""
 .curso-porque{ font-size:.9rem; line-height:1.4; margin:0; }
 .curso-aviso{ font-size:.82rem; color:#C2410C; margin:.45rem 0 0; }
 .sin-dato{ font-size:.8rem; color:var(--tenue); }
+/* Mandos de ordenar y descartar, a la derecha de cada propuesta.
+   Sin esto, Streamlit los reparte por todo el alto de la tarjeta. */
+[class*="st-key-mandos_"]{ gap:.25rem !important; }
+[class*="st-key-mandos_"] div[data-testid="stVerticalBlock"]{ gap:.25rem !important; }
+[class*="st-key-mandos_"] div[data-testid="stElementContainer"]{ margin-bottom:0 !important; }
+[class*="st-key-mandos_"] button{
+  min-height:0 !important; height:auto !important; padding:.2rem .4rem !important;
+  border:1px solid var(--linea) !important; background:#fff !important; box-shadow:none !important;
+}
+[class*="st-key-mandos_"] button p{
+  font-size:.78rem !important; font-weight:600 !important; margin:0 !important; color:var(--suave) !important;
+}
+[class*="st-key-mandos_"] button:hover:not(:disabled){ border-color:var(--negro) !important; }
+[class*="st-key-mandos_"] button:hover:not(:disabled) p{ color:var(--texto) !important; }
+.descartada{ font-size:.86rem; color:var(--suave); line-height:1.35; padding-top:.3rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -289,15 +304,48 @@ if c2.button("Pedir sugerencias", type="primary", use_container_width=True, disa
             st.session_state["fmc_resultado"] = None
             st.error(f"No he podido pedir las sugerencias. {type(e).__name__}: {e}")
 
+# El orientador se queda con lo que le sirve y en su orden. Se toca
+# directamente la lista guardada en sesión: esa lista ES el orden, y de ahí
+# sale luego el texto para el correo. Lo que se quita no se pierde, se aparta
+# a "fuera", porque recuperar una propuesta no debería costar otra llamada a
+# la IA. Van como on_click para que el cambio ocurra antes del repintado.
+
+def mueve(i, d):
+    r = st.session_state.get("fmc_resultado")
+    if not r:
+        return
+    recs = r["recs"]
+    j = i + d
+    if 0 <= j < len(recs):
+        recs[i], recs[j] = recs[j], recs[i]
+
+
+def quita(i):
+    r = st.session_state.get("fmc_resultado")
+    if r and 0 <= i < len(r["recs"]):
+        r.setdefault("fuera", []).append(r["recs"].pop(i))
+
+
+def recupera(j):
+    r = st.session_state.get("fmc_resultado")
+    fuera = (r or {}).get("fuera") or []
+    if 0 <= j < len(fuera):
+        r["recs"].append(fuera.pop(j))
+
+
 res = st.session_state.get("fmc_resultado")
 if res:
+    res.setdefault("fuera", [])
     if res["preseleccion"] < res["total"]:
         st.caption(
             f"De {res['total']} cursos, la IA ha valorado los {res['preseleccion']} que más "
             "palabras comparten con el perfil."
         )
     if not res["recs"]:
-        st.info("La IA no ha encontrado cursos que encajen. Prueba con un perfil más detallado.")
+        if res["fuera"]:
+            st.info("Has quitado todas las propuestas. Puedes recuperarlas ahí abajo.")
+        else:
+            st.info("La IA no ha encontrado cursos que encajen. Prueba con un perfil más detallado.")
 
     resultados = estilo.caja("resultados")
     for i, r in enumerate(res["recs"]):
@@ -319,7 +367,8 @@ if res:
 
         with resultados, estilo.caja(f"curso_{i}_{prioridad}"), st.container(border=True):
             clase_chip = {"alta": "rojo", "media": "naranja"}.get(prioridad, "")
-            st.markdown(
+            cuerpo, mandos = st.columns([9, 1.6], gap="small")
+            cuerpo.markdown(
                 f'<div class="curso-titulo">{esc(c["denominacion"])}'
                 f'<span class="chip {clase_chip}">{esc(prioridad)}</span></div>'
                 + (f'<div class="curso-campos">{cabecera}</div>' if cabecera else "")
@@ -332,6 +381,16 @@ if res:
                    f'<b>Edición que señala la IA:</b> {esc(r["edicion"])}</div>' if r["edicion"] else ""),
                 unsafe_allow_html=True,
             )
+            # La clave va por el número de curso, no por la posición: al
+            # reordenar, la posición cambia y Streamlit se lía con los botones.
+            k = c["n"]
+            with mandos, estilo.caja(f"mandos_{k}"):
+                st.button("↑", key=f"fmc_w_sube_{k}", disabled=(i == 0), use_container_width=True,
+                          help="Subir", on_click=mueve, args=(i, -1))
+                st.button("↓", key=f"fmc_w_baja_{k}", disabled=(i == len(res["recs"]) - 1),
+                          use_container_width=True, help="Bajar", on_click=mueve, args=(i, 1))
+                st.button("Quitar", key=f"fmc_w_fuera_{k}", use_container_width=True,
+                          help="Apartarla del correo. Se puede recuperar.", on_click=quita, args=(i,))
             with st.expander(f"Ediciones ({n_ed})"):
                 columnas_ed = [(cl, ro) for cl, ro in
                                (("inicio", "Inicio"), ("municipio", "Municipio"),
@@ -349,6 +408,19 @@ if res:
                 )
                 if n_ed > 12:
                     st.caption(f"y {n_ed - 12} ediciones más")
+
+    if res["fuera"]:
+        with st.expander(f"Descartadas ({len(res['fuera'])})"):
+            for j, r in enumerate(res["fuera"]):
+                izq, der = st.columns([8, 2], gap="small")
+                prio = r["prioridad"] if r["prioridad"] in ("alta", "media", "baja") else "media"
+                izq.markdown(
+                    f'<div class="descartada">{esc(r["curso"]["denominacion"])}'
+                    f'<span class="chip">{esc(prio)}</span></div>',
+                    unsafe_allow_html=True,
+                )
+                der.button("Recuperar", key=f"fmc_w_vuelve_{r['curso']['n']}",
+                           use_container_width=True, on_click=recupera, args=(j,))
 
     if res["obs"]:
         st.markdown('<div class="seccion">Para el orientador</div>', unsafe_allow_html=True)
@@ -369,6 +441,7 @@ if res:
     if res["obs"]:
         lineas += ["", res["obs"]]
     with st.expander("Texto para copiar en un correo o en la ficha"):
+        st.caption("Sale con las propuestas que has dejado y en el orden que les has dado.")
         st.code("\n".join(lineas), language=None)
 
 # ---------------------------------------------------------------------------
