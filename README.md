@@ -8,6 +8,7 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 | Codificador de ocupaciones SISPE | `herramientas/sispe/` | en uso |
 | Generador de CV con IA en pocos pasos | `herramientas/cv/` | en uso |
 | Asesor de formación | `herramientas/formacion/` | en uso |
+| Generador de informes de orientación | `herramientas/informes/` | en uso |
 
 ## Estructura
 
@@ -41,6 +42,10 @@ herramientas/
     vista.py                   catálogo de cursos + perfil -> sugerencias
     motor.py                   lee el Excel, preselecciona cursos, cruza lo que devuelve la IA
     modelo.py                  el prompt del asesor
+  informes/
+    vista.py                   las tres fases de una orientación individual, una por pestaña
+    motor.py                   tacha datos personales y arma el PDF de dos páginas. Python puro
+    modelo.py                  prompts: leer el CV, preparar la sesión, redactar el correo
 pruebas/
   motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
@@ -91,6 +96,9 @@ Conexiones que hay:
 - Generador de CV → asesor de formación: el botón «Tomar el perfil del
   generador de CV» construye el perfil con lo que hay en el currículo,
   sin nombre ni contacto.
+- Generador de CV → generador de informes: el mismo perfil sirve de
+  entrada a la fase de preparación, para no volver a teclear la
+  trayectoria.
 
 La primera conexión es codificador → generador de CV: el botón «+ CV» bajo
 las tarjetas llama a `herramientas.cv.estado.anade_experiencia()`, y al
@@ -179,6 +187,83 @@ especialidad; que la persona es de Ciudad Lineal salvo que el perfil
 diga otra cosa, así que Madrid capital o teleformación antes que
 Getafe o Paracuellos; y la fecha de hoy, para no proponer ediciones
 ya empezadas.
+
+# Generador de informes de orientación
+
+Traslada a la aplicación el protocolo de orientación individual. Tres
+fases, una por pestaña, y la del medio no la escribe la máquina.
+
+**1 · Preparación.** Entra el currículo **sin datos personales**: pegado,
+arrastrado como `.md` o `.txt`, o tomado del generador de CV. Como con el
+asesor de formación, el CV de la persona solo puede subirse a Teams, que es
+la única herramienta autorizada en la Comunidad de Madrid; la pantalla lleva
+el texto de encargo para pedir allí el volcado ya anonimizado.
+
+Salen dos cosas: la lectura de la trayectoria en prosa, para leerla en
+pantalla, y un **PDF de dos páginas A4** para llevar impreso a la entrevista.
+
+**2 · La sesión.** El guion de lo que hay que preguntar y las cajas donde
+se vuelca después. Los cuatro primeros bloques —documental, económica,
+condicionantes duros y marco real de la búsqueda— condicionan todo lo demás.
+La motivación no se deduce del CV: se anota lo que se vio en la sala. De aquí
+sale también la fila para la hoja de calibración de la matriz, en CSV.
+
+**3 · Cierre.** El correo a la persona, en segunda persona y sin jerga:
+nunca aparecen las casillas de la matriz ni el diagnóstico técnico. Firma el
+orientador, no la oficina. Sale en markdown, se selecciona y se pega en
+Outlook con el formato puesto. Sin enlaces: nada se publica sin haberlo leído
+en la fuente, y esta herramienta no lee fuentes.
+
+## Datos personales
+
+El protocolo pide el CV ya anonimizado, pero llega como llega. Lo que se
+cuele se avisa y, si es un identificador —correo, teléfono, DNI o NIE—, se
+tacha antes de que el texto salga hacia la IA, de modo que no puede aparecer
+en ninguna salida. Las fechas, las empresas, las localidades y las
+titulaciones se quedan: de ahí sale el diagnóstico. Una dirección postal solo
+se avisa, porque tacharla se llevaría por delante la localidad. **El nombre
+propio no hay forma de detectarlo**, y eso se dice en pantalla.
+
+## El documento de dos páginas
+
+Sin firma, sin logotipo, sin mención institucional y sin nombre de la
+persona, metadatos incluidos: es material de trabajo, no un documento de la
+oficina. El archivo se llama por el rasgo del perfil,
+`Preparacion_sesion_<rasgo>.pdf`, nunca por la persona, y no lleva sufijo de
+versión: se sustituye entero.
+
+| Página | Contenido |
+|---|---|
+| 1 | Título y entradilla · § 1 La trayectoria en una lectura (tabla con duraciones; los huecos van marcados) · recuadro con la tensión central · § 2 Hipótesis de partida · § 3 Direcciones posibles (tres columnas) |
+| 2 | § 4 Lo que hay que preguntar (cada bloque con dos líneas de puntos para escribir a mano) · § 5 Acciones de arranque · recuadro con el riesgo a evitar |
+
+Se genera con `reportlab`, como el PDF del generador de CV, y con las
+medidas del protocolo: caja de texto de 178 mm, márgenes de 16 mm, 17 mm
+arriba y 13 mm abajo, cuerpo de 9,2 pt con interlineado 1,48. **Dos páginas
+siempre**: si el contenido se pasa, se baja la letra y se vuelve a montar,
+igual que el generador de CV con su página única. Los topes que se le piden
+al modelo (cuántas filas, cuántas direcciones, cuántos bloques) están
+calculados para que quepa sin encoger nada en el peor caso.
+
+Caladea y Carlito son las del protocolo pero no están en el servidor: si no
+aparecen se usa DejaVu, serif para los títulos y sans para el texto, igual
+que el generador de CV sustituye Trebuchet MS.
+
+El anexo del protocolo describe la otra cadena, HTML → `wkhtmltopdf`, con su
+factor de 1,307 para compensar que `wkhtmltopdf` maquete a 1038 px en vez de
+a 794. **Aquí ese factor no se aplica y no debe aplicarse**: `reportlab`
+dibuja en puntos y los milímetros son milímetros. Con el factor, el documento
+saldría un tercio más grande y en cuatro páginas.
+
+## La matriz de tipologías
+
+La constante `MATRIZ`, en `herramientas/informes/modelo.py`, lleva los ejes
+(A–D distancia al mercado, 1–3 claridad del objetivo) y las reglas de uso: la
+casilla es siempre hipótesis, se propone con capas, y D1 y D3 se descartan
+explícitamente antes de cerrar nada. La definición de cada casilla vive en
+`Matriz_Tipologias_Demandantes.docx`, que no está en este repositorio; si
+algún día se pega dentro de esa constante, la hipótesis sale más afinada sin
+tocar nada más, porque los dos prompts la leen entera.
 
 # Codificador de ocupaciones SISPE
 

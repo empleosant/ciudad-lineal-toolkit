@@ -46,6 +46,16 @@ HERRAMIENTAS = [
                        "generador de CV, y la IA propone los cursos que más le convienen "
                        "y explica por qué.",
     },
+    {
+        "id": "informes",
+        "ruta": "herramientas/informes/vista.py",
+        "titulo": "Informes de orientación",
+        "icono": ":material/assignment:",
+        "url": "informes",
+        "descripcion": "Las tres fases de una orientación individual: lee el currículo y "
+                       "prepara la sesión en un PDF de dos páginas, recoge lo que solo se "
+                       "ve en la sala y redacta el correo de cierre.",
+    },
 ]
 
 PAGINAS = [INICIO] + HERRAMIENTAS
