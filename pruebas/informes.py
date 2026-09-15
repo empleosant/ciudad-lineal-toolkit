@@ -321,6 +321,37 @@ def expediente_roto():
                  f"{len(casos) - len(malas)}/{len(casos)} casos"), malas
 
 
+@prueba("Los prompts se montan enteros")
+def prompts_enteros():
+    """Las piezas compartidas se interpolan de verdad en los dos prompts.
+
+    Van dentro de f-strings con llaves por todas partes (el JSON de ejemplo):
+    una llave mal escapada deja el prompt sin la matriz o sin las reglas de
+    rigor, y no se nota hasta que la IA devuelve algo raro.
+    """
+    from herramientas.informes import modelo
+    malas = []
+    for nombre, prompt in (("ANALISTA", modelo.ANALISTA),
+                           ("PREPARACION", modelo.PREPARACION)):
+        for pieza, etiqueta in ((modelo.MATRIZ, "la matriz"), (modelo.RIGOR, "el rigor")):
+            if pieza not in prompt:
+                malas.append(f"{nombre}: no lleva {etiqueta}")
+        if "{" in prompt.replace("{{", "").replace("}}", "") and '{"rasgo"' not in prompt:
+            malas.append(f"{nombre}: queda una llave sin sustituir")
+    # El ejemplo de respuesta del documento tiene que seguir siendo JSON válido.
+    import json
+    import re
+    bloque = re.search(r'\{"rasgo".*?"riesgo":\s*\{[^}]*\}\}', modelo.PREPARACION, re.S)
+    if not bloque:
+        malas.append("PREPARACION: no se encuentra el ejemplo de respuesta")
+    else:
+        try:
+            json.loads(bloque.group())
+        except Exception as e:  # noqa: BLE001
+            malas.append(f"PREPARACION: el ejemplo de respuesta no es JSON válido ({e})")
+    return anota("Los prompts se montan enteros", not malas), malas
+
+
 @prueba("Lo acordado llega al prompt")
 def acordado():
     texto = motor.lo_acordado({
