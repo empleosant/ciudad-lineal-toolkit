@@ -27,6 +27,8 @@ Claves de sesión con prefijo `inf_`; las de widgets, `inf_w_`.
 """
 
 import hashlib
+import json
+import re
 import time
 
 import streamlit as st
@@ -320,6 +322,91 @@ with fase1:
         _chip("lectura")
         st.caption("Todo esto es hipótesis hasta la entrevista.")
 
+BOTON_COPIAR = """
+<style>
+  body{ margin:0; font-family:'Source Sans', system-ui, sans-serif; }
+  button{
+    width:100%; box-sizing:border-box; cursor:pointer;
+    font-family:inherit; font-size:.92rem; font-weight:600;
+    color:#2E5E4E; background:#fff; border:1px solid #2E5E4E;
+    border-radius:.5rem; padding:.48rem 1rem; transition:all .15s ease;
+  }
+  button:hover{ background:#2E5E4E; color:#fff; }
+  button.hecho{ background:#2E5E4E; color:#fff; }
+  button.fallo{ color:#B15A2B; border-color:#B15A2B; background:#FBF2EC; }
+  /* El correo tiene que estar en el documento para poder seleccionarlo, pero
+     fuera de la vista. Con display:none no hay nada que seleccionar. */
+  #oculto{ position:fixed; left:-9999px; top:0; width:600px; }
+</style>
+<button id="copiar">Copiar el correo</button>
+<div id="oculto">__HTML__</div>
+<script>
+const TEXTO = __TEXTO__;
+const RICO = __RICO__;
+const boton = document.getElementById('copiar');
+
+function avisa(texto, clase){
+  boton.textContent = texto;
+  boton.className = clase;
+  setTimeout(() => { boton.textContent = 'Copiar el correo'; boton.className = ''; }, 2200);
+}
+
+function porSeleccion(){
+  // Copiar una selección conserva el formato igual que la API moderna, y
+  // funciona donde aquella no está permitida. Es la red de abajo.
+  try{
+    const caja = document.getElementById('oculto');
+    const rango = document.createRange();
+    rango.selectNodeContents(caja);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(rango);
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    return ok;
+  } catch (e){ return false; }
+}
+
+function porLaRed(){
+  const ok = porSeleccion();
+  avisa(ok ? 'Copiado con su formato' : 'No he podido copiarlo: selecciónalo a mano',
+        ok ? 'hecho' : 'fallo');
+}
+
+boton.addEventListener('click', () => {
+  if (navigator.clipboard && window.ClipboardItem){
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([RICO], {type: 'text/html'}),
+      'text/plain': new Blob([TEXTO], {type: 'text/plain'}),
+    })]).then(() => avisa('Copiado con su formato', 'hecho'), porLaRed);
+  } else {
+    porLaRed();
+  }
+});
+</script>
+"""
+
+
+def _copiar(texto):
+    """El botón que se lleva el correo al portapapeles con su formato.
+
+    Va en un marco aparte porque necesita JavaScript, y el portapapeles lleva
+    las dos versiones: Outlook coge el HTML y conserva negritas y listas, y un
+    cuadro de texto pelado coge el texto. `json.dumps` escapa el contenido para
+    meterlo en el guion; lo de `</` es para que un `</script>` en el correo no
+    cierre el guion antes de tiempo.
+    """
+    def literal(x):
+        return json.dumps(x, ensure_ascii=False).replace("</", "<\\/")
+
+    rico = motor.correo_html(texto)
+    piezas = {"__HTML__": rico, "__TEXTO__": literal(texto), "__RICO__": literal(rico)}
+    estilo.marco(
+        re.sub(r"__(?:HTML|TEXTO|RICO)__", lambda m: piezas[m.group(0)], BOTON_COPIAR),
+        46,
+    )
+
+
 # ---------------------------------------------------------------------------
 # FASE 2 — Lo que se habló en la cita
 # ---------------------------------------------------------------------------
@@ -492,12 +579,14 @@ with fase3:
         with st.container(border=True):
             st.markdown(correo)
         _chip("correo")
+        _copiar(correo)
         st.warning(
             "**Repasa las empresas antes de enviar.** Las propone la IA y puede "
             "equivocarse de nombre o proponer alguna que ya no exista. Cada una lleva "
             "su tipo y su zona, así que lo que no cuadre se sustituye sin rehacer nada."
         )
-        st.caption("Selecciónalo, cópialo y pégalo en Outlook: conserva negritas y "
-                   "listas. Léelo antes de enviarlo, que lo firmas tú.")
+        st.caption("Pégalo en Outlook con «Mantener formato de origen»: llegan las "
+                   "negritas y las listas, y la letra la pone tu Outlook. Léelo antes "
+                   "de enviarlo, que lo firmas tú.")
         with st.expander("Verlo en texto plano"):
             st.code(correo, language=None, wrap_lines=True)

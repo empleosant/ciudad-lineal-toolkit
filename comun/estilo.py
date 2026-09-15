@@ -518,6 +518,22 @@ def chip(texto, color="#16A34A"):
     )
 
 
+def marco(cuerpo, alto):
+    """Un marco aislado con HTML y JavaScript propios.
+
+    Lo necesitan las tarjetas del buscador y el botón de copiar el correo: son
+    las dos cosas de la aplicación que no se pueden hacer con componentes de
+    Streamlit. `st.components.v1.html` quedó obsoleto en junio de 2026 y avisa
+    por consola de que va a desaparecer; `st.iframe` es su relevo, pero llegó
+    después de la versión mínima que pide `requirements.txt`, así que si no
+    está se usa el de siempre.
+    """
+    if hasattr(st, "iframe"):
+        return st.iframe(cuerpo, height=alto)
+    import streamlit.components.v1 as componentes
+    return componentes.html(cuerpo, height=alto)
+
+
 def menu(actual):
     """El menú de herramientas. Va dentro de la banda negra de cada página.
 

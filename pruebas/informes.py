@@ -16,6 +16,8 @@ Lo que se prueba:
     los metadatos sin autoría.
   · Que la frase de cautela va siempre y no se duplica.
   · Que el texto ajeno se escapa antes de convertirlo en marcado.
+  · Que el correo se convierte a HTML para copiarlo en Outlook con sus
+    negritas y sus listas.
   · Que una ficha incompleta o rara no revienta.
   · Que el expediente va y vuelve entero, y que uno estropeado no deja la
     pantalla sin arrancar.
@@ -264,6 +266,43 @@ def escapa():
     malas = [f"{e!r} -> {motor.rico(e)!r}, esperado {s!r}"
              for e, s in casos if motor.rico(e) != s]
     return anota("El texto ajeno se escapa", not malas,
+                 f"{len(casos) - len(malas)}/{len(casos)} casos"), malas
+
+
+@prueba("El correo se copia con su formato")
+def correo_en_html():
+    """Lo que se pega en Outlook es el HTML, no el markdown.
+
+    Si esto se rompe, el correo llega a Outlook con los asteriscos a la vista
+    o, peor, con un trozo del currículo convertido en etiqueta.
+    """
+    casos = [
+        ("Hola:", "<p>Hola:</p>"),
+        # El salto de linea suelto es un salto: si no, la despedida y la firma
+        # acabarian en el mismo renglon.
+        ("Un saludo,\nÁlvaro", "<p>Un saludo,<br>Álvaro</p>"),
+        ("Uno.\n\nDos.", "<p>Uno.</p><p>Dos.</p>"),
+        ("Es **Clece**.", "<p>Es <b>Clece</b>.</p>"),
+        ("- **Clece** — limpieza.", "<ul><li><b>Clece</b> — limpieza.</li></ul>"),
+        # El modelo escribe las listas con guion, pero a veces usa asterisco.
+        ("* **Amavir** — residencias.", "<ul><li><b>Amavir</b> — residencias.</li></ul>"),
+        ("1. Adaptar el CV.\n2. Entregarlo.",
+         "<ol><li>Adaptar el CV.</li><li>Entregarlo.</li></ol>"),
+        # Escapar va antes que el marcado: un `&` del currículo si no se cuela.
+        ("R&D y <b>etiquetas</b>.", "<p>R&amp;D y &lt;b&gt;etiquetas&lt;/b&gt;.</p>"),
+        ("</script> y <div>", "<p>&lt;/script&gt; y &lt;div&gt;</p>"),
+        # El prompt prohíbe los encabezados, pero si llega uno no sale la almohadilla.
+        ("## Empresas", "<p>Empresas</p>"),
+        ("", ""),
+        (None, ""),
+    ]
+    malas = [f"{e!r} -> {motor.correo_html(e)!r}, esperado {x!r}"
+             for e, x in casos if motor.correo_html(e) != x]
+    # Ninguna etiqueta ajena sobrevive: solo salen las que pone el motor.
+    suelto = motor.correo_html("<script>alert(1)</script>\n- <img src=x>")
+    if "<script" in suelto or "<img" in suelto:
+        malas.append(f"se cuela una etiqueta ajena: {suelto!r}")
+    return anota("El correo se copia con su formato", not malas,
                  f"{len(casos) - len(malas)}/{len(casos)} casos"), malas
 
 

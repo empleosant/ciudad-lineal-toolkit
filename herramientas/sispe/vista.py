@@ -25,7 +25,6 @@ import re
 import time
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from comun import estilo, gist, ia, version
 from comun.texto import normaliza
@@ -162,7 +161,7 @@ function alto(){
 
   // srcdoc: el marco es del mismo origen que la pagina, asi que se puede
   // tocar. El postMessage de abajo solo lo escuchan los componentes
-  // declarados con declare_component, no components.html.
+  // declarados con declare_component, no un marco de HTML suelto.
   try {
     const marco = window.frameElement;
     if (marco && Math.abs(marco.getBoundingClientRect().height - h) > 1) {
@@ -296,11 +295,11 @@ def pinta_tarjetas(ocupaciones):
     columna_ancha = estima(50, 100, 1)   # tableta o ventana estrecha
     movil = estima(20, 38, 1)            # una columna y el texto ocupando más
 
-    components.html(
+    estilo.marco(
         f"<style>{ESTILO_TARJETAS}</style>"
         f"<div class=\"rejilla\">{''.join(trozos)}</div>"
         f"<script>{GUION_INTERACTIVO}</script>",
-        height=escritorio,
+        escritorio,
     )
     # El marco de las tarjetas es el unico de la pagina, asi que no hace falta
     # marcarlo: 792 px de ventana son 760 de marco, que es donde la rejilla de
@@ -791,7 +790,7 @@ def usar_ejemplo(texto_ejemplo):
 def botones_carrito(ocupaciones):
     """Botones reales bajo las tarjetas: mandan la ocupación al generador de CV.
 
-    No pueden ir dentro: las tarjetas se dibujan con components.html, en un
+    No pueden ir dentro: las tarjetas se dibujan en un marco aparte, en un
     marco aislado, y un botón de ahí dentro no puede avisar a la aplicación.
     Es la conexión entre las dos herramientas: pasa por `herramientas.cv.estado`.
     """

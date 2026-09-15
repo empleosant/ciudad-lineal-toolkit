@@ -466,6 +466,65 @@ def rico(texto):
     return _CURSIVA.sub(r"<i>\1</i>", salida)
 
 
+# ---------------------------------------------------------------------------
+# El correo, en HTML
+# ---------------------------------------------------------------------------
+# Lo que se copia al portapapeles va en dos versiones del mismo correo, HTML y
+# texto, y cada programa coge la que entiende: Outlook y Word cogen el HTML y
+# conservan las negritas y las listas; un cuadro de texto pelado coge el texto.
+# Se convierte aqui y no en el navegador para que el motor siga siendo el unico
+# sitio donde se decide como sale lo que sale.
+#
+# Va sin fuente, sin tamano y sin color a proposito: asi el correo se pega con
+# la letra que tenga Outlook configurada y no desentona con la firma de quien
+# lo manda. El prompt solo permite parrafos, negritas y listas con guion, pero
+# si llega algo mas se queda como parrafo, que es mejor que perderlo.
+
+_VINETA = re.compile(r"^\s*[-*\u2022]\s+(.*)$")
+_NUMERADA = re.compile(r"^\s*\d+[.)]\s+(.*)$")
+_ENCABEZADO_MD = re.compile(r"^\s*#{1,6}\s*")
+
+
+def correo_html(texto):
+    """El correo en HTML, para pegarlo en Outlook con su formato."""
+    piezas, parrafo, puntos, lista = [], [], [], None
+
+    def cierra_parrafo():
+        # Cada salto de linea se respeta como salto: en un correo lo son de
+        # verdad. Si no, la despedida y la firma acabarian en el mismo renglon.
+        if parrafo:
+            piezas.append("<p>" + "<br>".join(parrafo) + "</p>")
+            parrafo.clear()
+
+    def cierra_lista():
+        nonlocal lista
+        if puntos:
+            piezas.append(f"<{lista}>" + "".join(f"<li>{x}</li>" for x in puntos)
+                          + f"</{lista}>")
+            puntos.clear()
+        lista = None
+
+    for linea in str(texto or "").replace("\r\n", "\n").split("\n"):
+        if not linea.strip():
+            cierra_parrafo()
+            cierra_lista()
+            continue
+        vineta, numerada = _VINETA.match(linea), _NUMERADA.match(linea)
+        if vineta or numerada:
+            cierra_parrafo()
+            suya = "ul" if vineta else "ol"
+            if lista and lista != suya:
+                cierra_lista()
+            lista = suya
+            puntos.append(rico((vineta or numerada).group(1).strip()))
+        else:
+            cierra_lista()
+            parrafo.append(rico(_ENCABEZADO_MD.sub("", linea).strip()))
+    cierra_parrafo()
+    cierra_lista()
+    return "".join(piezas)
+
+
 def _p(texto, estilo):
     return Paragraph(rico(texto), estilo)
 

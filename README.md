@@ -237,12 +237,25 @@ el tiempo de entonces no se guarda y no se inventa.
 **3 · Cierre.** El cuerpo del correo para la persona, con las recomendaciones y
 **las empresas para autocandidatura dentro**. En segunda persona y sin jerga:
 nunca aparecen las casillas de la matriz ni el diagnóstico técnico. Firma el
-orientador, no la oficina. Sale en markdown, se selecciona y se pega en Outlook
-con el formato puesto.
+orientador, no la oficina.
 
 El correo se escribe viendo **todo el hilo**: el currículo, la lectura previa y
 lo anotado en la cita. Y lo anotado en la cita manda: si contradice la lectura,
 gana la cita, porque la lectura eran hipótesis sobre un papel.
+
+**El botón de copiar lleva las dos versiones del correo al portapapeles**, HTML
+y texto, y cada programa coge la que entiende: Outlook y Word cogen el HTML y
+llegan las negritas y las listas; un cuadro de texto pelado coge el texto. La
+conversión la hace el motor (`correo_html`), no el navegador, para que siga
+habiendo un solo sitio donde se decide cómo sale lo que sale. Va **sin fuente,
+sin tamaño y sin color** a propósito: así el correo se pega con la letra que
+tenga Outlook configurada y no desentona con la firma de quien lo manda.
+
+El botón necesita JavaScript, así que vive en un marco aparte —`estilo.marco`,
+el mismo que usan las tarjetas del buscador—. Primero prueba la API moderna del
+portapapeles y, si el navegador no la deja usar dentro del marco, cae a
+seleccionar un bloque oculto y copiar la selección, que conserva el formato
+igual. Si fallan las dos, el botón lo dice en vez de quedarse callado.
 
 ## El expediente
 
