@@ -13,6 +13,7 @@ import json
 import re
 
 from comun import ia
+from herramientas.informes import motor
 
 MATRIZ = """MATRIZ DE TIPOLOGÍAS A1–D3
 Eje vertical, letras A–D: distancia al mercado de trabajo.
@@ -36,6 +37,10 @@ Reglas de uso:
 
 ANALISTA = f"""Eres orientador laboral en una Oficina de Empleo de la Comunidad de Madrid.
 Recibes el currículo ANONIMIZADO de una persona atendida y preparas la sesión con ella.
+
+Se te indica la FECHA DE HOY: cuenta desde ahí. Un currículo que acaba en abril de 2024
+no dice cuánto lleva la persona parada; eso lo dice el calendario, y es de los datos que
+más pesan. Lo mismo con la edad y con el «reciente» de la experiencia reciente.
 
 QUÉ HAY QUE LEER EN EL CV, antes de opinar:
 1. Edad estimada, deducida del año de finalización de los estudios secundarios. Determina
@@ -125,7 +130,9 @@ LA TRAYECTORIA
   aproximada en "duracion" («≈ 18 años»): de ahí sale la edad de la persona.
 - Los huecos son filas como las demás, y abren con el motivo en negrita: «**Sin datos.**»,
   «**Sin actividad declarada.**». Son el dato más importante del documento.
-- La última fila es la situación de hoy («Desempleo», «Sin actividad declarada»).
+- La última fila es la situación de hoy («Desempleo», «Sin actividad declarada»), y su
+  duración se cuenta hasta la FECHA DE HOY que se te indica, no hasta la última fecha del
+  currículo. Si el último empleo acabó hace dos años, eso es un hueco y va como tal.
 - "periodo": «1992», «1992 – 2012», «06 – 12 / 2019», «02/2020 – 12/2022», «Desde 07/2026».
 - "duracion": «20 años», «2 a. 11 m.», «6 m.», «22 meses», «≈ 18 años». Cabe en una línea.
 - "que": una línea corta. País entre paréntesis cuando no sea España, y se señala el
@@ -206,13 +213,15 @@ termina por la firma. Devuelve el texto pelado."""
 
 def lee_cv(cli, cv):
     """La lectura de la trayectoria, en prosa, para leerla en pantalla."""
-    return ia.genera(cli, ANALISTA, f"CURRÍCULO:\n{cv}", max_tokens=2048, pensar=True)
+    return ia.genera(cli, ANALISTA, f"HOY ES {motor.hoy()}.\n\nCURRÍCULO:\n{cv}",
+                     max_tokens=2048, pensar=True)
 
 
 def prepara(cli, cv, lectura):
     """El contenido del documento de dos páginas, como diccionario."""
     bruto = ia.genera(
-        cli, PREPARACION, f"CURRÍCULO:\n{cv}\n\nLECTURA YA HECHA:\n{lectura}",
+        cli, PREPARACION,
+        f"HOY ES {motor.hoy()}.\n\nCURRÍCULO:\n{cv}\n\nLECTURA YA HECHA:\n{lectura}",
         max_tokens=6144, json=True, pensar=True,
     )
     try:
@@ -232,6 +241,7 @@ def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal):
     donde viene.
     """
     peticion = (
+        f"HOY ES {motor.hoy()}.\n\n"
         f"CURRÍCULO:\n{cv or '(no consta)'}\n\n"
         f"LECTURA HECHA ANTES DE LA CITA (hipótesis):\n{lectura or '(no se hizo)'}\n\n"
         f"LO QUE SE HABLÓ EN LA CITA (esto manda):\n{notas or '(sin anotaciones)'}\n\n"

@@ -74,6 +74,16 @@ def en_horario_laboral(ahora=None):
     return 510 <= ahora.hour * 60 + ahora.minute < 870
 
 
+def hoy():
+    """La fecha de hoy, para los prompts.
+
+    Sin esto la IA no puede cerrar la cronologia: un CV que acaba en abril de
+    2024 no dice «sin actividad desde hace 29 meses», lo dice el calendario. Y
+    la edad estimada y el «colectivo prioritario» salen de la misma cuenta.
+    """
+    return datetime.now().strftime("%d/%m/%Y")
+
+
 def nombre_archivo(rasgo):
     """El documento se nombra por el rasgo del perfil, nunca por la persona.
 
