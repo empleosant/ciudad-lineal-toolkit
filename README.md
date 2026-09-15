@@ -282,6 +282,13 @@ Cloud instala paquetes del sistema. Si faltan, el documento se dibuja igual con
 DejaVu o Liberation, pero esas son más anchas: el texto corre más y el ajuste
 tiene que bajar la letra un punto.
 
+> **`packages.txt` no admite comentarios.** Streamlit Cloud le pasa el archivo
+> entero a `apt-get`, palabra por palabra: una línea que empiece por `#` no se
+> ignora, se intenta instalar. El despliegue muere con «Error installing
+> requirements» antes de arrancar la aplicación. Solo nombres de paquete, uno
+> por línea. Si algún día da problemas, se puede borrar el archivo: la
+> aplicación funciona sin él, con la fuente de reserva.
+
 **Dos páginas siempre**: si el contenido se pasa, se baja la letra y se vuelve a
 montar, igual que el generador de CV con su página única. Los topes que se le
 piden al modelo están calculados para que el peor caso quepa bajando poco
