@@ -15,28 +15,29 @@ import re
 from comun import ia
 from herramientas.informes import motor
 
-MATRIZ = """MATRIZ DE TIPOLOGÍAS A1–D3
-Eje vertical, letras A–D: distancia al mercado de trabajo.
-Eje horizontal, números 1–3: claridad del objetivo profesional.
+MATRIZ = f"""{motor.MATRIZ}
 
-Reglas de uso:
+CÓMO SE USA LA MATRIZ
 - La casilla es SIEMPRE una hipótesis y se nombra como tal.
-- Se propone con capas: una principal y las secundarias que se sospechan
-  (por ejemplo «A3 con capa de A2, probable B1 debajo»).
-- D1 y D3 NUNCA se dan por descartadas desde el papel: en un currículo no se ve
-  si hay un trámite documental pendiente, una carga de cuidado o un problema de
-  salud. Lo que se escribe es que hay que descartarlas EN LA SALA, y por eso van
-  entre las preguntas. «Se descartan D1 y D3 porque no existen barreras
-  estructurales» es justo el error a evitar: una barrera estructural precede a
-  todo lo demás y cambia el itinerario entero.
-- La motivación (activa / desgastada / desenganchada) no se deduce nunca del
-  CV. Se hace constar que es lo primero que hay que leer en la sala.
-- El diagnóstico contrasta los tres planos —factores individuales,
-  circunstancias personales y mercado del territorio—, no solo la brecha
-  competencial."""
-# La definicion de cada casilla vive en Matriz_Tipologias_Demandantes.docx, que
-# no esta en este repositorio. Si algun dia se pega aqui debajo, la hipotesis
-# sale mas afinada sin tocar nada mas: los dos prompts leen esta constante entera.
+- Se propone con capas: una principal y las secundarias que se sospechan (por ejemplo
+  «A3 con capa de A2, probable B1 debajo»).
+- Elige por lo que la ficha DESCRIBE, no por lo que el nombre de la casilla sugiere.
+- Las doce existen, pero en una oficina urbana se concentran en A1, A3, B1, B3 y C3, y
+  D1 depende del distrito. Es una pista de frecuencia, no una regla: si el caso pide
+  otra casilla, manda el caso.
+- D1 y D3 NUNCA se dan por descartadas desde el papel: en un currículo no se ve si hay
+  un trámite documental pendiente, una carga de cuidado o un problema de salud. Lo que
+  se escribe es que hay que descartarlas EN LA SALA, y por eso van entre las preguntas.
+  «Se descartan D1 y D3 porque no existen barreras estructurales» es justo el error a
+  evitar: una barrera estructural precede a todo lo demás y cambia el itinerario entero.
+- La motivación (activa / desgastada / desenganchada) atraviesa la matriz entera pero
+  NO se deduce del currículo. Se hace constar que es lo primero que hay que leer en la
+  sala.
+- Los campos que filtran recursos (prestación, movilidad, disponibilidad real,
+  discapacidad, distrito y radio, idiomas, cargas) no cambian la casilla, pero deciden
+  qué se le puede proponer: por eso van entre las preguntas.
+- El diagnóstico contrasta los tres planos —factores individuales, circunstancias
+  personales y mercado del territorio—, no solo la brecha competencial."""
 
 
 RIGOR = """CÓMO NO EQUIVOCARSE
@@ -122,6 +123,10 @@ CÓMO SE ESCRIBE
 {RIGOR}
 
 REGLAS DE CONTENIDO
+- Las acciones de arranque salen de la INTERVENCIÓN CENTRAL de la casilla, traducidas a
+  este caso: en A1, revisar el CV y abrir canales; en B1, acreditación por experiencia y
+  formación corta y dirigida; en A3, cerrar opciones en vez de abrirlas; en D1, el
+  trámite como acción principal y empleo puente en paralelo.
 - La tensión central se apoya en el dato que más pesa, no en el más cómodo de
   redactar. Si hay un hueco reciente y largo, la tensión lo nombra: para quien
   selecciona, dos años fuera del mercado pesan más que ninguna otra cosa del currículo.
@@ -129,9 +134,13 @@ REGLAS DE CONTENIDO
   explorar. Nunca una lista de opciones: el trabajo es cerrar, no abrir.
 - El objetivo declarado no se descarta, se reconduce a su versión alcanzable dentro de la
   misma familia profesional. Dilo explícitamente si el caso lo pide.
-- El riesgo a evitar se escribe siempre, y casi siempre es el mismo: derivar a formación
-  lo que es un problema de posicionamiento y de foco. La formación entra después de fijar
-  el objetivo.
+- El riesgo a evitar se escribe siempre, y sale del RIESGO TÍPICO DE LA CASILLA que
+  propongas, dicho para este caso concreto y no copiado de la ficha. Cada casilla tiene
+  el suyo: en A1 y A3 es derivar a formación lo que es posicionamiento y foco; en B1,
+  mandar a formación genérica en vez de acreditar lo que ya sabe hacer; en C1, el
+  abandono a mitad de itinerario; en D1, dejar a la persona esperando el trámite sin
+  hacer nada mientras tanto; en D3, proponerle recursos que no puede usar. Si las capas
+  hacen que haya dos riesgos de verdad, se escriben los dos y el rótulo va en plural.
 - Los recursos que dependan de convocatoria (acreditación por experiencia, programas de
   colectivo) se citan con la salvedad de comprobar plazos antes de mencionárselos.
 - Sin urls, sin cifras que caduquen y sin nombres de convocatorias concretas.
@@ -147,7 +156,8 @@ Responde SOLO con este JSON, sin texto alrededor:
    {{"periodo":"02/2020 – 12/2022","que":"Auxiliar de panadería: obrador y punto de venta (Madrid)","duracion":"2 a. 11 m."}},
    {{"periodo":"Desde 07/2026","que":"Desempleo","duracion":"2 meses"}}],
  "tension":{{"rotulo":"El desajuste que explica el bloqueo","texto":"Dos o tres frases: qué declara, qué sostiene el CV de verdad y por qué un seleccionador clasifica como clasifica."}},
- "hipotesis":"Entre 70 y 110 palabras: casilla con capas, qué la sostiene, descarte explícito de D1 y D3, y que la motivación no se deduce del CV.",
+ "casilla":"A2",
+ "hipotesis":"Entre 70 y 110 palabras: casilla con capas, qué la sostiene, qué queda por confirmar en la sala, y que la motivación no se deduce del CV.",
  "direcciones_entradilla":"Una frase que enmarque las direcciones, o cadena vacía si no hace falta.",
  "direcciones":[{{"papel":"Principal","familia":"Limpieza","variantes":"Edificios y oficinas, sociosanitario, o camarera de pisos en hotel","acredita":"Qué del CV la sostiene y por qué es verificable","falta":"Qué falta para entrar y en qué tipo de empresa se entra"}}],
  "preguntas":[{{"rotulo":"El hueco de 1992 a 2012","texto":"Veinte años. ¿Cuidados, autoempleo, economía informal, otro país? Puede haber experiencia utilizable que no cuenta porque no la considera «trabajo»."}}],
@@ -189,6 +199,8 @@ sobre el papel: pasarse obliga a encoger la letra. Por orden de aparición:
 
 - "rasgo": dos o tres palabras en minúscula separadas por guion bajo, que nombran el
   PERFIL y nunca a la persona.
+- "casilla": SOLO el código de la casilla principal, de A1 a D3, sin nombre y sin capas.
+  Las capas van en la prosa de "hipotesis".
 - "entradilla": de 20 a 35 palabras. No incluyas la frase de cautela: la pone la plantilla.
 - "trayectoria": de 4 a 8 filas, huecos y formación incluidos. "que", hasta 10 palabras.
 - "tension.texto": de 55 a 85 palabras.
@@ -239,6 +251,24 @@ LAS EMPRESAS
 - No pongas direcciones postales, ni teléfonos, ni webs, ni personas de contacto.
 - Después de la lista, UNA sola frase diciendo que conviene confirmar que siguen
   contratando antes de acercarse. Una vez, sin repetirlo ni ponerse solemne.
+
+LA MOTIVACIÓN CAMBIA EL CORREO ENTERO, no solo el tono. Si se indica:
+- **Activa**: busca por su cuenta y cumple lo acordado. Acuerdos exigentes y pocos.
+  Se le puede pedir un número de candidaturas y una fecha.
+- **Desgastada**: busca, pero ya no espera que salga. Acuerdos MÁS PEQUEÑOS Y
+  VERIFICABLES —uno concreto esta semana, no cinco este mes—, y se nombra lo que ya ha
+  conseguido antes de pedirle nada nuevo.
+- **Desenganchada**: comparece pero no actúa. Aquí no funciona el método: el correo se
+  hace corto, pide UNA sola cosa pequeña y deja la puerta abierta a volver. Nada de
+  listas largas ni de plazos apretados.
+- Si no se indica, se escribe como si fuera activa, pero sin apretar.
+
+LO QUE FILTRA LO QUE SE PUEDE PROPONER. Si las notas de la cita mencionan prestación y
+su fecha de fin, cargas de cuidado, salud, discapacidad, disponibilidad horaria real,
+movilidad o idiomas, lo que propongas tiene que respetarlo: no sirve de nada un turno de
+madrugada para quien lleva a un niño al colegio, ni un polígono sin transporte para
+quien no tiene coche. Si hay una fecha de fin de prestación, el horizonte de los plazos
+que pongas es ese.
 
 CÓMO SE ESCRIBE
 - En segunda persona y en lenguaje llano, sin jerga de orientación.

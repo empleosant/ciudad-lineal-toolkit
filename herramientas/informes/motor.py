@@ -105,8 +105,55 @@ def nombre_archivo(rasgo):
 # objetivo que se acordó y la zona donde busca, que es la que decide qué
 # empresas tienen sentido.
 
+# ---------------------------------------------------------------------------
+# La matriz de tipologías
+# ---------------------------------------------------------------------------
+# Vive en MATRIZ_TIPOLOGIAS.md, al lado de este archivo, y no aquí dentro: es
+# una «versión de trabajo pendiente de calibración», o sea que va a cambiar, y
+# cambiarla no debería pedir tocar Python. De ese archivo salen dos cosas: el
+# texto que se le pasa a la IA (todo lo que hay antes de la marca de corte) y
+# las doce casillas del desplegable de la pantalla, que se leen de los
+# encabezados «### A1. Problema de canal».
+
+MATRIZ_MD = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "MATRIZ_TIPOLOGIAS.md")
+CORTE_MATRIZ = "<!-- FIN DE LO QUE VE LA IA -->"
+_ENCABEZADO = re.compile(r"^###\s+([A-D][1-3])\.\s+(.+?)\s*$", re.M)
+
+
+def _lee_matriz():
+    """(texto para la IA, ((código, nombre), ...)) de las doce casillas.
+
+    Si el archivo no está, se sigue funcionando: la pantalla se queda sin
+    desplegable de casillas y el prompt sin matriz, que es peor pero no es
+    motivo para que la herramienta entera no arranque.
+    """
+    try:
+        with open(MATRIZ_MD, encoding="utf-8") as f:
+            crudo = f.read()
+    except Exception:  # noqa: BLE001
+        return "", ()
+    texto = crudo.split(CORTE_MATRIZ)[0].strip()
+    return texto, tuple(_ENCABEZADO.findall(texto))
+
+
+MATRIZ, CASILLAS = _lee_matriz()
+CODIGOS = tuple(c for c, _ in CASILLAS)
+# Lo que se enseña en el desplegable y lo que se guarda: «A1 · Problema de canal».
+CASILLAS_ROTULO = tuple(f"{c} · {n}" for c, n in CASILLAS)
+SIN_CASILLA = "Sin asignar"
+
+
+def codigo_de_casilla(rotulo):
+    """«A1 · Problema de canal» -> «A1». Cadena vacía si no es una casilla."""
+    codigo = (rotulo or "").split("·")[0].strip().upper()
+    return codigo if codigo in CODIGOS else ""
+
+
 MOTIVACIONES = ("Sin anotar", "Activa", "Desgastada", "Desenganchada")
 ENCAJES = ("Sin anotar", "Sí", "A medias", "No")
+# La hoja de calibración codifica la motivación en una letra.
+LETRA_MOTIVACION = {"Activa": "A", "Desgastada": "D", "Desenganchada": "X"}
 
 
 def lo_acordado(datos):
@@ -139,6 +186,7 @@ VERSION_EXPEDIENTE = 1
 CAMPOS_EXPEDIENTE = (
     "cv", "lectura", "ficha", "notas", "objetivo1", "objetivo2", "zona",
     "adjuntos", "firma", "canal", "casilla", "motivacion", "encaje",
+    "referencia", "observaciones",
 )
 
 
@@ -154,7 +202,8 @@ def expediente(datos):
 # editado a mano, a medio copiar o de otra version. Cada campo se acepta solo
 # si es de su tipo, y lo que no encaje se queda fuera en vez de tumbar la
 # pantalla al dibujar el widget que lo espera.
-VOCABULARIOS = {"motivacion": MOTIVACIONES, "encaje": ENCAJES}
+VOCABULARIOS = {"motivacion": MOTIVACIONES, "encaje": ENCAJES,
+                "casilla": (SIN_CASILLA,) + CASILLAS_ROTULO}
 
 
 def _valor_valido(campo, valor):
@@ -242,19 +291,28 @@ def trayectoria_desde_cv(cv):
 
 
 def fila_calibracion(datos):
-    """La fila para la hoja de calibración de la matriz, en CSV.
+    """La fila para la hoja de calibración, con las columnas de la hoja.
 
-    Sin esto la matriz no mejora: hace falta saber qué casilla se acabó
-    asignando y si el caso encajaba de verdad en esa tipología.
+    Sin esto la matriz se queda en «versión de trabajo» para siempre: hace
+    falta clasificar treinta o cuarenta casos para ver qué casilla sobra y qué
+    casilla hay que partir en dos. El «Nº» va en blanco a propósito: lo lleva
+    la hoja, no la aplicación, y así la fila se pega en su sitio sin recolocar
+    columnas.
     """
+    encaje = (datos.get("encaje") or "").strip()
+    if encaje == ENCAJES[0]:
+        encaje = ""
+    observaciones = (datos.get("observaciones") or "").strip()
     buffer = io.StringIO()
     escritor = csv.writer(buffer, delimiter=";")
-    escritor.writerow(["casilla", "motivacion", "encajaba", "objetivo"])
+    escritor.writerow(["Nº", "Referencia del caso", "Casilla", "Motivación",
+                       "¿Encaja? Observaciones"])
     escritor.writerow([
-        (datos.get("casilla") or "").strip(),
-        datos.get("motivacion") or "",
-        datos.get("encaje") or "",
-        (datos.get("objetivo1") or "").strip(),
+        "",
+        (datos.get("referencia") or "").strip(),
+        codigo_de_casilla(datos.get("casilla")),
+        LETRA_MOTIVACION.get(datos.get("motivacion") or "", ""),
+        " — ".join(x for x in (encaje, observaciones) if x),
     ])
     return buffer.getvalue().encode("utf-8-sig")
 

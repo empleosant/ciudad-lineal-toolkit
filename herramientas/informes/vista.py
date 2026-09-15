@@ -64,8 +64,11 @@ DEL_ARCHIVO = {
     "objetivo2": "inf_w_objetivo2", "zona": "inf_w_zona", "adjuntos": "inf_w_adjuntos",
     "firma": "inf_w_firma", "canal": "inf_w_canal", "casilla": "inf_w_casilla",
     "motivacion": "inf_w_motivacion", "encaje": "inf_w_encaje",
+    "referencia": "inf_w_referencia", "observaciones": "inf_w_observaciones",
     "lectura": "inf_lectura", "ficha": "inf_ficha",
 }
+
+CASILLAS = (motor.SIN_CASILLA,) + motor.CASILLAS_ROTULO
 
 
 def _cliente():
@@ -381,26 +384,55 @@ with fase2:
     st.markdown('<div class="seccion">Calibración de la matriz</div>', unsafe_allow_html=True)
     st.caption(
         "Qué casilla se acabó asignando y si el caso encajaba de verdad en esa "
-        "tipología. Sin esto, la matriz no mejora."
+        "tipología. Clasificando treinta o cuarenta casos se ve qué casilla sobra y "
+        "cuál hay que partir en dos; sin eso, la matriz se queda en versión de trabajo."
     )
-    casilla, motivacion = st.columns([1, 2], gap="medium")
-    casilla.text_input("Casilla asignada", key="inf_w_casilla", placeholder="A3")
-    motivacion.radio("Motivación observada", motor.MOTIVACIONES, key="inf_w_motivacion",
-                     horizontal=True)
-    st.radio("¿Encajaba en la tipología?", motor.ENCAJES, key="inf_w_encaje",
-             horizontal=True)
 
-    if (st.session_state.get("inf_w_casilla") or "").strip():
+    # La que propuso la IA viene precargada, para confirmarla o cambiarla. Es una
+    # hipótesis salida de un papel: quien cierra la casilla es quien estuvo en la sala.
+    # Solo se precarga si no hay ninguna elegida, y una sola vez por propuesta: si se
+    # cambia a mano, el cambio manda y no se vuelve a pisar en el siguiente refresco.
+    _propuesta = (st.session_state.get("inf_ficha") or {}).get("casilla")
+    _rotulo = next((r for r in motor.CASILLAS_ROTULO
+                    if motor.codigo_de_casilla(r) == str(_propuesta or "").upper()), "")
+    if _rotulo and st.session_state.get("inf_propuesta") != _rotulo:
+        st.session_state["inf_propuesta"] = _rotulo
+        if st.session_state.get("inf_w_casilla", motor.SIN_CASILLA) == motor.SIN_CASILLA:
+            st.session_state["inf_w_casilla"] = _rotulo
+
+    casilla, motivacion = st.columns([3, 4], gap="medium")
+    casilla.selectbox(
+        "Casilla asignada", CASILLAS, key="inf_w_casilla",
+        help="La propone la IA en la preparación y la cierras tú aquí." if _rotulo
+             else "De la matriz de tipologías.",
+    )
+    motivacion.radio("Motivación observada", motor.MOTIVACIONES, key="inf_w_motivacion",
+                     horizontal=True,
+                     help="Atraviesa la matriz entera: el mismo perfil activo se "
+                          "resuelve en dos sesiones y desenganchado puede llevar meses.")
+    encaja, referencia = st.columns([3, 4], gap="medium")
+    encaja.radio("¿Encajaba en la tipología?", motor.ENCAJES, key="inf_w_encaje",
+                 horizontal=True)
+    referencia.text_input("Referencia del caso", key="inf_w_referencia",
+                          placeholder="Cita 15/09 · perfil de logística",
+                          help="Cómo reconoces tú el caso en tu hoja. Sin nombres.")
+    st.text_input("Observaciones", key="inf_w_observaciones",
+                  placeholder="Encaja en A2, pero el hueco de dos años pesa como si "
+                              "fuera B1.")
+
+    _casilla = st.session_state.get("inf_w_casilla") or motor.SIN_CASILLA
+    if motor.codigo_de_casilla(_casilla):
         st.download_button(
             "Descargar la fila de calibración",
             motor.fila_calibracion({
-                "casilla": st.session_state.get("inf_w_casilla"),
-                "motivacion": st.session_state.get("inf_w_motivacion"),
-                "encaje": st.session_state.get("inf_w_encaje"),
-                "objetivo1": st.session_state.get("inf_w_objetivo1"),
+                clave: st.session_state.get(f"inf_w_{clave}")
+                for clave in ("casilla", "motivacion", "encaje", "referencia",
+                              "observaciones")
             }),
             file_name="calibracion_matriz.csv", mime="text/csv",
             use_container_width=True,
+            help="Una fila con las columnas de la hoja de calibración, para pegarla "
+                 "tal cual.",
         )
 
 # ---------------------------------------------------------------------------

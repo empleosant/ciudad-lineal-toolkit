@@ -47,6 +47,7 @@ herramientas/
     motor.py                   tacha datos personales y arma el PDF de dos páginas. Python puro
     modelo.py                  prompts: leer el CV, preparar la sesión, redactar el correo
     PROTOCOLO_ORIENTACION.md   el protocolo del que sale todo lo anterior
+    MATRIZ_TIPOLOGIAS.md       las doce casillas. La lee la app: prompt y desplegable
 pruebas/
   motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
@@ -345,13 +346,57 @@ escalados que se midieron en los PDF buenos, no los del anexo.
 
 ## La matriz de tipologías
 
-La constante `MATRIZ`, en `herramientas/informes/modelo.py`, lleva los ejes
-(A–D distancia al mercado, 1–3 claridad del objetivo) y las reglas de uso: la
-casilla es siempre hipótesis, se propone con capas, y D1 y D3 se descartan
-explícitamente antes de cerrar nada. La definición de cada casilla vive en
-`Matriz_Tipologias_Demandantes.docx`, que no está en este repositorio; si
-algún día se pega dentro de esa constante, la hipótesis sale más afinada sin
-tocar nada más, porque los dos prompts la leen entera.
+Vive en `herramientas/informes/MATRIZ_TIPOLOGIAS.md`, al lado del protocolo, y
+**no dentro del código**: es una «versión de trabajo pendiente de calibración»,
+o sea que va a cambiar, y cambiarla no debería pedir tocar Python.
+
+De ese archivo salen dos cosas:
+
+- **El texto que se le pasa a la IA**: todo lo que hay por encima de la marca
+  `<!-- FIN DE LO QUE VE LA IA -->`. Lo de debajo —la hoja de calibración— es
+  para quien usa la herramienta, no para el modelo.
+- **Las doce casillas del desplegable** de la pestaña de la cita, leídas de los
+  encabezados `### A1. Problema de canal`. Si se reescribe el documento hay que
+  mantener ese formato: código, punto, nombre.
+
+`pruebas/informes.py` comprueba las dos cosas: que salgan doce casillas con sus
+códigos de A1 a D3, que cada una traiga su intervención y su riesgo, y que la
+hoja de calibración no se le esté colando al modelo.
+
+### Qué hace la matriz en cada sitio
+
+- **El riesgo a evitar del documento sale de la casilla**, no de una frase fija.
+  En A1 y A3 es derivar a formación lo que es posicionamiento; en B1, mandar a
+  formación genérica en vez de acreditar lo que ya sabe hacer; en C1, el
+  abandono a mitad de itinerario; en D1, dejar a la persona esperando el
+  trámite. Antes se escribía siempre el de A1, que es el más frecuente pero no
+  el único.
+- **Las acciones de arranque salen de la intervención central** de la casilla.
+- **La frecuencia real es una pista, no una regla**: se le dice que en una
+  oficina urbana se concentran en A1, A3, B1, B3 y C3, y que D1 depende del
+  distrito, pero que si el caso pide otra, manda el caso.
+- **D1 y D3 nunca se dan por descartadas desde el papel.** En un currículo no se
+  ve un trámite pendiente ni una carga de cuidado: se hace constar que hay que
+  descartarlas en la sala, y por eso van entre las preguntas.
+- **La motivación cambia el correo entero**, no solo el tono: con la persona
+  activa, acuerdos exigentes; desgastada, acuerdos más pequeños y verificables y
+  se nombra lo ya conseguido; desenganchada, un correo corto con una sola cosa
+  pequeña. Atraviesa la matriz entera y no se deduce del currículo.
+- **Los campos que filtran recursos** —prestación y su fecha de fin, movilidad,
+  disponibilidad real, discapacidad, distrito y radio, idiomas, cargas— no
+  cambian la casilla, pero deciden qué se puede proponer. Por eso van entre las
+  preguntas del documento, y el correo tiene orden de respetarlos.
+
+### La casilla, de la hipótesis al registro
+
+La IA propone una casilla en la preparación, como hipótesis y con capas. En la
+pestaña de la cita viene **precargada en el desplegable**, para confirmarla o
+cambiarla: quien la cierra es quien estuvo en la sala. Si se cambia a mano, el
+cambio manda y no se vuelve a pisar.
+
+De ahí sale la fila de la hoja de calibración, en CSV y con las columnas de la
+hoja: Nº, referencia del caso, casilla, motivación codificada A/D/X, y encaje
+con observaciones. El Nº va en blanco a propósito, porque lo lleva la hoja.
 
 # Codificador de ocupaciones SISPE
 

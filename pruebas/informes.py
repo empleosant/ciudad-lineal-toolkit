@@ -17,6 +17,8 @@ Lo que se prueba:
   · Que una ficha incompleta o rara no revienta.
   · Que el expediente va y vuelve entero, y que uno estropeado no deja la
     pantalla sin arrancar.
+  · Que la matriz se lee entera de su documento y que la hoja de calibración
+    sale con las columnas de la hoja.
 
 Las fichas de prueba son inventadas, pero con la misma forma y la misma
 densidad de texto que los documentos reales: con palabras largas de relleno el
@@ -263,8 +265,11 @@ def expediente_ida_y_vuelta():
     """Sin esto no hay continuidad entre la preparación y la cita."""
     import json
     lleno = {c: f"valor de {c}" for c in motor.CAMPOS_EXPEDIENTE}
-    lleno.update({"ficha": {"rasgo": "comercio_limpieza", "entradilla": "Perfil."},
-                  "motivacion": "Desgastada", "encaje": "A medias"})
+    lleno["ficha"] = {"rasgo": "comercio_limpieza", "entradilla": "Perfil."}
+    # Los campos con vocabulario cerrado se rellenan con un valor suyo de verdad:
+    # cualquier otra cosa la descarta `lee_expediente`, y con razón.
+    for campo, vocabulario in motor.VOCABULARIOS.items():
+        lleno[campo] = vocabulario[-1]
     vuelta, error = motor.lee_expediente(motor.expediente(lleno))
     malas = [f"al releer: {error}"] if error else []
     malas += [f"«{c}» vuelve como {vuelta.get(c)!r}, se guardó {lleno[c]!r}"
@@ -321,6 +326,64 @@ def expediente_roto():
                  f"{len(casos) - len(malas)}/{len(casos)} casos"), malas
 
 
+@prueba("La matriz se lee entera del documento")
+def matriz():
+    """El .md es la fuente: si cambia el formato, esto lo canta.
+
+    Las doce casillas salen de sus encabezados. Si alguien reescribe el
+    documento y se lleva por delante uno, el desplegable de la pantalla pierde
+    esa casilla en silencio y la hoja de calibración deja de poder registrarla.
+    """
+    malas = []
+    if len(motor.CASILLAS) != 12:
+        malas.append(f"se leen {len(motor.CASILLAS)} casillas, tendrían que ser 12")
+    esperados = [f"{letra}{numero}" for letra in "ABCD" for numero in "123"]
+    if list(motor.CODIGOS) != esperados:
+        malas.append(f"los códigos salen {list(motor.CODIGOS)}")
+    for codigo, nombre in motor.CASILLAS:
+        if not nombre.strip():
+            malas.append(f"{codigo} no tiene nombre")
+    # Cada ficha tiene que traer su intervención y su riesgo: el prompt los usa.
+    for pieza in ("Intervención central", "Riesgo típico", "Banda transversal",
+                  "Campos que filtran recursos"):
+        if pieza not in motor.MATRIZ:
+            malas.append(f"falta «{pieza}» en lo que se le pasa a la IA")
+    if motor.MATRIZ.count("**Riesgo típico.**") != 12:
+        malas.append(f"hay {motor.MATRIZ.count('**Riesgo típico.**')} riesgos típicos, "
+                     "tendría que haber uno por casilla")
+    # Lo de después de la marca de corte no viaja al modelo.
+    if "Hoja de calibración" in motor.MATRIZ:
+        malas.append("la hoja de calibración se le está pasando a la IA")
+    return anota("La matriz se lee entera del documento", not malas,
+                 f"{len(motor.CASILLAS)} casillas · {len(motor.MATRIZ)} caracteres"), malas
+
+
+@prueba("La hoja de calibración sale con sus columnas")
+def calibracion():
+    fila = motor.fila_calibracion({
+        "casilla": "A1 · Problema de canal", "motivacion": "Desgastada",
+        "encaje": "A medias", "referencia": "Cita del 15",
+        "observaciones": "Pesa como B1."}).decode("utf-8-sig")
+    cabecera, datos = fila.strip().splitlines()
+    malas = []
+    if cabecera != "Nº;Referencia del caso;Casilla;Motivación;¿Encaja? Observaciones":
+        malas.append(f"la cabecera sale «{cabecera}»")
+    campos = datos.split(";")
+    if campos[0] != "":
+        malas.append("el Nº tendría que ir en blanco: lo lleva la hoja")
+    if campos[2] != "A1":
+        malas.append(f"la casilla sale «{campos[2]}», se esperaba el código a secas")
+    if campos[3] != "D":
+        malas.append(f"la motivación sale «{campos[3]}», se esperaba la letra")
+    if "A medias" not in campos[4] or "Pesa como B1." not in campos[4]:
+        malas.append(f"encaje y observaciones no van juntos: «{campos[4]}»")
+    # Sin nada anotado, la fila sale vacía pero con sus cinco columnas.
+    vacia = motor.fila_calibracion({}).decode("utf-8-sig").strip().splitlines()[1]
+    if vacia != ";;;;":
+        malas.append(f"la fila vacía sale «{vacia}»")
+    return anota("La hoja de calibración sale con sus columnas", not malas), malas
+
+
 @prueba("Los prompts se montan enteros")
 def prompts_enteros():
     """Las piezas compartidas se interpolan de verdad en los dos prompts.
@@ -333,8 +396,9 @@ def prompts_enteros():
     malas = []
     for nombre, prompt in (("ANALISTA", modelo.ANALISTA),
                            ("PREPARACION", modelo.PREPARACION)):
-        for pieza, etiqueta in ((modelo.MATRIZ, "la matriz"), (modelo.RIGOR, "el rigor")):
-            if pieza not in prompt:
+        for pieza, etiqueta in ((motor.MATRIZ, "la matriz del documento"),
+                                (modelo.RIGOR, "el rigor")):
+            if not pieza or pieza not in prompt:
                 malas.append(f"{nombre}: no lleva {etiqueta}")
         if "{" in prompt.replace("{{", "").replace("}}", "") and '{"rasgo"' not in prompt:
             malas.append(f"{nombre}: queda una llave sin sustituir")
