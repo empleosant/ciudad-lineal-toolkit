@@ -313,9 +313,22 @@ los PDF buenos. Cada pieza es como es por algo:
   falta y por dónde entrar— con el papel y la familia en la primera
   («Principal — Limpieza») y debajo las variantes concretas.
 - **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita y
-  **dos líneas de puntos debajo**, para escribir a mano durante la entrevista.
-  El rótulo nombra lo que pasa en ese caso («El hueco de 1992 a 2012»), no una
-  etiqueta genérica.
+  **dos renglones de puntos debajo**, para escribir a mano durante la
+  entrevista. El rótulo nombra lo que pasa en ese caso («El hueco de 1992 a
+  2012»), no una etiqueta genérica.
+
+  El renglón mide **8 mm y no se encoge** con el ajuste de letra: es espacio
+  físico para un bolígrafo, no tipografía. Medido en los documentos que se
+  hacían a mano, el hueco era de 4,7 mm —menos de lo que ocupa una palabra
+  escrita— y los tres huecos del bloque medían casi lo mismo, así que el par de
+  líneas no se agrupaba con su pregunta y se leía como un filete doble
+  decorativo. De ahí salen los topes de la sección MEDIDA: con renglones de
+  verdad **caben cinco bloques de preguntas, no ocho**. Si hay más cosas que
+  preguntar, el prompt manda agruparlas.
+
+  Cada pregunta va con sus dos renglones en un `KeepTogether`: una pregunta al
+  final de una página y su sitio para contestarla al principio de la siguiente
+  no sirve para nada.
 - **El riesgo a evitar** cierra la segunda página en un recuadro, y se escribe
   siempre.
 

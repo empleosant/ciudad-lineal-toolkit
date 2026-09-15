@@ -345,8 +345,8 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    BaseDocTemplate, Flowable, Frame, HRFlowable, PageBreak, PageTemplate,
-    Paragraph, Spacer, Table, TableStyle,
+    BaseDocTemplate, Flowable, Frame, HRFlowable, KeepTogether, PageBreak,
+    PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 from xml.sax.saxutils import escape as _esc
 
@@ -367,6 +367,11 @@ ANCHO_UTIL = A4[0] - MARGEN_LADO * 2        # 178 mm
 CUERPO = 9.22
 TABLA = 8.64
 INTERLINEADO = 1.43
+# El renglon para escribir a mano. NO se encoge con el resto: es espacio
+# fisico para un boligrafo, no tipografia. Si la letra baja a 0,82 y el
+# renglon bajara con ella, quedarian 6,6 mm y ahi no cabe escribir, que es
+# justo para lo que esta la pagina.
+RENGLON = 8 * mm
 FACTOR_MINIMO = 0.82        # por debajo de esto ya no se lee cómodo en papel.
                             # El peor caso que el prompt permite necesita 0,88,
                             # así que sobra margen; medido, no estimado.
@@ -624,10 +629,14 @@ def _tabla_direcciones(filas, f):
     return tabla
 
 
-def _raya(antes):
-    """Línea de puntos para escribir a mano durante la entrevista."""
+def _raya():
+    """Renglón de puntos para escribir a mano durante la entrevista.
+
+    Se escribe SOBRE la línea, así que el hueco que hace falta es el de
+    encima: por eso el espacio va en `spaceBefore` y mide lo que mide.
+    """
     return HRFlowable(width="100%", thickness=0.58, color=PUNTEADO,
-                      dash=(0.58, 0.58), spaceBefore=antes, spaceAfter=0)
+                      dash=(0.58, 0.58), spaceBefore=RENGLON, spaceAfter=0)
 
 
 def _flujo(ficha, f):
@@ -672,11 +681,14 @@ def _flujo(ficha, f):
         elementos += _seccion(4, "Lo que hay que preguntar", f, antes=0)
         est = _estilo(CUERPO * f, color=PROSA)
         for b in preguntas:
-            elementos.append(_con_rotulo(b.get("rotulo"), b.get("texto"), est))
-            # Dos lineas de puntos por bloque: el documento se lleva impreso y
-            # se escribe encima durante la entrevista.
-            elementos += [_raya(3.2 * mm * f), _raya(4.5 * mm * f),
-                          Spacer(1, 1.2 * mm * f)]
+            # La pregunta y sus dos renglones van juntos o no van: una pregunta
+            # al final de una pagina y su sitio para contestarla al principio de
+            # la siguiente no sirve para nada.
+            elementos.append(KeepTogether([
+                _con_rotulo(b.get("rotulo"), b.get("texto"), est),
+                _raya(), _raya(),
+            ]))
+            elementos.append(Spacer(1, 5.5 * mm * f))
 
     acciones = ficha.get("acciones") or []
     if acciones:

@@ -52,6 +52,9 @@ RIGOR = """CÓMO NO EQUIVOCARSE
 - NO INVENTES problemas ni requisitos que el currículo no dé pie a suponer. Si no dice
   nada de los puntos del carné, de sanciones o de un idioma, no los menciones. Lo que sí
   se señala es lo caducado o sin acreditar que el currículo SÍ enseña.
+- Las EDADES y las DURACIONES van en cifras, no en letra: «unos 37 años», no «unos
+  treinta y siete años». Es un documento que se lee de un vistazo y un número escrito
+  con letras hay que descifrarlo.
 - El SEXO se menciona solo si el currículo lo deja claro. Si únicamente lo sugieren las
   terminaciones de los oficios, no lo digas: basta con el perfil y la edad.
 - Nada de «el candidato» ni «la candidata»: se habla de la persona, o directamente de lo
@@ -207,7 +210,12 @@ sobre el papel: pasarse obliga a encoger la letra. Por orden de aparición:
 - "hipotesis": de 75 a 110 palabras.
 - "direcciones_entradilla": hasta 22 palabras, o "" si no aporta nada.
 - "direcciones": 2 o 3. "variantes" hasta 12 palabras, "acredita" hasta 28, "falta" hasta 45.
-- "preguntas": de 6 a 8 bloques. "rotulo" hasta 8 palabras, "texto" de 15 a 35.
+- "preguntas": de 4 a 5 bloques, NO más. Cada uno se lleva dos renglones en blanco para
+  escribir a mano durante la entrevista, y esos renglones son la razón de ser de la
+  página: con más bloques no queda sitio donde contestar. Si hay más de cinco cosas que
+  preguntar, se AGRUPAN en un bloque («marco real de la búsqueda» cubre de una vez la
+  movilidad, los turnos y la disponibilidad; «situación económica» cubre de qué vive y
+  hasta cuándo). "rotulo" hasta 8 palabras, "texto" de 15 a 35.
 - "acciones": de 4 a 6. "rotulo" hasta 8 palabras, "texto" de 15 a 35.
 - "riesgo.texto": de 45 a 65 palabras.
 
