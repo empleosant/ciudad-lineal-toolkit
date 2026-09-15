@@ -46,18 +46,21 @@ herramientas/
     vista.py                   las tres fases de una orientación individual, una por pestaña
     motor.py                   tacha datos personales y arma el PDF de dos páginas. Python puro
     modelo.py                  prompts: leer el CV, preparar la sesión, redactar el correo
+    PROTOCOLO_ORIENTACION.md   el protocolo del que sale todo lo anterior
 pruebas/
   motor_pruebas.py             importa el motor para las pruebas
   evaluar.py                   aciertos: 40 consultas con su código correcto
   casos.csv                    los 40 casos (referencia, se edita a mano)
   estres.py                    robustez: que nada se rompa por lo bajo
+  informes.py                  que el documento de preparación quepa en dos páginas
   informe_evaluacion.csv       salida de --informe, regenerable, no versionado
 scripts/
   enriquecer.py                genera terminos_ampliados.txt (no lo usa la app)
   despertar.py                 despertador (no lo usa la app)
 .github/workflows/             programa el despertador
 .streamlit/config.toml         colores del tema
-requirements.txt               dependencias
+requirements.txt               dependencias de Python
+packages.txt                   paquetes del sistema (las fuentes del documento)
 ```
 
 Reglas de la casa:
@@ -193,6 +196,9 @@ ya empezadas.
 Traslada a la aplicación el protocolo de orientación individual. Tres
 fases, una por pestaña, y la del medio no la escribe la máquina.
 
+El protocolo entero está en `herramientas/informes/PROTOCOLO_ORIENTACION.md`,
+que es de donde salen los prompts. Si cambia el protocolo, cambian los prompts.
+
 **1 · Preparación.** Entra el currículo **sin datos personales**: pegado,
 arrastrado como `.md` o `.txt`, o tomado del generador de CV. Como con el
 asesor de formación, el CV de la persona solo puede subirse a Teams, que es
@@ -234,26 +240,59 @@ versión: se sustituye entero.
 
 | Página | Contenido |
 |---|---|
-| 1 | Título y entradilla · § 1 La trayectoria en una lectura (tabla con duraciones; los huecos van marcados) · recuadro con la tensión central · § 2 Hipótesis de partida · § 3 Direcciones posibles (tres columnas) |
-| 2 | § 4 Lo que hay que preguntar (cada bloque con dos líneas de puntos para escribir a mano) · § 5 Acciones de arranque · recuadro con el riesgo a evitar |
+| 1 | Título y entradilla · § 1 La trayectoria en una lectura · recuadro con la tensión central · § 2 Hipótesis de partida · § 3 Direcciones posibles |
+| 2 | § 4 Lo que hay que preguntar · § 5 Acciones de arranque · recuadro con el riesgo a evitar |
 
-Se genera con `reportlab`, como el PDF del generador de CV, y con las
-medidas del protocolo: caja de texto de 178 mm, márgenes de 16 mm, 17 mm
-arriba y 13 mm abajo, cuerpo de 9,2 pt con interlineado 1,48. **Dos páginas
-siempre**: si el contenido se pasa, se baja la letra y se vuelve a montar,
-igual que el generador de CV con su página única. Los topes que se le piden
-al modelo (cuántas filas, cuántas direcciones, cuántos bloques) están
-calculados para que quepa sin encoger nada en el peor caso.
+La forma está copiada de los documentos que se venían haciendo a mano, midiendo
+los PDF buenos. Cada pieza es como es por algo:
 
-Caladea y Carlito son las del protocolo pero no están en el servidor: si no
-aparecen se usa DejaVu, serif para los títulos y sans para el texto, igual
-que el generador de CV sustituye Trebuchet MS.
+- **La trayectoria** es una tabla sin cabecera: periodo, qué pasó y cuánto
+  duró. Entran también los hitos de formación, con el año suelto y la edad
+  aproximada en la columna de la derecha: de ahí sale la edad de la persona.
+  Los huecos son filas como las demás y abren con el motivo en negrita
+  («**Sin datos.**»), porque son el dato más importante del documento.
+- **Los recuadros de aviso** no llevan una etiqueta fija: abren con una frase
+  en negrita que cambia con el caso («El desajuste que explica el bloqueo»,
+  «Las dos cosas que ordenan esta sesión»).
+- **Las direcciones** van en una tabla de tres columnas —qué acredita ya, qué
+  falta y por dónde entrar— con el papel y la familia en la primera
+  («Principal — Limpieza») y debajo las variantes concretas.
+- **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita y
+  **dos líneas de puntos debajo**, para escribir a mano durante la entrevista.
+  El rótulo nombra lo que pasa en ese caso («El hueco de 1992 a 2012»), no una
+  etiqueta genérica.
+- **El riesgo a evitar** cierra la segunda página en un recuadro, y se escribe
+  siempre.
+
+La IA puede marcar **negrita** y *cursiva* en cualquier campo de texto; el
+motor lo traduce a marcado de `reportlab` **después** de escapar el texto, que
+si no un `&` del currículo dejaría el párrafo sin pintar.
+
+### Medidas y fuentes
+
+Se genera con `reportlab`, como el PDF del generador de CV. Las medidas son las
+de los documentos buenos: caja de texto de 178 mm, márgenes de 16 mm y 17 mm
+arriba, cuerpo de 9,22 pt con interlineado 1,43, tabla a 8,64 pt, y las columnas
+de las dos tablas a sus anchos exactos.
+
+Las fuentes son **Caladea** para los títulos y **Carlito** para el texto, que
+son las del protocolo. Se instalan con `packages.txt`
+(`fonts-crosextra-caladea` y `fonts-crosextra-carlito`), que es como Streamlit
+Cloud instala paquetes del sistema. Si faltan, el documento se dibuja igual con
+DejaVu o Liberation, pero esas son más anchas: el texto corre más y el ajuste
+tiene que bajar la letra un punto.
+
+**Dos páginas siempre**: si el contenido se pasa, se baja la letra y se vuelve a
+montar, igual que el generador de CV con su página única. Los topes que se le
+piden al modelo están calculados para que el peor caso quepa bajando poco
+(factor 0,88, aún a tamaño legible), y `pruebas/informes.py` lo comprueba
+midiendo.
 
 El anexo del protocolo describe la otra cadena, HTML → `wkhtmltopdf`, con su
 factor de 1,307 para compensar que `wkhtmltopdf` maquete a 1038 px en vez de
-a 794. **Aquí ese factor no se aplica y no debe aplicarse**: `reportlab`
-dibuja en puntos y los milímetros son milímetros. Con el factor, el documento
-saldría un tercio más grande y en cuatro páginas.
+a 794. **Aquí ese factor no se aplica y no debe aplicarse**: `reportlab` dibuja
+en puntos y los milímetros son milímetros. Los tamaños del código son los YA
+escalados que se midieron en los PDF buenos, no los del anexo.
 
 ## La matriz de tipologías
 
@@ -309,13 +348,14 @@ se enseña el catálogo sin afinar, no hay chip.
 - **Puntuación del buscador**: `busca()` en `herramientas/sispe/motor.py`.
 - **Vocabulario**: `herramientas/sispe/datos/vocabulario.json`. Si falta, la app arranca en modo mínimo.
 
-## Las dos baterías de pruebas
+## Las baterías de pruebas
 
-Antes de subir cualquier cambio en `vocabulario.json` o en el buscador, las dos.
-Ninguna llama a la IA ni gasta cuota; entre las dos tardan unos segundos.
+Antes de subir cualquier cambio en `vocabulario.json` o en el buscador, las dos
+primeras. La tercera, antes de tocar el documento de preparación de sesión o su
+prompt. Ninguna llama a la IA ni gasta cuota; entre las tres tardan unos segundos.
 
 ```
-python pruebas/evaluar.py && python pruebas/estres.py
+python pruebas/evaluar.py && python pruebas/estres.py && python pruebas/informes.py
 ```
 
 **`evaluar.py` — aciertos.** Pasa los 40 casos de `casos.csv`. Dice si el
@@ -351,6 +391,18 @@ que la búsqueda siga siendo rápida.
 Hace falta porque `evaluar.py` no lo ve todo. El 21/08/2026 un cambio en el
 lematizador dejó 216 ocupaciones inalcanzables desde el singular y `evaluar.py`
 solo detectó dos casos raros. La prueba de convergencia lo canta entero.
+
+**`informes.py` — el documento cabe.** El protocolo pide dos páginas A4 y lo
+dice en serio: un documento de tres deja de servir para lo que sirve, que es
+llevarlo impreso y escribir encima. Comprueba que cabe incluso con el contenido
+en el tope de lo que el prompt permite devolver, que para conseguirlo no encoge
+la letra más de la cuenta, que el papel sale sin membrete y con los metadatos
+sin autoría, que la frase de cautela va siempre, y que un `&` del currículo no
+deja un párrafo sin pintar. Todo medido, no mirado.
+
+Sus fichas de prueba llevan los mismos topes que la sección MEDIDA de
+`herramientas/informes/modelo.py`: **si allí se suben, hay que subirlos aquí**,
+o la batería deja de probar el peor caso real.
 
 ### El motor es un módulo aparte
 

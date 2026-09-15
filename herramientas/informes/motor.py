@@ -210,22 +210,26 @@ def fila_calibracion(datos):
     return buffer.getvalue().encode("utf-8-sig")
 
 
+
 # ---------------------------------------------------------------------------
 # El documento de dos páginas, con reportlab
 # ---------------------------------------------------------------------------
-# Las medidas son las del protocolo: caja de texto de 178 mm, márgenes de
-# 16 mm, 17 mm arriba y 13 mm abajo, cuerpo de 9,2 pt con interlineado 1,48.
+# Las medidas y los colores estan tomados midiendo los documentos que se
+# venian haciendo a mano: caja de texto de 177,7 mm, margenes de 16 mm y 17 mm
+# arriba, cuerpo Carlito de 9,22 pt con interlineado 1,43, titulos Caladea, y
+# las dos tablas con sus anchos de columna exactos.
 #
 # El anexo del protocolo describe la otra cadena, HTML -> wkhtmltopdf, con su
 # factor de 1,307 para compensar que wkhtmltopdf maquete a 1038 px en vez de a
 # 794. Aqui NO se aplica y no debe aplicarse: reportlab dibuja en puntos y los
 # milimetros son milimetros. Con el factor, el documento saldria un tercio mas
-# grande y en cuatro paginas.
+# grande y en cuatro paginas. Los tamanos de esta seccion son los YA escalados
+# que se midieron en los PDF buenos, no los del anexo.
 #
-# Caladea y Carlito son las del protocolo, pero no estan en el servidor: si no
-# aparecen se usa DejaVu (serif para titulos, sans para texto), como hace el
-# generador de CV con Trebuchet. DejaVu es mas ancha, asi que el texto corre
-# mas; para eso esta el ajuste a dos paginas.
+# Caladea y Carlito no estan en el servidor: si no aparecen se usa DejaVu
+# (serif para titulos, sans para texto), como hace el generador de CV con
+# Trebuchet. DejaVu es mas ancha, asi que el texto corre mas; para eso esta el
+# ajuste a dos paginas.
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -234,58 +238,136 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    BaseDocTemplate, Frame, HRFlowable, PageBreak, PageTemplate, Paragraph, Spacer,
-    Table, TableStyle,
+    BaseDocTemplate, Flowable, Frame, HRFlowable, PageBreak, PageTemplate,
+    Paragraph, Spacer, Table, TableStyle,
 )
 from xml.sax.saxutils import escape as _esc
 
 VERDE = colors.HexColor("#2E5E4E")
 TEXTO = colors.HexColor("#26251F")
+PROSA = colors.HexColor("#3B3930")
 SECUNDARIO = colors.HexColor("#55524A")
+TENUE = colors.HexColor("#7A756A")
 FILETE = colors.HexColor("#D6D2C6")
+FILETE_FINO = colors.HexColor("#EAE7DD")
 ALTERNA = colors.HexColor("#F7F5EF")
+PUNTEADO = colors.HexColor("#B0AB9C")
 AVISO_FONDO = colors.HexColor("#FBF2EC")
 AVISO_FILETE = colors.HexColor("#B15A2B")
 
 MARGEN_LADO, MARGEN_ALTO, MARGEN_PIE = 16 * mm, 17 * mm, 13 * mm
 ANCHO_UTIL = A4[0] - MARGEN_LADO * 2        # 178 mm
-CUERPO = 9.2
-INTERLINEADO = 1.48
-FACTOR_MINIMO = 0.78        # por debajo de esto ya no se lee cómodo en papel
+CUERPO = 9.22
+TABLA = 8.64
+INTERLINEADO = 1.43
+FACTOR_MINIMO = 0.82        # por debajo de esto ya no se lee cómodo en papel.
+                            # El peor caso que el prompt permite necesita 0,88,
+                            # así que sobra margen; medido, no estimado.
+
+# La frase no la escribe la IA: es la misma en todos los documentos y cierra
+# siempre la entradilla, para que nadie confunda una hipotesis con un informe.
+CAUTELA = ("Lectura hecha únicamente a partir del currículum: todo lo que sigue "
+           "es hipótesis hasta la entrevista.")
+
+# Caladea y Carlito son las del protocolo, y son las que hay que tener: los
+# tamanos y los anchos de columna de esta seccion estan medidos con ellas.
+# Se instalan con `packages.txt` (fonts-crosextra-caladea y -carlito), que es
+# como Streamlit Cloud instala paquetes del sistema. Si faltan se sigue
+# dibujando, con DejaVu o Liberation, pero esas son mas anchas: el texto corre
+# mas y el ajuste a dos paginas tiene que encoger la letra.
+_CROSEXTRA = "/usr/share/fonts/truetype/crosextra"
+_DEJAVU = "/usr/share/fonts/truetype/dejavu"
+_LIBERATION = "/usr/share/fonts/truetype/liberation"
 
 _FAMILIAS = {
     "titulo": (
-        ("Caladea", "/usr/share/fonts/truetype/crosextra/Caladea-Regular.ttf",
-                    "/usr/share/fonts/truetype/crosextra/Caladea-Bold.ttf"),
-        ("DejaVuSerif", "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"),
+        ("Caladea", f"{_CROSEXTRA}/Caladea-Regular.ttf", f"{_CROSEXTRA}/Caladea-Bold.ttf",
+                    f"{_CROSEXTRA}/Caladea-Italic.ttf", f"{_CROSEXTRA}/Caladea-BoldItalic.ttf"),
+        ("DejaVuSerif", f"{_DEJAVU}/DejaVuSerif.ttf", f"{_DEJAVU}/DejaVuSerif-Bold.ttf"),
     ),
     "texto": (
-        ("Carlito", "/usr/share/fonts/truetype/crosextra/Carlito-Regular.ttf",
-                    "/usr/share/fonts/truetype/crosextra/Carlito-Bold.ttf"),
-        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+        ("Carlito", f"{_CROSEXTRA}/Carlito-Regular.ttf", f"{_CROSEXTRA}/Carlito-Bold.ttf",
+                    f"{_CROSEXTRA}/Carlito-Italic.ttf", f"{_CROSEXTRA}/Carlito-BoldItalic.ttf"),
+        ("DejaVuSans", f"{_DEJAVU}/DejaVuSans.ttf", f"{_DEJAVU}/DejaVuSans-Bold.ttf",
+                       f"{_DEJAVU}/DejaVuSans-Oblique.ttf"),
+        ("LiberationSans", f"{_LIBERATION}/LiberationSans-Regular.ttf",
+                           f"{_LIBERATION}/LiberationSans-Bold.ttf",
+                           f"{_LIBERATION}/LiberationSans-Italic.ttf",
+                           f"{_LIBERATION}/LiberationSans-BoldItalic.ttf"),
     ),
 }
-_RESERVA = {"titulo": ("Times-Roman", "Times-Bold"), "texto": ("Helvetica", "Helvetica-Bold")}
+_RESERVA = {"titulo": ("Times-Roman", "Times-Bold", "Times-Italic", "Times-BoldItalic"),
+            "texto": ("Helvetica", "Helvetica-Bold", "Helvetica-Oblique",
+                      "Helvetica-BoldOblique")}
 
 
 def _registra(papel):
-    """(regular, negrita) de la primera familia que esté instalada."""
-    for nombre, regular, negrita in _FAMILIAS[papel]:
-        if not (os.path.exists(regular) and os.path.exists(negrita)):
+    """(regular, negrita, cursiva) de la primera familia que esté instalada.
+
+    La cursiva importa: los documentos ponen en cursiva los terminos en otro
+    idioma (facility services, back office) y sin ella se pierden. La que falte
+    se sustituye por la variante mas cercana que si este.
+    """
+    for familia in _FAMILIAS[papel]:
+        nombre, rutas = familia[0], list(familia[1:])
+        if not all(os.path.exists(r) for r in rutas[:2]):
             continue
         try:
-            pdfmetrics.registerFont(TTFont(nombre, regular))
-            pdfmetrics.registerFont(TTFont(f"{nombre}-B", negrita))
-            return nombre, f"{nombre}-B"
+            variantes = {}
+            for sufijo, i, respaldo in (("", 0, ""), ("-B", 1, ""),
+                                        ("-I", 2, ""), ("-BI", 3, "-B")):
+                if i < len(rutas) and os.path.exists(rutas[i]):
+                    pdfmetrics.registerFont(TTFont(f"{nombre}{sufijo}", rutas[i]))
+                    variantes[sufijo] = f"{nombre}{sufijo}"
+                else:
+                    variantes[sufijo] = variantes.get(respaldo, nombre)
+            pdfmetrics.registerFontFamily(
+                nombre, normal=variantes[""], bold=variantes["-B"],
+                italic=variantes["-I"], boldItalic=variantes["-BI"],
+            )
+            return variantes[""], variantes["-B"], variantes["-I"]
         except Exception:  # noqa: BLE001
             continue
-    return _RESERVA[papel]
+    return _RESERVA[papel][:3]
 
 
-TITULO_R, TITULO_B = _registra("titulo")
-TEXTO_R, TEXTO_B = _registra("texto")
+TITULO_R, TITULO_B, _ = _registra("titulo")
+TEXTO_R, TEXTO_B, TEXTO_I = _registra("texto")
+CON_FUENTES_DEL_PROTOCOLO = TEXTO_R.startswith("Carlito")
+
+
+# ---------------------------------------------------------------------------
+# Texto con un poco de formato
+# ---------------------------------------------------------------------------
+# Los documentos ponen en negrita las casillas de la matriz (A3, B1, D1) y los
+# datos que sostienen el argumento, y en cursiva los terminos en otro idioma.
+# Se le deja a la IA marcarlo con **negrita** y *cursiva*, que es como escribe,
+# y aqui se traduce a lo que entiende reportlab. Todo lo demas se escapa: si el
+# CV trae un & o un <, el parrafo entero dejaria de pintarse.
+
+_NEGRITA = re.compile(r"\*\*(.+?)\*\*", re.S)
+_CURSIVA = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", re.S)
+
+
+def rico(texto):
+    """Texto escapado, con **negrita** y *cursiva* pasadas a marcado."""
+    salida = _esc(str(texto if texto is not None else ""))
+    salida = _NEGRITA.sub(r"<b>\1</b>", salida)
+    return _CURSIVA.sub(r"<i>\1</i>", salida)
+
+
+def _p(texto, estilo):
+    return Paragraph(rico(texto), estilo)
+
+
+def _con_rotulo(rotulo, texto, estilo, vineta=None):
+    """«**Rótulo.** El texto que sigue», que es como se abren los bloques."""
+    rotulo = (str(rotulo or "")).strip().rstrip(".")
+    cuerpo = rico(texto)
+    if rotulo:
+        cuerpo = f"<b>{rico(rotulo)}.</b> {cuerpo}"
+    # La viñeta va en el constructor: puesta despues, no se pinta.
+    return Paragraph(cuerpo, estilo, bulletText=vineta)
 
 
 def _estilo(pt, fuente=None, color=TEXTO, antes=0, despues=0, mult=INTERLINEADO,
@@ -297,67 +379,135 @@ def _estilo(pt, fuente=None, color=TEXTO, antes=0, despues=0, mult=INTERLINEADO,
     )
 
 
-def _p(texto, estilo):
-    return Paragraph(_esc(str(texto if texto is not None else "")), estilo)
+class _Numero(Flowable):
+    """El número de sección, en blanco dentro de un círculo verde."""
+
+    def __init__(self, n, diametro, pt):
+        super().__init__()
+        self.n, self.d, self.pt = str(n), diametro, pt
+
+    def wrap(self, *_):
+        return self.d, self.d
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(VERDE)
+        c.circle(self.d / 2, self.d / 2, self.d / 2, stroke=0, fill=1)
+        c.setFillColor(colors.white)
+        c.setFont(TEXTO_B, self.pt)
+        c.drawCentredString(self.d / 2, self.d / 2 - self.pt * 0.35, self.n)
 
 
-def _titulo_seccion(texto, f):
-    """Rótulo de sección con su filete debajo."""
+def _seccion(n, texto, f, antes=6 * mm):
+    """Número en su círculo, título en verde y filete debajo."""
+    diametro = 4.2 * mm * f
+    hueco = diametro + 2.4 * mm * f
+    fila = Table(
+        [[_Numero(n, diametro, 6.4 * f),
+          _p(texto, _estilo(12.1 * f, TITULO_B, VERDE, mult=1.15))]],
+        colWidths=[hueco, ANCHO_UTIL - hueco],
+    )
+    fila.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
     return [
-        _p(texto, _estilo(11.4 * f, TITULO_B, VERDE, antes=5 * mm, despues=1.4 * mm)),
-        HRFlowable(width="100%", thickness=0.5, color=FILETE, spaceAfter=2 * mm),
+        Spacer(1, antes * f), fila,
+        HRFlowable(width="100%", thickness=0.5, color=FILETE,
+                   spaceBefore=1.6 * mm * f, spaceAfter=2.2 * mm * f),
     ]
 
 
 def _recuadro(rotulo, texto, f):
-    """Recuadro de aviso: fondo claro y filete grueso a la izquierda."""
+    """Recuadro de aviso: fondo claro, filete grueso a la izquierda.
+
+    El rotulo no es una etiqueta aparte sino la primera frase en negrita, que
+    cambia con el caso: «El desajuste que explica el bloqueo», «Las dos cosas
+    que ordenan esta sesión», «El riesgo a evitar».
+    """
     if not texto:
         return []
-    dentro = [
-        [_p(rotulo.upper(), _estilo(7.8 * f, TEXTO_B, AVISO_FILETE, mult=1.25, despues=0.8 * mm))],
-        [_p(texto, _estilo(CUERPO * f, color=TEXTO))],
-    ]
-    tabla = Table(dentro, colWidths=[ANCHO_UTIL - 6.8 * mm])
+    dentro = [[_con_rotulo(rotulo, texto, _estilo(CUERPO * f, color=TEXTO))]]
+    tabla = Table(dentro, colWidths=[ANCHO_UTIL])
     tabla.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), AVISO_FONDO),
         ("LINEBEFORE", (0, 0), (0, -1), 2.2, AVISO_FILETE),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3.4 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3.4 * mm),
-        ("TOPPADDING", (0, 0), (0, 0), 2.6 * mm),
-        ("BOTTOMPADDING", (0, 0), (0, 0), 0),
-        ("TOPPADDING", (0, 1), (0, 1), 0),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 2.6 * mm),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.6 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.6 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.8 * mm * f),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.8 * mm * f),
     ]))
-    return [Spacer(1, 3 * mm), tabla]
+    return [Spacer(1, 3.4 * mm * f), tabla]
 
 
-def _tabla(cabeceras, filas, anchos, f, resaltadas=()):
-    """Tabla con cabecera verde, fila alterna y filete fino entre filas.
+def _ancho_periodos(filas, f):
+    """La columna de periodos, ajustada a la fuente que haya de verdad.
 
-    `resaltadas` son los índices de las filas de datos que van en gris y
-    cursiva: los huecos de la trayectoria, que son el dato más importante.
+    Con Carlito caben los 21 mm del documento original; con la de reserva, mas
+    ancha, «02/2020 – 12/2022» se partiria en dos lineas y la tabla perderia la
+    lectura de un vistazo que es su razon de ser.
     """
-    est_cab = _estilo(8.6 * f, TEXTO_B, colors.white, mult=1.25)
-    est_cel = _estilo(CUERPO * f, color=TEXTO, mult=1.34)
-    est_hueco = _estilo(CUERPO * f, color=SECUNDARIO, mult=1.34)
-    datos = [[_p(c, est_cab) for c in cabeceras]]
-    for i, fila in enumerate(filas):
-        est = est_hueco if i in resaltadas else est_cel
-        datos.append([
-            # Una celda puede traer ya varios parrafos apilados (el rotulo del
-            # papel encima del puesto): eso se pasa tal cual.
-            c if isinstance(c, (list, tuple)) or hasattr(c, "wrap") else _p(c, est)
-            for c in fila
-        ])
+    pt = TABLA * f
+    anchos = [pdfmetrics.stringWidth(str(t.get("periodo") or ""), TEXTO_B, pt)
+              for t in filas]
+    return min(max(21 * mm, max(anchos or [0]) + 2 * mm), 34 * mm)
 
-    tabla = Table(datos, colWidths=anchos, repeatRows=1)
+
+def _tabla_trayectoria(filas, f):
+    """Sin cabecera y sin fondos: periodo, qué pasó y cuánto duró.
+
+    La columna de la derecha lleva la duracion, y en las lineas de formacion,
+    la edad aproximada: de ahi sale la edad de la persona.
+    """
+    est_periodo = _estilo(TABLA * f, TEXTO_B, SECUNDARIO, mult=1.34)
+    est_que = _estilo(TABLA * f, color=TEXTO, mult=1.34)
+    est_dur = _estilo(TABLA * f, color=TENUE, mult=1.34, alignment=2)
+    datos = [[_p(t.get("periodo"), est_periodo), _p(t.get("que"), est_que),
+              _p(t.get("duracion"), est_dur)] for t in filas]
+    periodo = _ancho_periodos(filas, f)
+    tabla = Table(datos, colWidths=[periodo, ANCHO_UTIL - periodo - 31 * mm, 31 * mm])
+    tabla.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (0, -1), 0),
+        ("RIGHTPADDING", (-1, 0), (-1, -1), 0),
+        ("LEFTPADDING", (1, 0), (-1, -1), 2 * mm),
+        ("RIGHTPADDING", (0, 0), (-2, -1), 2 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5 * mm * f),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5 * mm * f),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, FILETE_FINO),
+    ]))
+    return tabla
+
+
+def _tabla_direcciones(filas, f):
+    """Cabecera verde y tres columnas de 47, 50 y 80 mm."""
+    est_cab = _estilo(8.07 * f, TEXTO_B, colors.white, mult=1.25)
+    est_papel = _estilo(TABLA * f, TEXTO_B, VERDE, mult=1.34)
+    est_cel = _estilo(TABLA * f, color=TEXTO, mult=1.34)
+    datos = [[_p(c, est_cab) for c in
+              ("Dirección", "Qué acredita ya", "Qué falta y por dónde entrar")]]
+    for d in filas:
+        papel = " — ".join(x for x in (d.get("papel"), d.get("familia")) if x)
+        primera = [_p(papel, est_papel)]
+        if d.get("variantes"):
+            primera.append(_p(d["variantes"], est_cel))
+        datos.append([primera, d.get("acredita"), d.get("falta")])
+
+    cuerpo = _estilo(TABLA * f, color=TEXTO, mult=1.34)
+    datos[1:] = [[c if isinstance(c, list) else _p(c, cuerpo) for c in fila]
+                 for fila in datos[1:]]
+    tabla = Table(datos, colWidths=[47 * mm, 50 * mm, ANCHO_UTIL - 97 * mm],
+                  repeatRows=1)
     orden = [
         ("BACKGROUND", (0, 0), (-1, 0), VERDE),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.3 * mm),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.3 * mm),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.2 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.2 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.6 * mm * f),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.6 * mm * f),
         ("LINEBELOW", (0, 1), (-1, -1), 0.5, FILETE),
     ]
     for i in range(1, len(datos)):
@@ -367,89 +517,85 @@ def _tabla(cabeceras, filas, anchos, f, resaltadas=()):
     return tabla
 
 
-def _raya():
+def _raya(antes):
     """Línea de puntos para escribir a mano durante la entrevista."""
-    return HRFlowable(width="100%", thickness=0.5, color=FILETE, dash=(1, 2),
-                      spaceBefore=4.4 * mm, spaceAfter=0)
+    return HRFlowable(width="100%", thickness=0.58, color=PUNTEADO,
+                      dash=(0.58, 0.58), spaceBefore=antes, spaceAfter=0)
 
 
 def _flujo(ficha, f):
     """Los dos folios, como lista de elementos de reportlab."""
+    entradilla = (ficha.get("entradilla") or "").strip()
+    entradilla = f"{entradilla} {CAUTELA}" if entradilla else CAUTELA
     elementos = [
-        _p("Preparación de la sesión", _estilo(16 * f, TITULO_B, VERDE, mult=1.2, despues=2 * mm)),
-        _p(ficha.get("entradilla"), _estilo(CUERPO * f, color=SECUNDARIO, despues=2 * mm)),
+        _p("Preparación de sesión",
+           _estilo(17.86 * f, TITULO_B, TEXTO, mult=1.18, despues=2.2 * mm * f)),
+        _p(entradilla, _estilo(9.8 * f, color=SECUNDARIO, mult=1.42)),
+        HRFlowable(width="100%", thickness=1.4, color=VERDE,
+                   spaceBefore=3.4 * mm * f, spaceAfter=0),
     ]
 
-    filas, huecos = [], set()
-    for t in ficha.get("trayectoria") or []:
-        if t.get("hueco"):
-            huecos.add(len(filas))
-        filas.append([t.get("periodo"), t.get("duracion"), t.get("que")])
-    if filas:
-        elementos += _titulo_seccion("1. La trayectoria en una lectura", f)
-        elementos.append(_tabla(
-            ("Periodo", "Duración", "Puesto y dónde"), filas,
-            [32 * mm, 24 * mm, ANCHO_UTIL - 56 * mm], f, huecos,
-        ))
+    trayectoria = ficha.get("trayectoria") or []
+    if trayectoria:
+        elementos += _seccion(1, "La trayectoria en una lectura", f, antes=4.4 * mm)
+        elementos.append(_tabla_trayectoria(trayectoria, f))
 
-    elementos += _recuadro("La tensión central", ficha.get("tension"), f)
+    tension = ficha.get("tension") or {}
+    elementos += _recuadro(tension.get("rotulo"), tension.get("texto"), f)
 
     if ficha.get("hipotesis"):
-        elementos += _titulo_seccion("2. Hipótesis de partida", f)
-        elementos.append(_p(ficha["hipotesis"], _estilo(CUERPO * f)))
+        elementos += _seccion(2, "Hipótesis de partida", f)
+        elementos.append(_p(ficha["hipotesis"], _estilo(CUERPO * f, color=PROSA)))
 
-    filas = []
-    est_papel = _estilo(7.8 * f, TEXTO_B, VERDE, mult=1.3)
-    est_dir = _estilo(CUERPO * f, color=TEXTO, mult=1.34)
-    for d in ficha.get("direcciones") or []:
-        primera = []
-        if d.get("papel"):
-            primera.append(_p(str(d["papel"]).upper(), est_papel))
-        primera.append(_p(d.get("direccion"), est_dir))
-        filas.append([primera, d.get("sostiene"), d.get("hace_falta")])
-    if filas:
-        elementos += _titulo_seccion("3. Direcciones posibles", f)
-        elementos.append(_tabla(
-            ("Dirección", "Qué la sostiene", "Qué hace falta para entrar"), filas,
-            [47 * mm, 50 * mm, ANCHO_UTIL - 97 * mm], f,
-        ))
+    direcciones = ficha.get("direcciones") or []
+    if direcciones:
+        elementos += _seccion(
+            3, "Direcciones posibles: una principal y una secundaria", f)
+        if ficha.get("direcciones_entradilla"):
+            elementos.append(_p(
+                ficha["direcciones_entradilla"],
+                _estilo(CUERPO * f, color=PROSA, despues=2.4 * mm * f),
+            ))
+        elementos.append(_tabla_direcciones(direcciones, f))
 
     elementos.append(PageBreak())
 
-    bloques = ficha.get("preguntas") or []
-    if bloques:
-        elementos += _titulo_seccion("4. Lo que hay que preguntar", f)
-        est_rotulo = _estilo(CUERPO * f, TEXTO_B, VERDE, mult=1.35, despues=0.6 * mm)
-        est_punto = _estilo(CUERPO * f, color=SECUNDARIO, mult=1.35, leftIndent=3 * mm)
-        for b in bloques:
-            elementos.append(_p(b.get("bloque"), est_rotulo))
-            for punto in b.get("puntos") or []:
-                elementos.append(_p(f"· {punto}", est_punto))
+    preguntas = ficha.get("preguntas") or []
+    if preguntas:
+        elementos += _seccion(4, "Lo que hay que preguntar", f, antes=0)
+        est = _estilo(CUERPO * f, color=PROSA)
+        for b in preguntas:
+            elementos.append(_con_rotulo(b.get("rotulo"), b.get("texto"), est))
             # Dos lineas de puntos por bloque: el documento se lleva impreso y
             # se escribe encima durante la entrevista.
-            elementos += [_raya(), _raya(), Spacer(1, 2.6 * mm)]
+            elementos += [_raya(3.2 * mm * f), _raya(4.5 * mm * f),
+                          Spacer(1, 1.2 * mm * f)]
 
     acciones = ficha.get("acciones") or []
     if acciones:
-        elementos += _titulo_seccion("5. Acciones de arranque", f)
-        # Sangria francesa: la segunda linea entra debajo del texto, no del numero.
-        est_accion = _estilo(CUERPO * f, leftIndent=9 * mm, primera=-4 * mm,
-                             despues=1.2 * mm)
-        for i, a in enumerate(acciones, 1):
-            elementos.append(Paragraph(
-                f"{i}. {_esc(str(a))}", est_accion,
-            ))
+        elementos += _seccion(5, "Acciones de arranque", f)
+        est = _estilo(CUERPO * f, color=PROSA, leftIndent=5.4 * mm,
+                      despues=1.6 * mm * f, bulletIndent=1.4 * mm,
+                      bulletFontName=TEXTO_R, bulletFontSize=CUERPO * f)
+        for a in acciones:
+            elementos.append(
+                _con_rotulo(a.get("rotulo"), a.get("texto"), est, vineta="•"))
 
-    elementos += _recuadro("El riesgo a evitar", ficha.get("riesgo"), f)
+    riesgo = ficha.get("riesgo") or {}
+    elementos += _recuadro(riesgo.get("rotulo") or "El riesgo a evitar",
+                           riesgo.get("texto"), f)
     return elementos
 
 
-def documento_pdf(ficha):
+def documento_pdf(ficha, con_detalle=False):
     """El documento de preparación en PDF. Devuelve bytes. Dos páginas.
 
     Sin firma, sin logotipo, sin mención institucional y sin nombre de la
     persona: es material de trabajo, no un documento de la oficina. Los
     metadatos van sin autoría por lo mismo.
+
+    Con `con_detalle`, devuelve tambien (paginas, factor): lo usa la bateria
+    de pruebas para medir el ajuste sin volver a abrir el PDF.
     """
     f = 1.0
     while True:
@@ -458,7 +604,7 @@ def documento_pdf(ficha):
             salida, pagesize=A4,
             leftMargin=MARGEN_LADO, rightMargin=MARGEN_LADO,
             topMargin=MARGEN_ALTO, bottomMargin=MARGEN_PIE,
-            title="Preparación de la sesión", author="", subject="", creator="",
+            title="Preparación de sesión", author="", subject="", creator="",
         )
         # El marco va sin relleno propio: SimpleDocTemplate le pone 6 pt por
         # cada lado y los margenes acababan siendo 18 mm en vez de 16.
@@ -468,5 +614,7 @@ def documento_pdf(ficha):
         )])])
         doc.build(_flujo(ficha, f))
         if doc.page <= 2 or f <= FACTOR_MINIMO:
+            if con_detalle:
+                return salida.getvalue(), {"paginas": doc.page, "factor": f}
             return salida.getvalue()
         f = round(f - 0.02, 2)

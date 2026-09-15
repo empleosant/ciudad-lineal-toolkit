@@ -1,0 +1,6 @@
+# Fuentes del documento de preparación de sesión (herramientas/informes).
+# Caladea para los títulos y Carlito para el texto, que son las del protocolo.
+# Sin ellas el PDF se dibuja igual, pero con DejaVu: más ancha, y el ajuste a
+# dos páginas tiene que encoger la letra.
+fonts-crosextra-caladea
+fonts-crosextra-carlito

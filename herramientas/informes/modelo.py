@@ -76,11 +76,24 @@ impresas a la entrevista y sobre las que escribe a mano.
 
 {MATRIZ}
 
+CÓMO SE ESCRIBE
+- Para el orientador, no para la persona: se puede nombrar la casilla, el mercado y el
+  sesgo de selección. No es un informe que nadie vaya a leer desde fuera.
+- Frases cortas y afirmativas. Se nombra el mecanismo, no se dan ánimos.
+- Cada bloque abre con un rótulo que dice de qué va, y sigue en prosa. El rótulo no es
+  una etiqueta genérica («Situación documental»): nombra LO QUE PASA EN ESTE CASO
+  («El hueco de 1992 a 2012», «Cómo terminó julio y con qué cuenta», «Por qué comercio»).
+- Puedes marcar **negrita** para las casillas de la matriz y los datos que sostienen el
+  argumento, y *cursiva* para los términos en otro idioma (*facility services*,
+  *back office*). Nada más: ni títulos, ni listas, ni tablas dentro de los campos.
+- Cifras y fechas concretas siempre que el CV las dé: «tres años continuados», «cerrada
+  en abril de 2019», «nueve ocupaciones en áreas de interés».
+
 REGLAS DE CONTENIDO
 - Una dirección principal y una secundaria, y como mucho una tercera de apoyo o a
   explorar. Nunca una lista de opciones: el trabajo es cerrar, no abrir.
 - El objetivo declarado no se descarta, se reconduce a su versión alcanzable dentro de la
-  misma familia profesional.
+  misma familia profesional. Dilo explícitamente si el caso lo pide.
 - El riesgo a evitar se escribe siempre, y casi siempre es el mismo: derivar a formación
   lo que es un problema de posicionamiento y de foco. La formación entra después de fijar
   el objetivo.
@@ -92,21 +105,49 @@ REGLAS DE CONTENIDO
 
 Responde SOLO con este JSON, sin texto alrededor:
 {{"rasgo":"comercio_limpieza",
- "entradilla":"Perfil, edad aproximada, situación y la advertencia de que todo es hipótesis hasta la entrevista. Entre 40 y 65 palabras.",
- "trayectoria":[{{"periodo":"2016 – 2019","duracion":"3 años","que":"Puesto y dónde, en una línea","hueco":false}},{{"periodo":"2019 – 2021","duracion":"2 años","que":"Sin actividad declarada","hueco":true}}],
- "tension":"La tensión central en dos o tres frases. Va en el recuadro de aviso de la primera página.",
- "hipotesis":"Hipótesis de partida en prosa, entre 80 y 110 palabras: casilla con capas, descarte explícito de D1 y D3, y qué queda por confirmar.",
- "direcciones":[{{"direccion":"Nombre del puesto en lenguaje de mercado","papel":"Principal","sostiene":"Qué experiencia del CV la sostiene","hace_falta":"Qué hace falta para entrar"}}],
- "preguntas":[{{"bloque":"Situación documental","puntos":["Pregunta corta","Pregunta corta"]}}],
- "acciones":["Acción de arranque concreta, una línea"],
- "riesgo":"El riesgo a evitar, en dos o tres frases. Va en el recuadro de aviso de la segunda página."}}
+ "entradilla":"Perfil de comercio, hostelería y limpieza. Mujer de unos 51-52 años, en España desde 2019, en desempleo desde julio de 2026.",
+ "trayectoria":[
+   {{"periodo":"1992","que":"Bachillerato, Cali (Colombia)","duracion":"≈ 18 años"}},
+   {{"periodo":"1992 – 2012","que":"**Sin datos.** Veinte años sin declarar actividad","duracion":"20 años"}},
+   {{"periodo":"02/2020 – 12/2022","que":"Auxiliar de panadería: obrador y punto de venta (Madrid)","duracion":"2 a. 11 m."}},
+   {{"periodo":"Desde 07/2026","que":"Desempleo","duracion":"2 meses"}}],
+ "tension":{{"rotulo":"El desajuste que explica el bloqueo","texto":"Dos o tres frases: qué declara, qué sostiene el CV de verdad y por qué un seleccionador clasifica como clasifica."}},
+ "hipotesis":"Entre 70 y 110 palabras: casilla con capas, qué la sostiene, descarte explícito de D1 y D3, y que la motivación no se deduce del CV.",
+ "direcciones_entradilla":"Una frase que enmarque las direcciones, o cadena vacía si no hace falta.",
+ "direcciones":[{{"papel":"Principal","familia":"Limpieza","variantes":"Edificios y oficinas, sociosanitario, o camarera de pisos en hotel","acredita":"Qué del CV la sostiene y por qué es verificable","falta":"Qué falta para entrar y en qué tipo de empresa se entra"}}],
+ "preguntas":[{{"rotulo":"El hueco de 1992 a 2012","texto":"Veinte años. ¿Cuidados, autoempleo, economía informal, otro país? Puede haber experiencia utilizable que no cuenta porque no la considera «trabajo»."}}],
+ "acciones":[{{"rotulo":"Carné de manipulador de alimentos vigente","texto":"Rápido, sin coste apreciable, y es el requisito que abre la dirección secundaria."}}],
+ "riesgo":{{"rotulo":"El riesgo a evitar","texto":"Dos o tres frases. En plural («Los dos riesgos a evitar») solo si de verdad hay dos."}}}}
 
-MEDIDA: el documento tiene que caber en DOS páginas A4, así que no te pases de aquí.
-"rasgo" son dos o tres palabras en minúscula separadas por guion bajo, que nombran el PERFIL
-y nunca a la persona. De 4 a 6 filas de trayectoria, huecos incluidos, con "que" en una sola
-línea corta. De 2 a 3 direcciones, con "sostiene" y "hace_falta" de menos de 20 palabras cada
-uno. De 4 a 5 bloques de preguntas con 2 puntos cada uno, y cada punto de menos de 12
-palabras. De 3 a 4 acciones de una línea. "tension" y "riesgo", dos o tres frases."""
+LA TRAYECTORIA
+- Va completa y en orden cronológico, de lo más antiguo a lo más reciente.
+- Entran también los hitos de formación, con el año suelto en "periodo" y la EDAD
+  aproximada en "duracion" («≈ 18 años»): de ahí sale la edad de la persona.
+- Los huecos son filas como las demás, y abren con el motivo en negrita: «**Sin datos.**»,
+  «**Sin actividad declarada.**». Son el dato más importante del documento.
+- La última fila es la situación de hoy («Desempleo», «Sin actividad declarada»).
+- "periodo": «1992», «1992 – 2012», «06 – 12 / 2019», «02/2020 – 12/2022», «Desde 07/2026».
+- "duracion": «20 años», «2 a. 11 m.», «6 m.», «22 meses», «≈ 18 años». Cabe en una línea.
+- "que": una línea corta. País entre paréntesis cuando no sea España, y se señala el
+  empleo donde se ve la llegada a España.
+
+MEDIDA. El documento tiene que caber en DOS páginas A4 y estos topes están medidos
+sobre el papel: pasarse obliga a encoger la letra. Por orden de aparición:
+
+- "rasgo": dos o tres palabras en minúscula separadas por guion bajo, que nombran el
+  PERFIL y nunca a la persona.
+- "entradilla": de 20 a 35 palabras. No incluyas la frase de cautela: la pone la plantilla.
+- "trayectoria": de 4 a 8 filas, huecos y formación incluidos. "que", hasta 10 palabras.
+- "tension.texto": de 55 a 85 palabras.
+- "hipotesis": de 75 a 110 palabras.
+- "direcciones_entradilla": hasta 22 palabras, o "" si no aporta nada.
+- "direcciones": 2 o 3. "variantes" hasta 12 palabras, "acredita" hasta 28, "falta" hasta 45.
+- "preguntas": de 6 a 8 bloques. "rotulo" hasta 8 palabras, "texto" de 15 a 35.
+- "acciones": de 4 a 6. "rotulo" hasta 8 palabras, "texto" de 15 a 35.
+- "riesgo.texto": de 45 a 65 palabras.
+
+Si la trayectoria es larga, aprieta la hipótesis y las direcciones: la primera página
+lleva las dos cosas."""
 
 
 CORREO = """Escribes el correo que un orientador laboral envía a la persona atendida
