@@ -1,31 +1,54 @@
-# Despertador de la aplicación.
+# Despertador de las aplicaciones.
 #
 # Ubicación en el repositorio:  .github/workflows/mantener-despierta.yml
 # Necesita también:             scripts/despertar.py
 #
-# LO ÚNICO QUE HAY QUE EDITAR AQUÍ ES LA LÍNEA DE LA URL, más abajo.
-#   Streamlit:     https://tu-app.streamlit.app
-#   Hugging Face:  https://tuusuario-tuspace.hf.space   (la directa, no la de
-#                  huggingface.co/spaces/..., que la muestra dentro de un marco)
+# IMPORTANTE, la trampa que nos costó descubrir:
+# GitHub solo lanza los horarios (schedule) desde la RAMA POR DEFECTO, que
+# aquí es main. Este mismo fichero en pruebas-cv, o en cualquier otra rama,
+# no se ejecuta solo: como mucho se puede lanzar a mano desde la pestaña
+# Actions eligiendo la rama. Por eso la lista de abajo lleva las direcciones
+# de TODAS las aplicaciones, no solo la de la rama en la que estés leyendo
+# esto. Si algún día despliegas una app nueva, añádela a esa lista y
+# asegúrate de que el cambio acaba en main.
+#
+# Para añadir una app basta con un par de líneas más en `include`:
+#   - nombre: como la quieras ver en la pestaña Actions
+#     url: la dirección que abres tú en el navegador
+#          Streamlit:     https://loquesea.streamlit.app
+#          Hugging Face:  https://usuario-space.hf.space  (la directa, no la
+#                         de huggingface.co/spaces/..., que va dentro de un marco)
 
 name: Mantener la app despierta
 
 on:
   schedule:
-    # GitHub programa en UTC. En horario de verano (CEST, UTC+2) esto son
-    # las 06:00 y las 18:00 en la Península. En invierno (CET, UTC+1) caerá
-    # una hora antes. Si te importa, cambia a '0 5,17' en octubre.
-    - cron: '0 4,16 * * *'
+    # Cada cuatro horas. GitHub programa en UTC, pero dando tantas pasadas al
+    # día da igual en qué hora peninsular caiga cada una.
+    - cron: '0 */4 * * *'
   workflow_dispatch:
 
 jobs:
   despertar:
+    name: Despertar ${{ matrix.nombre }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+    strategy:
+      # Son aplicaciones independientes: que el fallo de una no cancele el
+      # intento de la otra.
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: la app principal (main)
+            url: https://buscador-codigos-sispe.streamlit.app
+          - nombre: la app de pruebas (pruebas-cv)
+            url: https://ciudad-lineal-toolkit.streamlit.app
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -36,5 +59,5 @@ jobs:
 
       - name: Abrir la aplicación
         env:
-          URL: https://buscador-codigos-sispe.streamlit.app
+          URL: ${{ matrix.url }}
         run: python scripts/despertar.py
