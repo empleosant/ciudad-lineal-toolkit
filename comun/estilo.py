@@ -6,6 +6,8 @@ repiten (rótulos de sección, notas, preguntas). Cada página llama a
 `aplica()` al principio. Lo específico de una herramienta va en su vista.
 """
 
+import html
+
 import streamlit as st
 
 ROJO = "#D1122E"
@@ -59,7 +61,14 @@ html,body,[class*="css"],.stMarkdown{
 .chip.naranja{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
 .ok{ color:#1B6B3A; } .aviso{ color:#C2410C; }
 /* Fichas plegables con filo rojo a la izquierda (experiencias, resultados) */
-.st-key-fichas div[data-testid="stExpander"], .st-key-resultados div[data-testid="stVerticalBlockBorderWrapper"]{
+/* Ojo con los dos data-testid del contenedor con borde: hasta cierta versión
+   era stVerticalBlockBorderWrapper y ahora el borde lo lleva el stVerticalBlock
+   de dentro de un stLayoutWrapper. Se ponen los dos porque requirements.txt
+   pide streamlit>=1.40 y Cloud instala la que le da la gana; con uno solo, el
+   filo rojo de las tarjetas de resultado desaparecía sin que nadie lo notara. */
+.st-key-fichas div[data-testid="stExpander"],
+[class*="st-key-curso_"] div[data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-curso_"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"]{
   background:#fff; border:1px solid var(--linea) !important; border-left:4px solid var(--rojo) !important;
   border-radius:6px; margin:.35rem 0;
 }
@@ -249,6 +258,124 @@ div[data-testid="stTextInput"] input{
   text-align:center; font-size:.74rem; font-weight:600; color:var(--suave); margin:.2rem 0 0;
 }
 
+/* ---------- Indicador de pasos ---------- */
+/* Mismo aspecto que la barra del generador de CV, pero aquí NO son botones:
+   la página no está paginada, se recorre entera, así que esto informa de por
+   dónde vas y no navega. Un botón que no lleva a ningún sitio miente. */
+.pasos{ display:grid; grid-template-columns:repeat(3,1fr); gap:.4rem; margin:.2rem 0 .3rem; }
+.pasos .paso{
+  border:1px solid var(--linea); border-radius:6px; background:#fff;
+  padding:.5rem .7rem; display:flex; flex-direction:column; gap:.1rem; min-width:0;
+}
+.pasos .paso .t{ font-size:.84rem; font-weight:600; color:var(--suave); }
+.pasos .paso .d{ font-size:.76rem; color:var(--tenue); }
+.pasos .paso.hecho{ border-color:#BFE3CB; background:#F1FAF3; }
+.pasos .paso.hecho .t{ color:#1B6B3A; }
+.pasos .paso.hecho .d{ color:#3F8459; }
+.pasos .paso.activo{ background:var(--negro); border-color:var(--negro); }
+.pasos .paso.activo .t{ color:#fff; }
+.pasos .paso.activo .d{ color:#B9B9BE; }
+@media (max-width:640px){ .pasos{ grid-template-columns:1fr; } }
+
+/* ---------- Zonas de arrastre ---------- */
+/* El cargador de Streamlit YA acepta arrastrar y soltar; lo que no hace es
+   parecerlo, y además habla en inglés ("Upload", "200MB per file") dentro de
+   una herramienta de una oficina pública española.
+   Todo lo de aquí es ADITIVO a propósito. Si una versión nueva de Streamlit
+   cambia su DOM, estos selectores dejan de casar y vuelve a salir el cargador
+   de serie: feo, pero entero y funcionando. Nada de esto puede tumbar la
+   página. Verificado contra Streamlit 1.63. */
+[class*="st-key-soltar_"] div[data-testid="stFileUploader"] label{ display:none; }
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]{
+  flex-direction:column; align-items:center; justify-content:center; gap:.3rem;
+  min-height:8.2rem; padding:1.1rem .9rem;
+  border:2px dashed #C7CFDA !important; border-radius:6px; background:#F8FAFC !important;
+  transition:border-color .15s ease, background .15s ease;
+}
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]:hover{
+  border-color:var(--rojo) !important; background:#fff !important;
+}
+/* El rótulo grande, en ::before para no depender de ningún nodo de Streamlit */
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]::before{
+  order:1; font-size:.92rem; font-weight:700; color:var(--texto); text-align:center; line-height:1.3;
+}
+.st-key-soltar_cursos section[data-testid="stFileUploaderDropzone"]::before{
+  content:"Arrastra aquí el Excel del catálogo";
+}
+.st-key-soltar_perfil section[data-testid="stFileUploaderDropzone"]::before{
+  content:"Arrastra aquí el perfil";
+}
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"] > span:has(button){ order:2; }
+/* La línea de Streamlit ("200MB per file • XLSX, XLS, CSV") sobra entera:
+   está en inglés y el tamaño lo lleva un <span> de dentro, así que pelearlo
+   desde fuera no vale. Se quita y se pone la nuestra en ::after. */
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"] >
+  div[data-testid="stFileUploaderDropzoneInstructions"]{ display:none !important; }
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]::after{
+  order:3; font-size:.74rem; color:var(--tenue); text-align:center;
+}
+.st-key-soltar_cursos section[data-testid="stFileUploaderDropzone"]::after{
+  content:"Un Excel o un CSV, hasta 200 MB";
+}
+.st-key-soltar_perfil section[data-testid="stFileUploaderDropzone"]::after{
+  content:"Un .md o un .txt, hasta 200 MB";
+}
+/* El "Drag and drop a file here" que Streamlit asoma en pantallas anchas
+   sobra: ya lo dice el rótulo de arriba, y encima en español. */
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"] >
+  *:not(input):not([data-testid]):not(:has(button)){ display:none !important; }
+/* "Upload" -> "Buscar en el equipo", sin tocar el icono, que es una ligadura */
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"] button
+  div[data-testid="stMarkdownContainer"] p{ font-size:0 !important; }
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"] button
+  div[data-testid="stMarkdownContainer"] p::after{
+  content:"Buscar en el equipo"; font-size:.82rem; font-weight:600;
+}
+/* Ya hay archivo: la caja se encoge y se pone verde */
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]:has([data-testid="stFileChip"]){
+  flex-direction:row; min-height:0; padding:.5rem .6rem;
+  border:1px solid #BFE3CB !important; background:#F1FAF3 !important;
+}
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]:has([data-testid="stFileChip"])::before,
+[class*="st-key-soltar_"] section[data-testid="stFileUploaderDropzone"]:has([data-testid="stFileChip"])::after{
+  display:none;
+}
+
+/* ---------- Etiquetas de una tarjeta de curso ---------- */
+.etiquetas{ display:flex; flex-wrap:wrap; gap:.25rem; margin:.45rem 0 0; }
+.et{ font-size:.73rem; border-radius:4px; padding:.12rem .45rem; background:var(--gris); color:var(--suave); }
+.et.pronto{ background:#F1FAF3; color:#1B6B3A; }
+.et.tarde{ background:#FFF7ED; color:#C2410C; }
+
+/* El filo toma el color de la prioridad: se capta sin leer la etiqueta */
+[class*="st-key-curso_"][class*="_media"] div[data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-curso_"][class*="_media"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"]{
+  border-left-color:#C2410C !important;
+}
+[class*="st-key-curso_"][class*="_baja"] div[data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-curso_"][class*="_baja"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"]{
+  border-left-color:#C7CFDA !important;
+}
+
+/* ---------- Franja de revisión de datos personales ---------- */
+.revision{
+  display:flex; gap:.5rem; align-items:flex-start; border-radius:6px;
+  padding:.5rem .7rem; font-size:.8rem; line-height:1.45; margin:.4rem 0 0;
+}
+.revision.limpio{ background:#F1FAF3; color:#1B6B3A; border:1px solid #BFE3CB; }
+.revision.alerta{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
+.revision b{ font-weight:700; }
+.revision .flojo{ opacity:.85; font-weight:400; }
+
+/* ---------- Tabla compacta (vista previa del catálogo, ediciones) ---------- */
+.tablilla{ width:100%; border-collapse:collapse; font-size:.78rem; }
+.tablilla th{
+  text-align:left; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--tenue); padding:0 .5rem .3rem 0; border-bottom:1px solid var(--linea); white-space:nowrap;
+}
+.tablilla td{ padding:.3rem .5rem .3rem 0; border-bottom:1px solid var(--gris); vertical-align:top; }
+.envuelve-tabla{ overflow-x:auto; }
+
 div[data-testid="stExpander"]{ border:none; background:transparent; margin-top:.1rem; }
 div[data-testid="stExpander"] summary{ font-size:.8rem; color:var(--suave); padding:.1rem 0; }
 </style>
@@ -257,6 +384,37 @@ div[data-testid="stExpander"] summary{ font-size:.8rem; color:var(--suave); padd
 
 def aplica():
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def caja(clave):
+    """`st.container(key=...)`, o uno sin clave en versiones que no lo admiten.
+
+    Sin la clave el contenedor sigue funcionando; lo que se pierde es el CSS
+    que cuelga de `.st-key-<clave>`, así que la página se ve de serie pero no
+    se rompe. Se repetía en todas las vistas y vive mejor aquí.
+    """
+    try:
+        return st.container(key=clave)
+    except TypeError:
+        return st.container()
+
+
+def pasos(items):
+    """Indicador de pasos: por dónde va la cosa y qué falta.
+
+    `items` es [(rótulo, detalle, estado)] con estado "hecho", "activo" o "".
+    No son botones y no navegan: esta página se recorre entera de arriba abajo
+    (la del generador de CV sí está paginada, y allí sí lo son).
+    """
+    trozos = []
+    for i, (rotulo, detalle, estado) in enumerate(items, 1):
+        marca = "✓" if estado == "hecho" else str(i)
+        trozos.append(
+            f'<div class="paso {estado}">'
+            f'<span class="t">{marca} · {html.escape(str(rotulo))}</span>'
+            f'<span class="d">{html.escape(str(detalle))}</span></div>'
+        )
+    st.markdown(f'<div class="pasos">{"".join(trozos)}</div>', unsafe_allow_html=True)
 
 
 def banda(actual, titulo, subtitulo="", al_pulsar_titulo=None):
