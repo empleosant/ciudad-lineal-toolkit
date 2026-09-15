@@ -312,23 +312,18 @@ los PDF buenos. Cada pieza es como es por algo:
 - **Las direcciones** van en una tabla de tres columnas —qué acredita ya, qué
   falta y por dónde entrar— con el papel y la familia en la primera
   («Principal — Limpieza») y debajo las variantes concretas.
-- **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita y
-  **dos renglones de puntos debajo**, para escribir a mano durante la
-  entrevista. El rótulo nombra lo que pasa en ese caso («El hueco de 1992 a
-  2012»), no una etiqueta genérica.
+- **Lo que hay que preguntar** son bloques de prosa con el rótulo en negrita: una
+  lista para acordarse de qué preguntar mientras se habla con la persona. El
+  rótulo nombra lo que pasa en ese caso («El hueco de 1992 a 2012»), no una
+  etiqueta genérica.
 
-  El renglón mide **8 mm y no se encoge** con el ajuste de letra: es espacio
-  físico para un bolígrafo, no tipografía. Medido en los documentos que se
-  hacían a mano, el hueco era de 4,7 mm —menos de lo que ocupa una palabra
-  escrita— y los tres huecos del bloque medían casi lo mismo, así que el par de
-  líneas no se agrupaba con su pregunta y se leía como un filete doble
-  decorativo. De ahí salen los topes de la sección MEDIDA: con renglones de
-  verdad **caben cinco bloques de preguntas, no ocho**. Si hay más cosas que
-  preguntar, el prompt manda agruparlas.
+  **Nada del documento se rellena a mano.** Llevó dos renglones de puntos bajo
+  cada pregunta, copiados de los documentos que se hacían antes, y se quitaron:
+  nadie escribía en ellos. Lo que se recoge de la sesión se vuelca luego en la
+  pestaña de la cita, no en el papel. Si alguna vez se vuelve a plantear, el
+  precio está medido: con renglones escribibles de 8 mm caben cinco bloques de
+  preguntas en vez de ocho.
 
-  Cada pregunta va con sus dos renglones en un `KeepTogether`: una pregunta al
-  final de una página y su sitio para contestarla al principio de la siguiente
-  no sirve para nada.
 - **El riesgo a evitar** cierra la segunda página en un recuadro, y se escribe
   siempre.
 
@@ -516,7 +511,7 @@ solo detectó dos casos raros. La prueba de convergencia lo canta entero.
 
 **`informes.py` — el documento cabe y el expediente aguanta.** El protocolo
 pide dos páginas A4 y lo dice en serio: un documento de tres deja de servir para
-lo que sirve, que es llevarlo impreso y escribir encima. Comprueba que cabe
+lo que sirve, que es llevarlo impreso y tenerlo delante. Comprueba que cabe
 incluso con el contenido en el tope de lo que el prompt permite devolver, que
 para conseguirlo no encoge la letra más de la cuenta, que el papel sale sin
 membrete y con los metadatos sin autoría, que la frase de cautela va siempre, y

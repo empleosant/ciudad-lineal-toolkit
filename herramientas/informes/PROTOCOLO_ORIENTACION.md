@@ -84,13 +84,16 @@ Estructura fija:
   de que todo es hipótesis hasta la entrevista) · § 1 La trayectoria en una lectura (tabla
   cronológica con duraciones) · recuadro de aviso con la tensión central · § 2 Hipótesis de
   partida · § 3 Direcciones posibles (tabla de tres columnas).
-- **Página 2** — § 4 Lo que hay que preguntar (bloques con dos líneas de puntos para
-  escribir a mano durante la entrevista) · § 5 Acciones de arranque · recuadro de aviso con
+- **Página 2** — § 4 Lo que hay que preguntar (bloques de recordatorio: rótulo de lo que
+  pasa en este caso y la duda en prosa) · § 5 Acciones de arranque · recuadro de aviso con
   el riesgo a evitar.
 
 Reglas de contenido del PDF:
 
-- **Nada de hoja de sesión ni de casillas para rellenar al final.** Se probó y sobra.
+- **Nada que haya que rellenar a mano.** Ni hoja de sesión, ni casillas al final, ni
+  líneas de puntos bajo las preguntas. Se probaron las tres y sobran: el documento se lee
+  antes y durante la entrevista, no se rellena. Lo que se recoge de la sesión se vuelca
+  luego en la herramienta, no en el papel.
 - **Una dirección principal y una secundaria**, más una tercera «de apoyo» o «a explorar»
   como máximo. Nunca una lista de opciones: el trabajo es cerrar, no abrir.
 - El objetivo declarado por la persona **no se descarta, se reconduce** a su versión

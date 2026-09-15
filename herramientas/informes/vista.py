@@ -134,8 +134,8 @@ with st.expander("Cómo funciona esto"):
     st.markdown(
         "**1 · Antes de la cita.** Pega el currículo de la persona, sin nombre ni "
         "teléfono, y pulsa el botón. Sale un PDF de dos páginas para imprimir y "
-        "llevártelo a la entrevista: la trayectoria, lo que hay que preguntar y unas "
-        "líneas de puntos para escribir encima.\n\n"
+        "llevártelo a la entrevista: la trayectoria, la hipótesis de partida y la "
+        "lista de lo que hay que preguntarle.\n\n"
         "**2 · Después de la cita.** En la segunda pestaña cuentas qué hablasteis, "
         "escribiendo o por el micrófono, y apuntas el objetivo que acordasteis y por "
         "dónde busca empleo.\n\n"
@@ -297,8 +297,8 @@ with fase1:
                 mime="application/pdf", use_container_width=True, type="primary",
             )
             _chip("ficha")
-            st.caption("Imprímelo y escribe encima durante la entrevista. Si la cita "
-                       "es otro día, guarda también el expediente, ahí arriba.")
+            st.caption("Imprímelo y llévatelo a la entrevista. Si la cita es otro "
+                       "día, guarda también el expediente, ahí arriba.")
         if MANTENIMIENTO:
             with st.expander("Ver lo que ha devuelto la IA"):
                 st.json(ficha, expanded=False)

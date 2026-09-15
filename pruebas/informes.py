@@ -3,7 +3,7 @@ Batería del documento de preparación de sesión.
 
 El protocolo pide dos páginas A4 y lo dice en serio: si el documento se va a
 tres, deja de servir para lo que sirve, que es llevarlo impreso a la entrevista
-y escribir encima. Aquí se comprueba midiendo el PDF, no mirándolo.
+y tenerlo delante. Aquí se comprueba midiendo el PDF, no mirándolo.
 
 Lo que se prueba:
 
@@ -112,7 +112,7 @@ def tope():
             for papel in ("Principal", "Secundaria", "A explorar")
         ],
         "preguntas": [{"rotulo": "Rótulo de bloque razonablemente largo", "texto": pal(35)}
-                      for _ in range(5)],
+                      for _ in range(8)],
         "acciones": [{"rotulo": "Rótulo de acción razonablemente largo", "texto": pal(35)}
                      for _ in range(6)],
         "riesgo": {"rotulo": "Los dos riesgos a evitar", "texto": pal(65)},
@@ -126,7 +126,7 @@ def corriente():
     f["trayectoria"] = f["trayectoria"][:6]
     f["tension"]["texto"] = pal(60)
     f["hipotesis"] = pal(85)
-    f["preguntas"] = f["preguntas"][:4]
+    f["preguntas"] = f["preguntas"][:6]
     f["acciones"] = f["acciones"][:4]
     return f
 
