@@ -1,0 +1,72 @@
+# Pasa las tres baterías de pruebas cada vez que se sube un cambio.
+#
+# Ubicación en el repositorio:  .github/workflows/pruebas.yml
+#
+# Los disparadores `push` y `pull_request` sí funcionan en cualquier rama (no
+# como los horarios de mantener-despierta.yml, que GitHub solo lanza desde la
+# rama por defecto). Así que este fichero trabaja estando en pruebas-cv.
+#
+# No usa claves ni gasta cuota de IA: las baterías no llaman a la IA.
+# `informes.py` es la única que necesita una dependencia, reportlab, porque
+# arma el PDF de verdad para medirlo.
+#
+# Dónde se ve el resultado:
+#   · Pestaña Actions del repositorio.
+#   · Un tic verde o un aspa roja junto a cada commit en la lista de commits.
+#   · GitHub manda un correo cuando algo pasa de verde a rojo.
+
+name: Pruebas de las herramientas
+
+on:
+  push:
+    paths:
+      - 'comun/**'
+      - 'herramientas/**'
+      - 'pruebas/**'
+      - '.github/workflows/pruebas.yml'
+  pull_request:
+  workflow_dispatch:          # y a mano, desde la pestaña Actions
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Aciertos — los 40 casos de pruebas/casos.csv
+        working-directory: pruebas
+        run: python evaluar.py
+
+      - name: Robustez — batería de estrés del buscador
+        if: always()          # se ejecuta aunque la primera batería falle
+        working-directory: pruebas
+        run: python estres.py
+
+      - name: reportlab, que lo necesita la batería de informes
+        if: always()
+        run: pip install "reportlab>=4.0"
+
+      - name: Informes de orientación — el PDF y el correo de cierre
+        if: always()
+        working-directory: pruebas
+        run: python informes.py
+
+      - name: Resumen
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### Las tres baterías pasan. El cambio se puede dar por bueno." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Alguna prueba falla." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Abre el paso que salió en rojo para ver qué caso concreto." >> $GITHUB_STEP_SUMMARY
+            echo "En el buscador, lo más probable es un cambio en \`raiz()\` o en" >> $GITHUB_STEP_SUMMARY
+            echo "\`vocabulario.json\`. En los informes, que el PDF ya no quepa en dos" >> $GITHUB_STEP_SUMMARY
+            echo "páginas o que se haya caído una regla del correo de cierre." >> $GITHUB_STEP_SUMMARY
+          fi
