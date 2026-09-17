@@ -7,3 +7,6 @@ __pycache__/
 
 # Secrets locales de Streamlit (nunca versionar claves)
 .streamlit/secrets.toml
+
+# Permisos locales de Claude Code (personales de este equipo)
+.claude/settings.local.json
