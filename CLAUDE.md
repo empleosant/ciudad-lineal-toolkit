@@ -25,11 +25,13 @@ python3 estres.py --rapido      # salta las pruebas que recorren el catálogo
 ~/.venvs/sispe/bin/streamlit run app.py   # la app en local (sin claves: solo lo que no usa IA)
 ```
 
-`informes.py` necesita `reportlab`, que **no está en el `python3` del sistema**
-(no trae ni `pip` ni `ensurepip`). Está en el entorno `~/.venvs/sispe`
+`informes.py` **necesita las dependencias instaladas**, y no solo `reportlab`:
+pide los prompts a `herramientas/informes/modelo.py`, que importa `comun/ia.py`,
+que importa Streamlit en la primera línea. Con el `python3` del sistema no corre
+(no trae ni `pip` ni `ensurepip`); se lanza con el entorno `~/.venvs/sispe`
 (Python 3.13, creado con `uv`), que es también el que hay que usar para levantar
-la app entera, porque el generador de CV necesita `python-docx`. Las otras dos
-baterías son Python puro y corren con el `python3` de siempre.
+la app entera. Las otras dos baterías sí son Python puro y corren con el
+`python3` de siempre.
 
 Las tres baterías **son** la suite: no hay pytest, ni linter, ni formateador. No
 llaman a la IA y no gastan cuota.

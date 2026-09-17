@@ -7,8 +7,13 @@
 # rama por defecto). Así que este fichero trabaja estando en pruebas-cv.
 #
 # No usa claves ni gasta cuota de IA: las baterías no llaman a la IA.
-# `informes.py` es la única que necesita una dependencia, reportlab, porque
-# arma el PDF de verdad para medirlo.
+#
+# Aun así, `informes.py` necesita las dependencias instaladas, y no solo
+# reportlab: llega a `comun/ia.py` (por `herramientas/informes/modelo.py`, que
+# le pide los prompts) y ese módulo importa Streamlit en la primera línea. De
+# ahí el `pip install -r requirements.txt`: con solo reportlab, el paso muere
+# con ModuleNotFoundError: No module named 'streamlit'. Las dos baterías del
+# buscador sí son Python puro y corren antes, sin instalar nada.
 #
 # Dónde se ve el resultado:
 #   · Pestaña Actions del repositorio.
@@ -48,9 +53,9 @@ jobs:
         working-directory: pruebas
         run: python estres.py
 
-      - name: reportlab, que lo necesita la batería de informes
+      - name: Dependencias, que la batería de informes las necesita
         if: always()
-        run: pip install "reportlab>=4.0"
+        run: pip install -r requirements.txt
 
       - name: Informes de orientación — el PDF y el correo de cierre
         if: always()
