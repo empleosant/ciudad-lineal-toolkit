@@ -15,8 +15,9 @@ documentación y mensajes de commit. Sigue esa convención.
 ```bash
 cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
-python3 estres.py           # robustez del buscador: 9 comprobaciones
+python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
+~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 13 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -25,16 +26,18 @@ python3 estres.py --rapido      # salta las pruebas que recorren el catálogo
 ~/.venvs/sispe/bin/streamlit run app.py   # la app en local (sin claves: solo lo que no usa IA)
 ```
 
-`informes.py` **necesita las dependencias instaladas**, y no solo `reportlab`:
-pide los prompts a `herramientas/informes/modelo.py`, que importa `comun/ia.py`,
-que importa Streamlit en la primera línea. Con el `python3` del sistema no corre
-(no trae ni `pip` ni `ensurepip`); se lanza con el entorno `~/.venvs/sispe`
-(Python 3.13, creado con `uv`), que es también el que hay que usar para levantar
-la app entera. Las otras dos baterías sí son Python puro y corren con el
-`python3` de siempre.
+`informes.py` y `cascada.py` **necesitan las dependencias instaladas**, y no
+solo `reportlab`: las dos acaban importando `comun/ia.py`, que importa Streamlit
+en la primera línea (`informes.py` por los prompts de
+`herramientas/informes/modelo.py`; `cascada.py` porque es justo `ia.py` lo que
+prueba). Con el `python3` del sistema no corren (no trae ni `pip` ni
+`ensurepip`); se lanzan con el entorno `~/.venvs/sispe` (Python 3.13, creado con
+`uv`), que es también el que hay que usar para levantar la app entera. Las otras
+dos baterías sí son Python puro y corren con el `python3` de siempre.
 
-Las tres baterías **son** la suite: no hay pytest, ni linter, ni formateador. No
-llaman a la IA y no gastan cuota.
+Las cuatro baterías **son** la suite: no hay pytest, ni linter, ni formateador.
+No llaman a la IA y no gastan cuota: `cascada.py` le pone proveedores de mentira
+que contestan, tardan o fallan a la orden.
 
 **Aquí las pruebas no corren en GitHub Actions.** Esta rama solo tiene
 `.github/workflows/mantener-despierta.yml`; el `pruebas.yml` que vigila cada push
@@ -50,6 +53,7 @@ inicio.py                    portada: una tarjeta por herramienta
 app.py                       monta la navegación a partir de comun/registro.py
 comun/registro.py            LA LISTA: lo único que se toca para añadir una herramienta
 comun/{estilo,ia,gist,texto,version}.py    lo que comparten varias
+comun/plazos.py              cuánto se espera a una llamada colgada (Python puro)
 herramientas/<nombre>/vista.py    la pantalla; lo ÚNICO que usa Streamlit
 herramientas/<nombre>/motor.py    la lógica, Python puro
 herramientas/<nombre>/modelo.py   los datos de la herramienta
@@ -84,12 +88,23 @@ ocupaciones «, EN GENERAL» y la densidad) y el colapso de espacios de
 sí misma», 2218/2218: los mismos números que `main`. El catálogo era ya
 idéntico byte a byte.
 
-Lo que sigue sin traerse es la **cascada de proveedores**: `comun/ia.py` habla
-con un solo proveedor, mientras `main` reparte entre Gemini, Mistral y
-OpenRouter con castigos, degradación de modelo y petición de respaldo. Por eso
-falta aquí la prueba «El respaldo no pisa una respuesta buena», la única de
-`main` que no está: prueba un `_con_plazo` que esta rama no tiene. Traerla es
-traer `comun/ia.py` entero, que usan las cuatro herramientas.
+Ese mismo día se trajo también la **cascada de proveedores**. `comun/ia.py` ya
+no habla con uno solo: recorre `ORDEN` (Gemini → Mistral → Groq → OpenRouter)
+saltando los que no tengan clave, aparta una hora al que dice que se le ha
+agotado el cupo del DÍA, degrada cinco minutos el modelo que tropieza y vuelve a
+probar el bueno cuando el castigo caduca. Un tope por minuto no aparta a nadie:
+se pasa solo.
+
+El respaldo y los plazos viven aparte, en **`comun/plazos.py`**, que es Python
+puro: `con_plazo` se rinde a los `PLAZO_INTENTO` segundos y a los
+`PLAZO_RESPALDO` lanza una segunda petición igual sin tirar la primera, porque
+lo que pasa no es que el modelo tarde, sino que una de cada cinco peticiones se
+queda colgada. **Solo el codificador pide plazo**: las herramientas que redactan
+(informes, formación) tardan mucho más y esperan sin corte.
+
+Con eso esta rama pasa las mismas diez pruebas de estrés que `main`, la del
+respaldo incluida. Lo que `main` no tiene es `pruebas/cascada.py`: allí la
+cascada vive dentro de `app.py` y no hay forma de probarla sin levantar la app.
 
 **Antes de tocar el buscador, seguir mirando cómo está resuelto en `main`**: el
 traspaso es en un solo sentido, no se fusionan ramas.
