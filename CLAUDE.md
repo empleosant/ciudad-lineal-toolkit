@@ -15,7 +15,7 @@ documentación y mensajes de commit. Sigue esa convención.
 ```bash
 cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
-python3 estres.py           # robustez del buscador: 8 comprobaciones
+python3 estres.py           # robustez del buscador: 9 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
@@ -74,19 +74,25 @@ que hay en producción en `main`), **Generador de CV**, **Asesor de formación**
 experiencias al generador de CV, y el de CV manda el perfil al asesor de
 formación.
 
-## El motor SISPE de esta rama va por detrás de `main`
+## El motor SISPE, ya al día con `main`
 
-Medido el 17/09/2026: `herramientas/sispe/datos/vocabulario.json` tiene **110
-sinónimos frente a los 127 de `main`**, y se nota en las pruebas —
-`evaluar.py` da **35/40 (87 %)** aquí y **39/40 (97 %)** en `main`; «cada
-ocupación se encuentra a sí misma» da 2208/2218 frente a 2218/2218. A esta rama
-también le faltan dos pruebas de estrés que `main` ya tiene (la de la petición de
-respaldo y «el modelo no puede tumbar la app»).
+El 18/09/2026 se trajo el buscador de `main` en un solo sentido: los 127
+sinónimos del vocabulario, los términos ampliados (2.239 ocupaciones), los tres
+factores que le faltaban a `busca` (bonus por denominación exacta, el de las
+ocupaciones «, EN GENERAL» y la densidad) y el colapso de espacios de
+`normaliza`. `evaluar.py` da **39/40 (97 %)** y «cada ocupación se encuentra a
+sí misma», 2218/2218: los mismos números que `main`. El catálogo era ya
+idéntico byte a byte.
 
-`main` lleva 123 commits desde la separación, casi todos del motor y de la
-cascada de proveedores. **Antes de tocar el buscador de esta rama, mirar cómo
-está resuelto en `main`**: lo previsto es traer aquí el motor y los datos de
-`main` en un solo sentido, no fusionar ramas.
+Lo que sigue sin traerse es la **cascada de proveedores**: `comun/ia.py` habla
+con un solo proveedor, mientras `main` reparte entre Gemini, Mistral y
+OpenRouter con castigos, degradación de modelo y petición de respaldo. Por eso
+falta aquí la prueba «El respaldo no pisa una respuesta buena», la única de
+`main` que no está: prueba un `_con_plazo` que esta rama no tiene. Traerla es
+traer `comun/ia.py` entero, que usan las cuatro herramientas.
+
+**Antes de tocar el buscador, seguir mirando cómo está resuelto en `main`**: el
+traspaso es en un solo sentido, no se fusionan ramas.
 
 ## Reglas que ya costaron una sesión
 
