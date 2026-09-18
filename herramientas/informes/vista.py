@@ -88,7 +88,7 @@ def _cliente():
     """El cliente de IA, o None con el aviso ya puesto en pantalla."""
     cli = ia.cliente()
     if cli is None:
-        st.error(f"No hay clave {ia.AJUSTES['clave']} en los Secrets: sin IA no puedo redactar.")
+        st.error(f"{ia.aviso_sin_clave()} Sin IA no puedo redactar.")
     return cli
 
 
@@ -425,8 +425,7 @@ with fase2:
             st.session_state["inf_audio"] = huella_audio
             cli = ia.cliente()
             if cli is None:
-                st.error(f"No hay clave {ia.AJUSTES['clave']} en los Secrets: "
-                         "no puedo transcribir.")
+                st.error(f"{ia.aviso_sin_clave()} No puedo transcribir.")
             else:
                 with st.spinner("Transcribiendo…"):
                     try:

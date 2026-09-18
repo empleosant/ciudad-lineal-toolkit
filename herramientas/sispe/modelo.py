@@ -4,11 +4,15 @@ Llamadas a la IA del codificador SISPE: los prompts y las dos consultas.
     interpreta_consulta(cli, texto, memoria)   vocabulario oficial de la descripción
     flujo_modelo(cli, texto, candidatos)        elige entre candidatos, a trozos
 
+Las dos aceptan `al_relevar`, una función que recibe una línea por cada
+intento fallido de la cascada: es lo que hace visible que ha habido relevo.
+
 No usa Streamlit: el cliente y la memoria de sesión se reciben como
 parámetros. El cliente lo da `comun.ia.cliente()`.
 """
 
 from comun import ia
+from comun.plazos import PLAZO_INTENTO, PLAZO_RESPALDO
 from comun.texto import normaliza
 from herramientas.sispe import motor
 
@@ -55,18 +59,26 @@ Responde SOLO con este JSON:
 """
 
 
-def interpreta_consulta(cli, texto, memoria=None):
+def interpreta_consulta(cli, texto, memoria=None, al_relevar=None):
     """Lecturas [(términos, grupos), ...] de más a menos probable.
 
     `memoria` es un diccionario donde se guardan las respuestas por consulta
     para no volver a preguntar lo mismo en la misma sesión.
+
+    Este paso corre en TODAS las consultas y con una persona esperando, así
+    que va con plazo y con respaldo: si la petición no vuelve en
+    PLAZO_RESPALDO segundos sale otra igual, y a los PLAZO_INTENTO se releva
+    al modelo siguiente en vez de seguir esperando a una que ya no viene.
     """
     clave = normaliza(texto)
     if memoria is not None and clave in memoria:
         return memoria[clave]
     try:
-        bruto = ia.genera(cli, INTERPRETE, texto)
+        bruto = ia.genera(cli, INTERPRETE, texto,
+                          plazo=PLAZO_INTENTO, respaldo=PLAZO_RESPALDO,
+                          al_relevar=al_relevar)
     except Exception:  # noqa: BLE001
+        # Sin interpretación se sigue: la búsqueda local ya tiene candidatos.
         return []
 
     # Dar forma a lo que conteste el modelo es cosa del motor: allí es Python
@@ -77,7 +89,13 @@ def interpreta_consulta(cli, texto, memoria=None):
     return lecturas
 
 
-def flujo_modelo(cli, texto, candidatos):
-    """La respuesta JSON del modelo, a trozos, para pintar el avance."""
+def flujo_modelo(cli, texto, candidatos, al_relevar=None):
+    """La respuesta JSON del modelo, a trozos, para pintar el avance.
+
+    Aquí no hay plazo ni respaldo: en cuanto ha llegado el primer trozo no se
+    puede relevar sin duplicar lo que la persona ya está leyendo. La cascada
+    sigue actuando mientras no se haya emitido nada.
+    """
     prompt = f"CANDIDATOS (única fuente válida):\n{candidatos}\n\nDESCRIPCIÓN: {texto}"
-    yield from ia.genera_flujo(cli, INSTRUCCIONES, prompt, json=True)
+    yield from ia.genera_flujo(cli, INSTRUCCIONES, prompt, json=True,
+                               al_relevar=al_relevar)

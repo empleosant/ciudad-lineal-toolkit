@@ -449,6 +449,16 @@ class cronometra:
         return False
 
 
+def anota_relevo(linea):
+    """Deja constancia de cada intento fallido de la cascada de proveedores.
+
+    Sin esto el relevo es invisible: el primer proveedor puede llevar una
+    semana caído y la herramienta parece ir igual de bien, solo que más lenta.
+    Se ve en el panel de ajustes con ?mantenimiento=1.
+    """
+    st.session_state.setdefault("sispe_relevos", []).append(linea)
+
+
 def _basica(encontrados, motivo=""):
     # "provisional" marca lo que sale del catalogo sin que el modelo lo haya
     # revisado: ni durante la espera, ni cuando el modelo falla. Esas tarjetas
@@ -484,6 +494,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     # modelo: ahi las puntuaciones se aplanan y la ventaja real desaparece.
     literales = encontrados[:2]
     st.session_state["sispe_tiempos"] = []
+    st.session_state["sispe_relevos"] = []
     cli = ia.cliente() if usar_ia else None
 
     if not encontrados and cli is None:
@@ -545,6 +556,7 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     with cronometra("1. Interpretar el oficio"):
         lecturas = modelo.interpreta_consulta(
             cli, texto, st.session_state.setdefault("sispe_interpretaciones", {}),
+            al_relevar=anota_relevo,
         )
     if lecturas:
         fundido, vistos = [], {}
@@ -584,7 +596,8 @@ def resuelve(texto, zona, usar_ia=True, contexto="", busqueda=None):
     def consulta_al_modelo(candidatos, etiqueta):
         bruto, avance = "", 0.10
         arranque = time.perf_counter()
-        for trozo in modelo.flujo_modelo(cli, texto + contexto, candidatos):
+        for trozo in modelo.flujo_modelo(cli, texto + contexto, candidatos,
+                                         al_relevar=anota_relevo):
             bruto += trozo
             transcurrido = time.perf_counter() - arranque
             if transcurrido > ia.ESPERA_MAXIMA:
@@ -767,6 +780,31 @@ def panel_ajustes():
             for etiqueta, seg in tiempos:
                 st.caption(f"· {etiqueta}: **{seg:.1f} s**")
             st.caption(f"· Total esperando al modelo: **{sum(t for _, t in tiempos):.1f} s**")
+
+        relevos = st.session_state.get("sispe_relevos", [])
+        if relevos:
+            st.caption("Relevos de la última consulta:")
+            for linea in relevos:
+                st.caption(f"· {linea}")
+
+        apartados = ia.quemados()
+        bajados = ia.degradados()
+        if apartados:
+            st.caption("Apartados por cupo: **" + ", ".join(sorted(apartados)) + "**")
+        if bajados:
+            st.caption("Degradados: **"
+                       + ", ".join(f"{p} → {m}" for p, m in bajados.items()) + "**")
+
+        # Fijar un proveedor apaga la cascada, que es justo lo que hace falta
+        # para poder comparar dos: con el relevo activo, la consulta de prueba
+        # podría acabar respondida por otro y estaríamos midiendo otra cosa.
+        elegibles = [ia.CASCADA] + [p for p in ia.ORDEN if ia.tiene_clave(p)]
+        actual = st.session_state.get("ia_proveedor", ia.CASCADA)
+        st.session_state["ia_proveedor"] = st.selectbox(
+            "Proveedor", elegibles,
+            index=elegibles.index(actual) if actual in elegibles else 0,
+            help="«cascada» recorre el orden; fijar uno apaga el relevo.",
+        )
 
         if st.button("Probar la conexión con la IA", use_container_width=True):
             correcto, detalle = ia.prueba()
