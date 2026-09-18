@@ -17,7 +17,7 @@ cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
 python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
-~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 17 comprobaciones
+~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -36,6 +36,16 @@ puede decir si los nombres de modelo de `comun/ia.py` siguen existiendo, porque
 los proveedores cierran modelos antes de la fecha que anuncian. Sin ninguna
 clave que responda avisa de que no ha comprobado nada y sale con 2, en vez de
 dar por bueno lo que no ha mirado.
+
+**No todas las herramientas usan los mismos modelos.** `comun/ia.py` tiene dos
+cadenas: `modelos` (perfil `RAPIDO`, de fábrica) empieza por los Flash-Lite,
+que es lo que necesita el codificador —cientos de consultas al día y respuesta
+en un segundo—, y `modelos_calidad` (perfil `CALIDAD`) empieza por los modelos
+completos, con mucho menos cupo diario pero mejor redacción. Lo piden
+**informes y asesor de formación**, que redactan tres o cuatro veces al día:
+ahí no se nota el segundo de espera y sí se nota lo vago que escribe un Lite.
+Cuando el bueno se queda sin cupo, la misma cadena sigue por los rápidos y el
+informe sale igual. Los castigos de una cadena no tocan a la otra.
 
 **En local no hay claves, así que lo normal es comprobarlo en el despliegue**:
 `?mantenimiento=1` → «Probar TODOS los modelos», que hace lo mismo a base de

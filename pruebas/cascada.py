@@ -389,6 +389,76 @@ def p_prueba_todos_los_modelos():
     return informe("«Probar todos» recorre la lista y señala al que falta", fallos, 4)
 
 
+def p_el_perfil_cambia_la_cadena():
+    """Los informes redactan tres veces al día y quieren el modelo que mejor
+    escribe; el codificador contesta cientos de veces y quiere el rápido. Cada
+    uno pide su cadena, y no son la misma."""
+    limpia()
+    d = monta(["ok"])
+    ia.genera(None, "s", "e", perfil=ia.CALIDAD)
+    fallos = []
+    esperado = ia.PROVEEDORES["gemini"]["modelos_calidad"][0]
+    if d.modelos != [esperado]:
+        fallos.append(f"con CALIDAD llama a {d.modelos}, no a {esperado}")
+    limpia()
+    d = monta(["ok"])
+    ia.genera(None, "s", "e")
+    if d.modelos != [ia.PROVEEDORES["gemini"]["modelos"][0]]:
+        fallos.append(f"sin perfil llama a {d.modelos}")
+    return informe("Cada herramienta pide la cadena que le toca", fallos, 2)
+
+
+def p_los_castigos_no_se_mezclan():
+    """El modelo bueno de los informes se queda sin cupo a media mañana. Eso no
+    puede degradar la cadena del codificador, que usa otros modelos."""
+    limpia()
+    monta([RuntimeError("503"), "el segundo de calidad"])
+    ia.genera(None, "s", "e", perfil=ia.CALIDAD)
+    fallos = []
+    d = monta(["ok"])
+    ia.genera(None, "s", "e")          # el codificador, sin perfil
+    if d.modelos != [ia.PROVEEDORES["gemini"]["modelos"][0]]:
+        fallos.append(f"el codificador arranca degradado: {d.modelos}")
+    # Y al revés: la cadena de calidad sigue donde la dejamos.
+    d = monta(["ok"])
+    ia.genera(None, "s", "e", perfil=ia.CALIDAD)
+    if d.modelos != [ia.PROVEEDORES["gemini"]["modelos_calidad"][1]]:
+        fallos.append(f"la de calidad no recuerda su relevo: {d.modelos}")
+    return informe("Los castigos de una cadena no tocan a la otra", fallos, 2)
+
+
+def p_sin_cupo_el_bueno_sigue_por_los_rapidos():
+    """Lo que hace que esto sea seguro: cuando el modelo bueno agota su cupo
+    del día, el informe sale igual con el de siempre. Peor escrito, pero
+    sale."""
+    limpia()
+    calidad = ia.PROVEEDORES["gemini"]["modelos_calidad"]
+    # Fallan los completos; contesta el primer Lite de la misma cadena.
+    d = monta([RuntimeError("503")] * 3 + ["con el rapido"])
+    fallos = []
+    r = ia.genera(None, "s", "e", perfil=ia.CALIDAD)
+    if r != "con el rapido":
+        fallos.append(f"devuelve {r!r}")
+    if d.modelos != calidad[:4]:
+        fallos.append(f"no recorre la cadena de calidad entera: {d.modelos}")
+    if d.proveedores != ["gemini"] * 4:
+        fallos.append(f"se sale del proveedor: {d.proveedores}")
+    return informe("Sin cupo del bueno, el informe sale con el rápido", fallos, 3)
+
+
+def p_proveedor_sin_lista_de_calidad():
+    """Groq no tiene `modelos_calidad` porque no hay clave con la que saber qué
+    modelos grandes tiene hoy. Pedir calidad no puede dejarlo fuera."""
+    limpia()
+    st.session_state["ia_proveedor"] = "groq"
+    d = monta(["ok"])
+    ia.genera(None, "s", "e", perfil=ia.CALIDAD)
+    fallos = []
+    if d.modelos != [ia.PROVEEDORES["groq"]["modelos"][0]]:
+        fallos.append(f"llama a {d.modelos}")
+    return informe("Sin lista de calidad se usa la normal", fallos, 1)
+
+
 def p_transcribe_salta_a_quien_sabe():
     limpia()
     # Gemini y Groq saben transcribir; Mistral no, y hay que saltárselo.
@@ -433,6 +503,10 @@ PRUEBAS = [
     p_proveedor_entero_sin_modelos,
     p_no_confunde_404_con_lo_demas,
     p_prueba_todos_los_modelos,
+    p_el_perfil_cambia_la_cadena,
+    p_los_castigos_no_se_mezclan,
+    p_sin_cupo_el_bueno_sigue_por_los_rapidos,
+    p_proveedor_sin_lista_de_calidad,
     p_transcribe_salta_a_quien_sabe,
 ]
 

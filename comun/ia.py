@@ -14,6 +14,14 @@ cortas). `genera` acepta además `plazo` y `respaldo`, que es lo que activa
 pide el codificador, que hace llamadas de un segundo; las herramientas que
 redactan tardan mucho más y esperan sin plazo.
 
+DOS CADENAS, NO UNA. `perfil=RAPIDO` (lo de fábrica) usa `modelos`, que empieza
+por los Flash-Lite: cientos de consultas al día y respuesta en un segundo, que
+es lo que necesita el codificador. `perfil=CALIDAD` usa `modelos_calidad`, que
+empieza por los modelos completos: mucho menos cupo diario, pero un informe son
+tres llamadas y ahí lo que se nota es cómo escribe. Cuando el bueno se queda
+sin cupo, la misma cadena sigue por los rápidos y el informe sale igual. Los
+castigos de una cadena no tocan a la otra.
+
 LA CASCADA. `ORDEN` son los proveedores a intentar, de izquierda a derecha,
 saltando los que no tengan clave. Dentro de cada uno, sus modelos son otra
 cadena de relevo. Un proveedor que devuelve «cupo del día agotado» se aparta
@@ -83,6 +91,19 @@ PROVEEDORES = {
             "gemini-2.5-flash-lite",
             "gemini-3.6-flash",
         ],
+        # Para redactar, al revés: los Flash completos delante. Su cupo diario
+        # es mucho más corto -por eso NO valen para el codificador, que hace
+        # cientos de consultas- pero un informe son tres llamadas y aquí lo
+        # que se nota es la calidad de la redacción, no el segundo de espera.
+        # Cuando se agote el cupo, la cadena sigue por los Lite de siempre: el
+        # informe sale igual, solo que peor escrito.
+        "modelos_calidad": [
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-2.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
+        ],
     },
     "mistral": {
         # Los topes del plan gratuito son POR MODELO, no por cuenta. Ministral
@@ -94,12 +115,21 @@ PROVEEDORES = {
             "mistral-small-latest",
             "mistral-large-latest",
         ],
+        "modelos_calidad": [
+            "mistral-large-latest",
+            "mistral-small-latest",
+            "ministral-8b-latest",
+        ],
         "url": "https://api.mistral.ai/v1",
     },
     "groq": {
         # El único con modelo de transcripción propio: es el que sostiene el
         # dictado del generador de CV y el de los informes cuando Gemini no
         # está. Ver `transcribe`.
+        # Sin `modelos_calidad` a propósito: aquí no hay clave con la que
+        # comprobar qué modelos grandes tiene hoy (Kimi K2, GPT-OSS 120B y
+        # compañía). Si algún día se pone GROQ_API_KEY, es el sitio donde
+        # ponerlos, y «Probar TODOS los modelos» dirá si los nombres valen.
         "clave": "GROQ_API_KEY",
         "modelos": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
         "url": "https://api.groq.com/openai/v1",
@@ -125,6 +155,13 @@ ORDEN = ["gemini", "mistral", "groq", "openrouter"]
 
 CASCADA = "cascada"   # el selector de mantenimiento usa este valor para decir
                       # «recorre el orden»; cualquier otro fija un proveedor.
+
+# Los dos perfiles. No es un ajuste que se toque: lo pide cada herramienta
+# según lo que hace. El codificador contesta cientos de veces al día y quiere
+# el modelo rápido; los informes y el asesor de formación redactan tres o
+# cuatro veces al día y quieren el que escribe mejor.
+RAPIDO = "rapido"
+CALIDAD = "calidad"
 
 CADUCIDAD_CASTIGO = 3600   # segundos que dura APARTAR UN PROVEEDOR. Solo se
                            # aparta por cupo del día agotado, y un cupo diario
@@ -201,11 +238,15 @@ def degradados():
     cambia es el modelo, que nadie mira.
     """
     fuera = {}
-    for prov in list(st.session_state.get("ia_modelo_ok", {})):
-        i = _idx_modelo(prov)   # purga de paso lo que haya caducado
+    for clave in list(st.session_state.get("ia_modelo_ok", {})):
+        prov, _, perfil = clave.partition(":")
+        perfil = perfil or RAPIDO
+        if prov not in PROVEEDORES:
+            continue
+        i = _idx_modelo(prov, perfil)   # purga de paso lo que haya caducado
         if i:
-            lista = PROVEEDORES[prov]["modelos"]
-            fuera[prov] = lista[min(i, len(lista) - 1)]
+            lista = modelos_de(prov, perfil) or PROVEEDORES[prov]["modelos"]
+            fuera[clave] = lista[min(i, len(lista) - 1)]
     return fuera
 
 
@@ -235,32 +276,50 @@ def ajustes_actual():
     return PROVEEDORES[proveedor_actual()]
 
 
-def modelos_de(prov):
-    """Modelos a recorrer en la cadena de relevo de ESE proveedor.
+def modelos_de(prov, perfil=RAPIDO):
+    """Modelos a recorrer en la cadena de relevo de ESE proveedor, para ESE uso.
+
+    Con `perfil=CALIDAD` se usa `modelos_calidad` si el proveedor la tiene, que
+    es la misma cadena puesta al revés: primero el que escribe mejor, y los
+    rápidos detrás para cuando el bueno se quede sin cupo.
 
     Si en mantenimiento se ha fijado uno a mano, la cadena se queda en ese y
     solo en ese, por el mismo motivo que la cascada se apaga al fijar proveedor.
     """
-    todos = [m for m in PROVEEDORES[prov]["modelos"]
+    lista = PROVEEDORES[prov]["modelos"]
+    if perfil == CALIDAD:
+        lista = PROVEEDORES[prov].get("modelos_calidad") or lista
+    todos = [m for m in lista
              if m not in st.session_state.get("ia_inexistentes", {}).get(prov, [])]
     fijo = st.session_state.get("ia_modelo_fijo")
     return [fijo] if fijo in todos else todos
 
 
-def _idx_modelo(prov):
+def _clave_cadena(prov, perfil):
+    """Los castigos de una cadena no valen para la otra.
+
+    El índice y la degradación se guardan por proveedor Y perfil: si el modelo
+    bueno de los informes se queda sin cupo, eso no puede degradar la cadena
+    del codificador, que usa otros modelos distintos.
+    """
+    return prov if perfil == RAPIDO else f"{prov}:{perfil}"
+
+
+def _idx_modelo(prov, perfil=RAPIDO):
     """El índice de la cadena de relevo es POR proveedor.
 
     Compartir un solo número entre todos hacía que, tras degradar en uno, la
     cascada entrase en el siguiente apuntando a un modelo que quizá ni existe
     en su lista.
     """
-    if not _castigo_vivo("ia_modelo_desde", prov):
-        st.session_state.setdefault("ia_modelo_ok", {}).pop(prov, None)
+    clave = _clave_cadena(prov, perfil)
+    if not _castigo_vivo("ia_modelo_desde", clave):
+        st.session_state.setdefault("ia_modelo_ok", {}).pop(clave, None)
         return 0
-    return st.session_state.setdefault("ia_modelo_ok", {}).get(prov, 0)
+    return st.session_state.setdefault("ia_modelo_ok", {}).get(clave, 0)
 
 
-def _fija_modelo(prov, modelo):
+def _fija_modelo(prov, modelo, perfil=RAPIDO):
     """Recuerda por qué modelo empezar la próxima vez, por NOMBRE.
 
     Se guarda su posición, pero se calcula aquí sobre la cadena viva. Cuando
@@ -269,17 +328,18 @@ def _fija_modelo(prov, modelo):
     apuntaba de pronto a otro: el modelo que acababa de responder bien
     aparecía como degradado sin haber fallado.
     """
-    vivos = modelos_de(prov)
+    vivos = modelos_de(prov, perfil)
     i = vivos.index(modelo) if modelo in vivos else 0
-    st.session_state.setdefault("ia_modelo_ok", {})[prov] = i
+    clave = _clave_cadena(prov, perfil)
+    st.session_state.setdefault("ia_modelo_ok", {})[clave] = i
     desde = st.session_state.setdefault("ia_modelo_desde", {})
     if i:
         # setdefault, no asignación: la hora es la de la PRIMERA degradación.
         # Refrescarla en cada llamada sería no caducar nunca.
-        desde.setdefault(prov, time.time())
+        desde.setdefault(clave, time.time())
     else:
         # El primero de la cadena no es una degradación: nada que caducar.
-        desde.pop(prov, None)
+        desde.pop(clave, None)
 
 
 def apunta_uso(prov, modelo):
@@ -355,8 +415,11 @@ def _mata_modelo(prov, modelo):
     st.session_state.setdefault("ia_inexistentes", {}).setdefault(prov, []).append(modelo)
     # El índice de la cadena apuntaba a la lista de antes: se reinicia para
     # que la próxima llamada arranque por el primero de los que siguen vivos.
-    st.session_state.setdefault("ia_modelo_ok", {}).pop(prov, None)
-    st.session_state.setdefault("ia_modelo_desde", {}).pop(prov, None)
+    # Las dos cadenas del proveedor, porque un modelo que no existe no existe
+    # tampoco para la otra.
+    for clave in (_clave_cadena(prov, RAPIDO), _clave_cadena(prov, CALIDAD)):
+        st.session_state.setdefault("ia_modelo_ok", {}).pop(clave, None)
+        st.session_state.setdefault("ia_modelo_desde", {}).pop(clave, None)
 
 
 def _quema(prov, e):
@@ -366,10 +429,10 @@ def _quema(prov, e):
         st.session_state.setdefault("ia_agotados", {}).setdefault(prov, time.time())
 
 
-def modelo_actual():
+def modelo_actual(perfil=RAPIDO):
     prov = proveedor_actual()
-    m = modelos_de(prov) or PROVEEDORES[prov]["modelos"]
-    return m[min(_idx_modelo(prov), len(m) - 1)]
+    m = modelos_de(prov, perfil) or PROVEEDORES[prov]["modelos"]
+    return m[min(_idx_modelo(prov, perfil), len(m) - 1)]
 
 
 # ---------------------------------------------------------------------------
@@ -463,7 +526,7 @@ def _una_llamada(prov, cli, modelo, sistema, entrada, max_tokens, json, pensar):
 
 
 def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
-           plazo=None, respaldo=None, al_relevar=None):
+           plazo=None, respaldo=None, al_relevar=None, perfil=RAPIDO):
     """Una respuesta entera, recorriendo la cascada. Lanza la última excepción
     si no contesta nadie.
 
@@ -473,6 +536,10 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
 
     `al_relevar(texto)` recibe una línea por cada intento fallido, para poder
     enseñar después por qué la respuesta tardó lo que tardó.
+
+    `perfil=CALIDAD` cambia la cadena de modelos por la de redactar: primero el
+    que escribe mejor, aunque tenga menos cupo. Lo piden las herramientas que
+    redactan, no el codificador.
     """
     orden = orden_proveedores()
     primero = orden[0] if orden else None
@@ -481,13 +548,13 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
         cliente_prov = _cliente_para(prov, cli, primero)
         if cliente_prov is None:
             continue
-        modelos = modelos_de(prov)
+        modelos = modelos_de(prov, perfil)
         if not modelos:
             continue         # todos sus modelos han resultado no existir
         # El índice se acota a la lista: si se ha fijado un modelo a mano, la
         # cadena se queda en uno y un índice viejo dejaría el `range` vacío,
         # que es saltarse al proveedor sin intentarlo siquiera.
-        for modelo in modelos[min(_idx_modelo(prov), len(modelos) - 1):]:
+        for modelo in modelos[min(_idx_modelo(prov, perfil), len(modelos) - 1):]:
             arranque = time.perf_counter()
             try:
                 hacer = lambda: _una_llamada(      # noqa: E731
@@ -515,7 +582,7 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
                 if prov in quemados():
                     break            # cupo del día: no hay más que rascar aquí
                 continue             # otro tropiezo: al siguiente modelo
-            _fija_modelo(prov, modelo)
+            _fija_modelo(prov, modelo, perfil)
             apunta_uso(prov, modelo)
             return texto
     if ultimo:
@@ -575,7 +642,8 @@ def _flujo_openai(cli, modelo, sistema, entrada, max_tokens, json):
             yield ("texto", texto)
 
 
-def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=None):
+def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=None,
+                 perfil=RAPIDO):
     """La respuesta a trozos, para pintar el avance mientras llega.
 
     Recorre la misma cascada que `genera`, con una diferencia: en cuanto se ha
@@ -589,10 +657,10 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=
         cliente_prov = _cliente_para(prov, cli, primero)
         if cliente_prov is None:
             continue
-        modelos = modelos_de(prov)
+        modelos = modelos_de(prov, perfil)
         if not modelos:
             continue
-        for modelo in modelos[min(_idx_modelo(prov), len(modelos) - 1):]:
+        for modelo in modelos[min(_idx_modelo(prov, perfil), len(modelos) - 1):]:
             arranque = time.perf_counter()
             emitido = False
             try:
@@ -607,7 +675,7 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=
                 for que, valor in trozos:
                     if que == "cfg":
                         st.session_state["ia_cfg"] = valor
-                        _fija_modelo(prov, modelo)
+                        _fija_modelo(prov, modelo, perfil)
                         apunta_uso(prov, modelo)
                         emitido = True
                         continue
@@ -718,9 +786,13 @@ def prueba(todos=False):
             lineas.append(f"{prov}: ninguno de sus modelos existe")
             continue
         if todos:
-            # La lista de PROVEEDORES entera, no solo los que siguen vivos: la
-            # gracia es descubrir cuáles ya no están.
-            aprobar = PROVEEDORES[prov]["modelos"]
+            # Las dos listas enteras, no solo los que siguen vivos: la gracia
+            # es descubrir cuáles ya no están. Sin repetir los que salen en las
+            # dos, que son unos cuantos.
+            aprobar = list(dict.fromkeys(
+                PROVEEDORES[prov]["modelos"]
+                + PROVEEDORES[prov].get("modelos_calidad", [])
+            ))
         else:
             aprobar = [cadena[min(_idx_modelo(prov), len(cadena) - 1)]]
         for modelo in aprobar:

@@ -83,6 +83,7 @@ def sugiere(cli, perfil, cursos, cuantos=5):
         f"HOY: {motor.hoy()}\nCUANTOS: {cuantos}\n\nPERFIL:\n{perfil.strip()}\n\n"
         f"LISTA DE CURSOS:\n{motor.lista_para_ia(cursos)}"
     )
-    datos = _json(ia.genera(cli, ASESOR, entrada, max_tokens=8192, json=True, pensar=True))
+    datos = _json(ia.genera(cli, ASESOR, entrada, max_tokens=8192, json=True, pensar=True,
+                            perfil=ia.CALIDAD))
     recomendaciones, descartadas = motor.resuelve(datos.get("recomendaciones"), cursos)
     return recomendaciones, str(datos.get("observaciones", "") or "").strip(), descartadas

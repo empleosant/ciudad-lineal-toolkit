@@ -394,7 +394,7 @@ firma. Devuelve el texto pelado."""
 def lee_cv(cli, cv):
     """La lectura de la trayectoria, en prosa, para leerla en pantalla."""
     return ia.genera(cli, ANALISTA, f"HOY ES {motor.hoy()}.\n\nCURRÍCULO:\n{cv}",
-                     max_tokens=2048, pensar=True)
+                     max_tokens=2048, pensar=True, perfil=ia.CALIDAD)
 
 
 def prepara(cli, cv, lectura):
@@ -402,7 +402,7 @@ def prepara(cli, cv, lectura):
     bruto = ia.genera(
         cli, PREPARACION,
         f"HOY ES {motor.hoy()}.\n\nCURRÍCULO:\n{cv}\n\nLECTURA YA HECHA:\n{lectura}",
-        max_tokens=6144, json=True, pensar=True,
+        max_tokens=6144, json=True, pensar=True, perfil=ia.CALIDAD,
     )
     try:
         bloque = re.search(r"\{.*\}", bruto or "", re.S)
@@ -432,4 +432,5 @@ def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal):
     )
     # 4096 y no 2048: el correo llega a 750 palabras y Gemini cuenta el
     # razonamiento dentro del mismo presupuesto de salida.
-    return ia.genera(cli, CIERRE, peticion, max_tokens=4096, pensar=True)
+    return ia.genera(cli, CIERRE, peticion, max_tokens=4096, pensar=True,
+                     perfil=ia.CALIDAD)
