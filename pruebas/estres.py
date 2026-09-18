@@ -98,6 +98,81 @@ def p_basura(motor):
 
 
 # ---------------------------------------------------------------------------
+# 1 bis. Lo que contesta el modelo tampoco puede tumbar nada
+# ---------------------------------------------------------------------------
+
+# El modelo se salta la forma pedida cada dos por tres, y lo hace en
+# producción, con una persona delante esperando su código. Estas son las
+# formas que ha mandado de verdad, más las degeneradas que se le ocurren a
+# cualquiera. Ninguna puede subir una excepción: como mucho, respuesta vacía.
+
+RESPUESTAS_DEL_MODELO = [
+    # la forma que se pide en el prompt
+    '{"ocupaciones":[{"codigo":"92101027","nivel":"00","motivo":"x"}],"pregunta":"","opciones":[]}',
+    # el array sin el objeto que lo envuelve
+    '[{"codigo":"92101027","nivel":"00","motivo":"x"}]',
+    # códigos a pelo, sin objeto
+    '{"ocupaciones":["92101027","84201043"],"pregunta":"","opciones":[]}',
+    '{"ocupaciones":[92101027],"pregunta":"","opciones":[]}',
+    # mezclas y basura dentro de la lista
+    '{"ocupaciones":["92101027",{"codigo":"84201043"},null,[],7]}',
+    # opciones y pregunta con formas raras
+    '{"ocupaciones":[],"pregunta":"¿En casa o en residencia?","opciones":"en casa"}',
+    '{"ocupaciones":[],"pregunta":"¿En casa?","opciones":[{"texto":"en casa"}]}',
+    # otros_terminos donde se espera una cadena
+    '{"ocupaciones":[],"otros_terminos":["camarero","piso"]}',
+    '{"ocupaciones":[],"otros_terminos":{"a":1}}',
+    # envuelto en vallas de código, que el modelo pone a menudo
+    '```json\n{"ocupaciones":[{"codigo":"92101027"}]}\n```',
+    # formas degeneradas
+    '{}', '[]', 'null', '3', '"camarero de piso"',
+    '{"ocupaciones":null}', '{"ocupaciones":"92101027"}',
+    # json roto y texto suelto
+    '{"ocupaciones":[{"codigo":', 'no he podido responder', '',
+]
+
+# Lo mismo para el paso 1, el intérprete. Corre en TODAS las consultas del
+# modo de dos llamadas, así que lo que reviente aquí no deja ni empezar.
+LECTURAS_DEL_MODELO = [
+    '{"lecturas":[{"terminos":"camarero piso","grupos":"9"}]}',
+    # las lecturas como cadenas, no como objetos
+    '{"lecturas":["camarero de piso","limpieza"]}',
+    '{"lecturas":["camarero de piso",{"terminos":"limpiadora","grupos":"9"}]}',
+    '{"lecturas":[{"terminos":["camarero","piso"],"grupos":["9"]}]}',
+    '{"lecturas":[1,2,3]}', '{"lecturas":null}', '{"lecturas":[]}',
+    '{"terminos":"camarero piso","grupos":"9"}',
+    '["camarero de piso"]', '{"lecturas":[{"terminos":', 'camarero de piso', '',
+]
+
+
+@prueba("El modelo no puede tumbar la app")
+def p_respuestas_modelo(motor):
+    fallos = []
+
+    for bruto in RESPUESTAS_DEL_MODELO:
+        try:
+            r = motor.interpreta(bruto)
+            if not isinstance(r, dict) or not isinstance(r.get("ocupaciones"), list):
+                fallos.append(f"interpreta({bruto[:34]!r}) devuelve {type(r).__name__}")
+        except Exception as e:  # noqa: BLE001
+            fallos.append(f"interpreta({bruto[:34]!r}) -> {type(e).__name__}: {e}")
+
+    for bruto in LECTURAS_DEL_MODELO:
+        try:
+            r = motor.lecturas_de(bruto)
+            if not isinstance(r, list) or not all(
+                isinstance(x, tuple) and len(x) == 2 for x in r
+            ):
+                fallos.append(f"lecturas_de({bruto[:30]!r}) devuelve {r!r:.40}")
+        except Exception as e:  # noqa: BLE001
+            fallos.append(f"lecturas_de({bruto[:30]!r}) -> {type(e).__name__}: {e}")
+
+    total = len(RESPUESTAS_DEL_MODELO) + len(LECTURAS_DEL_MODELO)
+    return _informe("El modelo no puede tumbar la app",
+                    total - len(fallos), total, fallos, 100)
+
+
+# ---------------------------------------------------------------------------
 # 2. La forma de escribir no cambia el resultado
 # ---------------------------------------------------------------------------
 
