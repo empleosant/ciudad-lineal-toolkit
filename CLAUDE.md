@@ -18,6 +18,7 @@ python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
 python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
+~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -52,18 +53,26 @@ informe sale igual. Los castigos de una cadena no tocan a la otra.
 llamar (16 tokens por modelo) y señala los que ya no existen. Es el botón que
 hay que pulsar después de tocar la lista de `PROVEEDORES`.
 
-`informes.py` y `cascada.py` **necesitan las dependencias instaladas**, y no
+`informes.py`, `cascada.py` y `cv.py` **necesitan las dependencias instaladas**, y no
 solo `reportlab`: las dos acaban importando `comun/ia.py`, que importa Streamlit
 en la primera línea (`informes.py` por los prompts de
 `herramientas/informes/modelo.py`; `cascada.py` porque es justo `ia.py` lo que
-prueba). Con el `python3` del sistema no corren (no trae ni `pip` ni
+prueba; `cv.py` porque el motor del CV importa reportlab para el PDF). Con el
+`python3` del sistema no corren (no trae ni `pip` ni
 `ensurepip`); se lanzan con el entorno `~/.venvs/sispe` (Python 3.13, creado con
 `uv`), que es también el que hay que usar para levantar la app entera. Las otras
 dos baterías sí son Python puro y corren con el `python3` de siempre.
 
-Las cuatro baterías **son** la suite: no hay pytest, ni linter, ni formateador.
+Las cinco baterías **son** la suite: no hay pytest, ni linter, ni formateador.
 No llaman a la IA y no gastan cuota: `cascada.py` le pone proveedores de mentira
 que contestan, tardan o fallan a la orden.
+
+`cv.py` es la única que además **pulsa botones**: sus dos últimas
+comprobaciones levantan la pantalla del generador con el banco de pruebas de
+Streamlit (`streamlit.testing.v1.AppTest`, sin navegador) y comprueban que al
+marcar «Carnet B» cambia de verdad la caja de texto de al lado. La pantalla se
+ejecuta con un envoltorio que desactiva `page_link`, que solo existe con la
+navegación de `app.py` montada.
 
 **Aquí las pruebas no corren en GitHub Actions.** Esta rama solo tiene
 `.github/workflows/mantener-despierta.yml`; el `pruebas.yml` que vigila cada push

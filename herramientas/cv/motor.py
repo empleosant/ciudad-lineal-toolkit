@@ -5,6 +5,7 @@ El currículo es un diccionario plano (ver `nuevo()`), con dos listas de
 fichas: experiencias y formación. Aquí vive todo lo que no dibuja:
 
     a_oracion(denominacion)   nombre de catálogo -> nombre para el currículo
+    compone(texto, ...)       los botones de «Otros datos», escritos en el texto
     ordena_por_fechas(fichas) más reciente primero
     texto_plano(cv)           vista previa en texto
     documento_docx(cv)        el Word sobre el modelo de la oficina (ver plantilla.py)
@@ -45,6 +46,160 @@ def experiencia(codigo="", denominacion="", motivo=""):
 
 def formacion(titulo="", centro="", anio=""):
     return {"titulo": titulo, "centro": centro, "anio": anio}
+
+# ---------------------------------------------------------------------------
+# BOTONES DE «OTROS DATOS»
+# ---------------------------------------------------------------------------
+# Los apartados de «Otros datos de interés» -permiso, idiomas, informática,
+# disponibilidad- son campos de texto libre, y así siguen siendo: es lo que se
+# imprime. Lo que hacen los botones de la pantalla es ESCRIBIR EN ESE TEXTO las
+# frases de siempre, para no tener que teclear «Carnet de conducir B.» veinte
+# veces al día ni discutir cada vez si se escribe «carnet» o «carné».
+#
+# Por eso no hay un dato nuevo que guardar ni que exportar: el texto sigue
+# siendo la única fuente: lo que está marcado se deduce de lo que hay escrito
+# (`marcadas`), y al marcar o desmarcar se recompone (`compone`). Quien
+# prefiera escribirlo a mano puede seguir haciéndolo, y lo que escriba no se
+# toca.
+
+PERMISOS = ["B", "A (moto)", "C (camión)", "C+E (tráiler)", "D (autobús)", "Vehículo propio"]
+
+IDIOMAS = ["Español", "Inglés", "Francés", "Árabe", "Rumano", "Ucraniano",
+           "Portugués", "Chino"]
+NIVELES_IDIOMA = ["nativo", "alto", "medio", "básico"]
+
+INFORMATICA = ["correo electrónico", "internet", "Word", "Excel",
+               "aplicaciones del móvil", "redes sociales", "TPV (caja registradora)",
+               "ofimática a nivel usuario"]
+
+DISPONIBILIDAD = [
+    "Incorporación inmediata.",
+    "Disponibilidad horaria completa.",
+    "Disponibilidad para turnos rotativos.",
+    "Disponibilidad para trabajar los fines de semana.",
+    "Preferencia por la jornada de mañana.",
+    "Preferencia por la jornada de tarde.",
+]
+
+OTROS_DATOS = [
+    "Certificado de manipulador de alimentos.",
+    "Carné de carretillero.",
+    "Formación en prevención de riesgos laborales.",
+    "Certificado de discapacidad.",
+    "Certificado de delitos de naturaleza sexual.",
+]
+
+
+def frase_permiso(etiqueta):
+    """«B» -> «Carnet de conducir B.»; «Vehículo propio» va tal cual."""
+    if etiqueta == "Vehículo propio":
+        return "Vehículo propio."
+    return f"Carnet de conducir {etiqueta.split(' ')[0]}."
+
+
+def frase_idioma(idioma, nivel):
+    """«Inglés» + «básico» -> «Inglés básico.», como el modelo de la oficina."""
+    return f"{idioma} {nivel}."
+
+
+def frase_informatica(elegidas):
+    """Una sola frase con la lista, que es como está escrito el modelo:
+    «Manejo de correo electrónico, Word y Excel.»"""
+    partes = [e for e in INFORMATICA if e in elegidas]
+    if not partes:
+        return ""
+    if len(partes) == 1:
+        cuerpo = partes[0]
+    else:
+        cuerpo = ", ".join(partes[:-1]) + " y " + partes[-1]
+    return f"Manejo de {cuerpo}."
+
+
+def catalogo_permisos():
+    return [frase_permiso(p) for p in PERMISOS]
+
+
+def catalogo_idiomas():
+    """Todas las combinaciones. Hacen falta enteras para poder LIMPIAR: si el
+    nivel cambia de «básico» a «medio», hay que quitar la frase anterior."""
+    return [frase_idioma(i, n) for i in IDIOMAS for n in NIVELES_IDIOMA]
+
+
+def catalogo_informatica():
+    """Lo mismo, pero aquí la frase es una lista y las combinaciones son
+    demasiadas: se limpia por el principio, que es fijo."""
+    return []
+
+
+def marcadas(texto, catalogo):
+    """Las frases del catálogo que ya están escritas, en el orden del catálogo."""
+    texto = texto or ""
+    return [f for f in catalogo if f in texto]
+
+
+def _limpia(texto):
+    """Espacios y saltos sobrantes de haber quitado frases por el medio."""
+    texto = re.sub(r"[ \t]+", " ", texto or "")
+    texto = re.sub(r" *\n{2,} *", "\n", texto)
+    return texto.strip(" \n")
+
+
+def compone(texto, elegidas, catalogo, salto=False):
+    """Deja en el texto EXACTAMENTE las frases `elegidas` del catálogo.
+
+    Lo que la persona haya escrito a mano y no esté en el catálogo se conserva
+    intacto y se queda detrás. Marcar y desmarcar es reversible, y volver a
+    componer con lo mismo no cambia nada.
+
+    `salto` separa por líneas en vez de por espacios: «Otros datos» es un
+    apartado por línea (así lo lee `texto_plano` y así lo pinta la plantilla).
+    """
+    resto = texto or ""
+    for frase in catalogo:
+        resto = resto.replace(frase, "")
+    resto = _limpia(resto)
+    piezas = [f for f in elegidas if f]
+    if resto:
+        piezas.append(resto)
+    return ("\n" if salto else " ").join(piezas)
+
+
+def nivel_de(texto, idioma):
+    """El nivel con el que está escrito ese idioma, o None si no está.
+
+    Se mira de más específico a menos para que «Español nativo» no se confunda
+    con nada: los niveles no comparten palabras, pero el orden fijo evita
+    sorpresas si algún día se añade uno compuesto.
+    """
+    for nivel in NIVELES_IDIOMA:
+        if frase_idioma(idioma, nivel) in (texto or ""):
+            return nivel
+    return None
+
+
+def idiomas_de(texto):
+    """[(idioma, nivel), ...] tal como están escritos ahora."""
+    return [(i, nivel_de(texto, i)) for i in IDIOMAS if nivel_de(texto, i)]
+
+
+def informatica_de(texto):
+    """Las piezas de la frase de informática que ya están escritas."""
+    return [e for e in INFORMATICA if e in (texto or "")]
+
+
+def compone_informatica(texto, elegidas):
+    """Rehace la frase de informática conservando lo escrito a mano.
+
+    No se puede limpiar por catálogo como los demás -las combinaciones de la
+    lista son demasiadas-, así que se quita la frase entera que empieza por
+    «Manejo de» y se vuelve a montar.
+    """
+    resto = re.sub(r"Manejo de [^.]*\.", "", texto or "")
+    resto = _limpia(resto)
+    frase = frase_informatica(elegidas)
+    return " ".join(x for x in (frase, resto) if x)
+
+
 
 
 SUELTAS_ES = ("r", "n", "l", "d", "s", "z", "j")

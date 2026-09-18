@@ -3,7 +3,7 @@ Generador de CV con IA en pocos pasos: la pantalla.
 
     1 · Datos        quién es (no se manda a la IA)
     2 · Experiencia  fichas: del codificador SISPE, contadas o grabadas, o a mano
-    3 · Formación    títulos, idiomas, informática, otros
+    3 · Formación    títulos, idiomas, informática, otros (con botones para lo típico)
     4 · Documento    objetivo profesional redactado por la IA, vista previa y descarga
 
 La lógica está en `motor.py` (Python puro), las llamadas a la IA en
@@ -107,6 +107,90 @@ def area(etiqueta, clave, **k):
     cv[clave] = st.text_area(etiqueta, value=cv[clave], key=f"cv_w_{clave}", **k)
 
 
+# ---------------------------------------------------------------------------
+# Botones de «Otros datos»
+# ---------------------------------------------------------------------------
+# No guardan nada aparte: escriben las frases de siempre en el campo de texto
+# que ya existía, que es lo que se imprime. El texto manda siempre -lo marcado
+# se deduce de lo escrito-, así que editar a mano y pulsar botones no se
+# pelean: quien borre «Carnet de conducir B.» del texto ve el botón apagarse.
+
+def _escribe(clave, texto):
+    """Deja el texto en el currículo Y en el widget.
+
+    Las dos cosas: `campo`/`area` llevan `key`, y con key puesta Streamlit
+    sirve el valor de la sesión, no el `value` que se le pase. Sin esta
+    segunda línea, el botón cambiaba el currículo y la caja de texto seguía
+    enseñando lo de antes.
+    """
+    cv[clave] = texto
+    st.session_state[f"cv_w_{clave}"] = texto
+
+
+def _aplica(clave, etiquetas, frase, catalogo, salto):
+    elegidas = st.session_state.get(f"cv_p_{clave}") or []
+    frases = [frase(e) for e in etiquetas if e in elegidas]
+    _escribe(clave, motor.compone(cv[clave], frases, catalogo, salto=salto))
+
+
+def botones(clave, etiquetas, frase, catalogo, salto=False):
+    marcadas = [e for e in etiquetas if frase(e) in (cv[clave] or "")]
+    llave = f"cv_p_{clave}"
+    # El texto es la única fuente: si se ha editado a mano, los botones se
+    # ponen al día antes de dibujarse.
+    if sorted(st.session_state.get(llave) or []) != sorted(marcadas):
+        st.session_state[llave] = marcadas
+    st.pills("Marcar", etiquetas, selection_mode="multi", key=llave,
+             label_visibility="collapsed",
+             on_change=_aplica, args=(clave, etiquetas, frase, catalogo, salto))
+
+
+def _nivel_de_fabrica(idioma):
+    """Quien marca «Español» en una oficina de Madrid casi siempre lo es."""
+    return "nativo" if idioma == "Español" else "básico"
+
+
+def _aplica_idiomas():
+    marcados = st.session_state.get("cv_p_idiomas") or []
+    frases = []
+    for idioma in motor.IDIOMAS:
+        if idioma not in marcados:
+            continue
+        nivel = (st.session_state.get(f"cv_n_{idioma}")
+                 or motor.nivel_de(cv["idiomas"], idioma)
+                 or _nivel_de_fabrica(idioma))
+        frases.append(motor.frase_idioma(idioma, nivel))
+    _escribe("idiomas", motor.compone(cv["idiomas"], frases, motor.catalogo_idiomas()))
+
+
+def botones_idiomas():
+    actuales = dict(motor.idiomas_de(cv["idiomas"]))
+    if sorted(st.session_state.get("cv_p_idiomas") or []) != sorted(actuales):
+        st.session_state["cv_p_idiomas"] = list(actuales)
+    st.pills("Idiomas", motor.IDIOMAS, selection_mode="multi", key="cv_p_idiomas",
+             label_visibility="collapsed", on_change=_aplica_idiomas)
+    for idioma, nivel in actuales.items():
+        llave = f"cv_n_{idioma}"
+        if st.session_state.get(llave) != nivel:
+            st.session_state[llave] = nivel
+        st.segmented_control(idioma, motor.NIVELES_IDIOMA, key=llave,
+                             on_change=_aplica_idiomas)
+
+
+def _aplica_informatica():
+    elegidas = st.session_state.get("cv_p_informatica") or []
+    _escribe("informatica", motor.compone_informatica(cv["informatica"], elegidas))
+
+
+def botones_informatica():
+    actuales = motor.informatica_de(cv["informatica"])
+    if sorted(st.session_state.get("cv_p_informatica") or []) != sorted(actuales):
+        st.session_state["cv_p_informatica"] = actuales
+    st.pills("Informática", motor.INFORMATICA, selection_mode="multi",
+             key="cv_p_informatica", label_visibility="collapsed",
+             on_change=_aplica_informatica)
+
+
 def esc(t):
     return html.escape(str(t or ""))
 
@@ -186,9 +270,11 @@ if n_paso == 0:
         campo("Correo electrónico", "email", placeholder="nombre@correo.es")
         campo("Permiso de conducir y vehículo", "permiso", placeholder="Carnet de conducir B.",
               help="Opcional. Sale en «Otros datos de interés».")
+        botones("permiso", motor.PERMISOS, motor.frase_permiso, motor.catalogo_permisos())
     campo("Disponibilidad", "disponibilidad",
           placeholder="Incorporación inmediata, con preferencia por la jornada de mañana.",
           help="Opcional. Sale en «Otros datos de interés».")
+    botones("disponibilidad", motor.DISPONIBILIDAD, lambda f: f, motor.DISPONIBILIDAD)
     navegacion("Siguiente: experiencia →")
 
 # ---------------------------------------------------------------------------
@@ -412,11 +498,14 @@ elif n_paso == 2:
     c1, c2 = st.columns(2, gap="medium")
     with c1:
         area("Idiomas", "idiomas", height=70, placeholder="Español nativo. Inglés básico.")
+        botones_idiomas()
         area("Otros datos", "otros", height=70,
              placeholder="Un dato por línea: certificado de manipulador de alimentos, carné de carretillero…")
+        botones("otros", motor.OTROS_DATOS, lambda f: f, motor.OTROS_DATOS, salto=True)
     with c2:
         area("Informática", "informatica", height=70,
              placeholder="Manejo de correo electrónico, Word y aplicaciones del móvil.")
+        botones_informatica()
         st.caption("El permiso de conducir y la disponibilidad se ponen en el paso 1 y salen aquí. "
                    "El objetivo profesional, que cierra el apartado, se redacta en el paso 4.")
     navegacion("Siguiente: documento →")
@@ -437,8 +526,7 @@ else:
         def redacta():
             texto = modelo.redacta_objetivo(ia.cliente(), cv)
             if texto:
-                cv["objetivo"] = texto
-                st.session_state["cv_w_objetivo"] = texto
+                _escribe("objetivo", texto)
             else:
                 st.session_state["cv_aviso"] = (
                     "No he podido redactar el objetivo. Hace falta al menos una experiencia o un "
