@@ -689,8 +689,20 @@ def transcribe(cli, audio, mime="audio/wav"):
     raise RuntimeError("Ningún proveedor con clave sabe transcribir audio.")
 
 
-def prueba():
-    """Para el panel de mantenimiento: (ok, mensaje), proveedor por proveedor."""
+def prueba(todos=False):
+    """Para el panel de mantenimiento: (ok, mensaje), proveedor por proveedor.
+
+    Con `todos`, recorre la CADENA ENTERA de cada proveedor en vez de solo el
+    modelo que toca ahora. Es la única forma de comprobar desde fuera que los
+    nombres de `PROVEEDORES` siguen existiendo cuando no se tienen las claves
+    a mano: aquí las pone el despliegue. Lo mismo que hace
+    `scripts/comprobar_ia.py`, pero desde el navegador y sin catálogo: a base
+    de llamar. Son 16 tokens por modelo, una decena de llamadas en total.
+
+    Un modelo que resulte no existir sale de la cadena igual que si hubiera
+    fallado en una consulta de verdad, así que esta prueba además ARREGLA la
+    sesión: deja de intentarlo.
+    """
     con_clave = [p for p in ORDEN if tiene_clave(p)]
     if not con_clave:
         return False, aviso_sin_clave()
@@ -701,15 +713,28 @@ def prueba():
         if cli is None:
             lineas.append(f"{prov}: falta la librería")
             continue
-        modelos = modelos_de(prov)
-        modelo = modelos[min(_idx_modelo(prov), len(modelos) - 1)]
-        try:
-            r = _una_llamada(prov, cli, modelo, "Responde únicamente con la palabra ok.",
-                             "ok", 16, False, False)
-            lineas.append(f"{prov} ({modelo}): {r[:40]}")
-            alguno = True
-        except Exception as e:  # noqa: BLE001
-            lineas.append(f"{prov} ({modelo}): {type(e).__name__}: {str(e)[:60]}")
+        cadena = modelos_de(prov)
+        if not cadena:
+            lineas.append(f"{prov}: ninguno de sus modelos existe")
+            continue
+        if todos:
+            # La lista de PROVEEDORES entera, no solo los que siguen vivos: la
+            # gracia es descubrir cuáles ya no están.
+            aprobar = PROVEEDORES[prov]["modelos"]
+        else:
+            aprobar = [cadena[min(_idx_modelo(prov), len(cadena) - 1)]]
+        for modelo in aprobar:
+            try:
+                r = _una_llamada(prov, cli, modelo, "Responde únicamente con la palabra ok.",
+                                 "ok", 16, False, False)
+                lineas.append(f"{prov} ({modelo}): {r[:40]}")
+                alguno = True
+            except Exception as e:  # noqa: BLE001
+                if no_existe(e):
+                    _mata_modelo(prov, modelo)
+                    lineas.append(f"{prov} ({modelo}): NO EXISTE, hay que quitarlo de PROVEEDORES")
+                else:
+                    lineas.append(f"{prov} ({modelo}): {type(e).__name__}: {str(e)[:60]}")
 
     inexistentes = muertos()
     if inexistentes:

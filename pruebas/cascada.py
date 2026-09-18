@@ -367,6 +367,28 @@ def p_no_confunde_404_con_lo_demas():
     return informe("«No existe» no se confunde con cuota ni con caídas", fallos, 7)
 
 
+def p_prueba_todos_los_modelos():
+    """El botón «Probar TODOS los modelos» del panel es lo único que puede
+    decir qué nombres han caducado cuando las claves solo están en el
+    despliegue: tiene que recorrer la lista entera, no el modelo de turno, y
+    dejar dicho cuál no existe."""
+    limpia()
+    modelos = ia.PROVEEDORES["gemini"]["modelos"]
+    # El primero ya no existe; los demás contestan. Mistral y Groq, también.
+    d = monta([no_existe(modelos[0])] + ["ok"] * 20)
+    ok, detalle = ia.prueba(todos=True)
+    fallos = []
+    if not ok:
+        fallos.append("da por fallida una prueba en la que casi todo responde")
+    if modelos[0] not in detalle or "NO EXISTE" not in detalle:
+        fallos.append("no dice cuál es el que no existe")
+    if d.modelos.count(modelos[-1]) != 1:
+        fallos.append(f"no ha probado la lista entera: {d.modelos}")
+    if ia.muertos().get("gemini") != [modelos[0]]:
+        fallos.append(f"no lo saca de la cadena: {ia.muertos()}")
+    return informe("«Probar todos» recorre la lista y señala al que falta", fallos, 4)
+
+
 def p_transcribe_salta_a_quien_sabe():
     limpia()
     # Gemini y Groq saben transcribir; Mistral no, y hay que saltárselo.
@@ -410,6 +432,7 @@ PRUEBAS = [
     p_modelo_que_no_existe,
     p_proveedor_entero_sin_modelos,
     p_no_confunde_404_con_lo_demas,
+    p_prueba_todos_los_modelos,
     p_transcribe_salta_a_quien_sabe,
 ]
 

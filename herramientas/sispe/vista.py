@@ -816,7 +816,18 @@ def panel_ajustes():
         )
 
         if st.button("Probar la conexión con la IA", use_container_width=True):
-            correcto, detalle = ia.prueba()
+            with st.spinner("Llamando…"):
+                correcto, detalle = ia.prueba()
+            (st.success if correcto else st.error)(detalle)
+
+        # La de verdad: recorre la lista entera de PROVEEDORES y dice qué
+        # nombres ya no existen. Es lo que hay que pulsar después de tocar esa
+        # lista, y lo único que puede comprobarlo cuando las claves solo están
+        # en el despliegue. Gasta una decena de llamadas de 16 tokens.
+        if st.button("Probar TODOS los modelos", use_container_width=True,
+                     help="Una llamada mínima por modelo de la lista. Dice cuáles ya no existen."):
+            with st.spinner("Probando la cadena entera…"):
+                correcto, detalle = ia.prueba(todos=True)
             (st.success if correcto else st.error)(detalle)
 
         if gist.activo():

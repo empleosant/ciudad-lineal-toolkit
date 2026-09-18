@@ -17,7 +17,7 @@ cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
 python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
-~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 16 comprobaciones
+~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 17 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -36,6 +36,11 @@ puede decir si los nombres de modelo de `comun/ia.py` siguen existiendo, porque
 los proveedores cierran modelos antes de la fecha que anuncian. Sin ninguna
 clave que responda avisa de que no ha comprobado nada y sale con 2, en vez de
 dar por bueno lo que no ha mirado.
+
+**En local no hay claves, así que lo normal es comprobarlo en el despliegue**:
+`?mantenimiento=1` → «Probar TODOS los modelos», que hace lo mismo a base de
+llamar (16 tokens por modelo) y señala los que ya no existen. Es el botón que
+hay que pulsar después de tocar la lista de `PROVEEDORES`.
 
 `informes.py` y `cascada.py` **necesitan las dependencias instaladas**, y no
 solo `reportlab`: las dos acaban importando `comun/ia.py`, que importa Streamlit
