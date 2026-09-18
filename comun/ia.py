@@ -241,7 +241,8 @@ def modelos_de(prov):
     Si en mantenimiento se ha fijado uno a mano, la cadena se queda en ese y
     solo en ese, por el mismo motivo que la cascada se apaga al fijar proveedor.
     """
-    todos = PROVEEDORES[prov]["modelos"]
+    todos = [m for m in PROVEEDORES[prov]["modelos"]
+             if m not in st.session_state.get("ia_inexistentes", {}).get(prov, [])]
     fijo = st.session_state.get("ia_modelo_fijo")
     return [fijo] if fijo in todos else todos
 
@@ -259,7 +260,17 @@ def _idx_modelo(prov):
     return st.session_state.setdefault("ia_modelo_ok", {}).get(prov, 0)
 
 
-def _fija_modelo(prov, i):
+def _fija_modelo(prov, modelo):
+    """Recuerda por qué modelo empezar la próxima vez, por NOMBRE.
+
+    Se guarda su posición, pero se calcula aquí sobre la cadena viva. Cuando
+    se guardaba la posición que traía el bucle, sacar un modelo de la cadena
+    -porque resulta que no existe- movía a todos los de detrás y el número
+    apuntaba de pronto a otro: el modelo que acababa de responder bien
+    aparecía como degradado sin haber fallado.
+    """
+    vivos = modelos_de(prov)
+    i = vivos.index(modelo) if modelo in vivos else 0
     st.session_state.setdefault("ia_modelo_ok", {})[prov] = i
     desde = st.session_state.setdefault("ia_modelo_desde", {})
     if i:
@@ -308,6 +319,46 @@ def por_minuto(e):
     return True
 
 
+def no_existe(e):
+    """¿El error dice que ESE MODELO no existe?
+
+    Es un error distinto de todos los demás y hay que tratarlo distinto. Un
+    5xx pasa solo y merece que se reintente en cinco minutos; un nombre de
+    modelo que el proveedor no reconoce no va a existir por esperar, y
+    reintentarlo cada cinco minutos es pagar un intento perdido por consulta
+    para siempre, sin que nadie se entere.
+
+    Pasa de verdad y más de lo que parece: los proveedores cierran modelos
+    antes de la fecha que anuncian y los catálogos gratuitos rotan. A `main`
+    le dejó la rama entera de Gemini caída -tres modelos devolviendo 404
+    NOT_FOUND- y todo se resolvía con el proveedor de respaldo sin avisar.
+    """
+    t = str(e).lower()
+    if "404" not in t and "not_found" not in t and "not found" not in t:
+        return False
+    return ("model" in t or "modelo" in t) or "not_found" in t
+
+
+def muertos():
+    """Proveedor -> modelos que esta sesión ya sabe que no existen."""
+    return {p: list(ms) for p, ms in st.session_state.get("ia_inexistentes", {}).items() if ms}
+
+
+def _mata_modelo(prov, modelo):
+    """Saca un modelo de la cadena para el resto de la sesión.
+
+    No caduca, a diferencia de la degradación: si el proveedor dice que no lo
+    conoce, no lo va a conocer dentro de cinco minutos. Al recargar la página
+    se vuelve a intentar, que es lo que hay que hacer cuando se cambia la
+    lista de modelos o el proveedor publica uno nuevo.
+    """
+    st.session_state.setdefault("ia_inexistentes", {}).setdefault(prov, []).append(modelo)
+    # El índice de la cadena apuntaba a la lista de antes: se reinicia para
+    # que la próxima llamada arranque por el primero de los que siguen vivos.
+    st.session_state.setdefault("ia_modelo_ok", {}).pop(prov, None)
+    st.session_state.setdefault("ia_modelo_desde", {}).pop(prov, None)
+
+
 def _quema(prov, e):
     """Aparta un proveedor, solo si el error dice expresamente que es el cupo
     del DÍA. Ante la duda no se quema."""
@@ -317,7 +368,7 @@ def _quema(prov, e):
 
 def modelo_actual():
     prov = proveedor_actual()
-    m = modelos_de(prov)
+    m = modelos_de(prov) or PROVEEDORES[prov]["modelos"]
     return m[min(_idx_modelo(prov), len(m) - 1)]
 
 
@@ -431,11 +482,12 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
         if cliente_prov is None:
             continue
         modelos = modelos_de(prov)
+        if not modelos:
+            continue         # todos sus modelos han resultado no existir
         # El índice se acota a la lista: si se ha fijado un modelo a mano, la
         # cadena se queda en uno y un índice viejo dejaría el `range` vacío,
         # que es saltarse al proveedor sin intentarlo siquiera.
-        for i in range(min(_idx_modelo(prov), len(modelos) - 1), len(modelos)):
-            modelo = modelos[i]
+        for modelo in modelos[min(_idx_modelo(prov), len(modelos) - 1):]:
             arranque = time.perf_counter()
             try:
                 hacer = lambda: _una_llamada(      # noqa: E731
@@ -454,11 +506,16 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
                     al_relevar(f"{prov}/{modelo}:{time.perf_counter() - arranque:.1f}s:"
                                f"{type(e).__name__}")
                 ultimo = e
+                if no_existe(e):
+                    # No es un tropiezo: ese nombre de modelo no existe. Fuera
+                    # de la cadena hasta que se recargue la página.
+                    _mata_modelo(prov, modelo)
+                    continue
                 _quema(prov, e)
                 if prov in quemados():
                     break            # cupo del día: no hay más que rascar aquí
                 continue             # otro tropiezo: al siguiente modelo
-            _fija_modelo(prov, i)
+            _fija_modelo(prov, modelo)
             apunta_uso(prov, modelo)
             return texto
     if ultimo:
@@ -533,8 +590,9 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=
         if cliente_prov is None:
             continue
         modelos = modelos_de(prov)
-        for i in range(min(_idx_modelo(prov), len(modelos) - 1), len(modelos)):
-            modelo = modelos[i]
+        if not modelos:
+            continue
+        for modelo in modelos[min(_idx_modelo(prov), len(modelos) - 1):]:
             arranque = time.perf_counter()
             emitido = False
             try:
@@ -549,7 +607,7 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=
                 for que, valor in trozos:
                     if que == "cfg":
                         st.session_state["ia_cfg"] = valor
-                        _fija_modelo(prov, i)
+                        _fija_modelo(prov, modelo)
                         apunta_uso(prov, modelo)
                         emitido = True
                         continue
@@ -562,6 +620,9 @@ def genera_flujo(cli, sistema, entrada, max_tokens=2048, json=False, al_relevar=
                     al_relevar(f"{prov}/{modelo}:{time.perf_counter() - arranque:.1f}s:"
                                f"{type(e).__name__}")
                 ultimo = e
+                if no_existe(e):
+                    _mata_modelo(prov, modelo)
+                    continue
                 _quema(prov, e)
                 if prov in quemados():
                     break
@@ -595,6 +656,8 @@ def transcribe(cli, audio, mime="audio/wav"):
         if cliente_prov is None:
             continue
         modelos = modelos_de(prov)
+        if not modelos:
+            continue
         modelo = modelos[min(_idx_modelo(prov), len(modelos) - 1)]
         try:
             if prov == "gemini":
@@ -614,7 +677,10 @@ def transcribe(cli, audio, mime="audio/wav"):
                 texto = (getattr(r, "text", "") or "").strip()
         except Exception as e:  # noqa: BLE001
             ultimo = e
-            _quema(prov, e)
+            if no_existe(e):
+                _mata_modelo(prov, modelo)
+            else:
+                _quema(prov, e)
             continue
         apunta_uso(prov, modelo)
         return texto
@@ -645,6 +711,10 @@ def prueba():
         except Exception as e:  # noqa: BLE001
             lineas.append(f"{prov} ({modelo}): {type(e).__name__}: {str(e)[:60]}")
 
+    inexistentes = muertos()
+    if inexistentes:
+        lineas.append("MODELOS QUE NO EXISTEN (revisar PROVEEDORES): "
+                      + "; ".join(f"{p}: {', '.join(ms)}" for p, ms in inexistentes.items()))
     apartados = quemados()
     if apartados:
         lineas.append("Apartados ahora mismo: " + ", ".join(sorted(apartados)))

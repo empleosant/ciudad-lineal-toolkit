@@ -95,6 +95,12 @@ def monta(guion):
     return doble
 
 
+def no_existe(modelo="gemini-3.5-flash-lite"):
+    """El 404 tal como lo devuelven los proveedores cuando cierran un modelo."""
+    return RuntimeError(
+        f"404 NOT_FOUND: models/{modelo} is not found for API version v1beta")
+
+
 def cupo_diario():
     return RuntimeError("429 RESOURCE_EXHAUSTED: quota exceeded, requests per day")
 
@@ -300,6 +306,67 @@ def p_modelo_fijado_con_degradacion_vieja():
     return informe("Un modelo fijado se usa aunque hubiera degradación", fallos, 2)
 
 
+def p_modelo_que_no_existe():
+    """Un nombre de modelo que el proveedor no reconoce no es un tropiezo: no
+    va a existir por esperar cinco minutos. Sale de la cadena de la sesión, y
+    la consulta siguiente ya no lo paga."""
+    limpia()
+    d = monta([no_existe(), "el siguiente modelo"])
+    fallos = []
+    r = ia.genera(None, "s", "e")
+    if r != "el siguiente modelo":
+        fallos.append(f"devuelve {r!r}")
+    muerto = ia.PROVEEDORES["gemini"]["modelos"][0]
+    if ia.muertos().get("gemini") != [muerto]:
+        fallos.append(f"no lo anota como inexistente: {ia.muertos()}")
+    if ia.degradados():
+        fallos.append(f"lo trata como degradación: {ia.degradados()}")
+    # La consulta siguiente NO vuelve a intentarlo.
+    d2 = monta(["ya sin pagar el intento"])
+    ia.genera(None, "s", "e")
+    if muerto in d2.modelos:
+        fallos.append(f"vuelve a llamar al que no existe: {d2.modelos}")
+    return informe("Un modelo que no existe sale de la cadena", fallos, 4)
+
+
+def p_proveedor_entero_sin_modelos():
+    """Lo que le pasó a main: los tres modelos de Gemini cerrados a la vez, la
+    rama entera muerta y todo resuelto por el de respaldo sin avisar. Aquí se
+    salta al proveedor y se anota, para que el panel lo pueda decir."""
+    limpia()
+    cuantos = len(ia.PROVEEDORES["gemini"]["modelos"])
+    d = monta([no_existe(m) for m in ia.PROVEEDORES["gemini"]["modelos"]] + ["de mistral"])
+    fallos = []
+    r = ia.genera(None, "s", "e")
+    if r != "de mistral":
+        fallos.append(f"devuelve {r!r}")
+    if len(ia.muertos().get("gemini", [])) != cuantos:
+        fallos.append(f"no anota los {cuantos}: {ia.muertos()}")
+    # Y en la consulta siguiente ni se le pregunta.
+    d2 = monta(["mistral otra vez"])
+    ia.genera(None, "s", "e")
+    if "gemini" in d2.proveedores:
+        fallos.append(f"sigue llamando a gemini: {d2.proveedores}")
+    return informe("Un proveedor sin modelos vivos se salta entero", fallos, 3)
+
+
+def p_no_confunde_404_con_lo_demas():
+    limpia()
+    fallos = []
+    for e, debe in (
+        (no_existe(), True),
+        (RuntimeError("404 NOT_FOUND: models/x is not found"), True),
+        (cupo_diario(), False),
+        (por_minuto(), False),
+        (RuntimeError("503 Service Unavailable"), False),
+        (TimeoutError("Sin respuesta del modelo en 6 s."), False),
+        (RuntimeError("400 INVALID_ARGUMENT"), False),
+    ):
+        if ia.no_existe(e) is not debe:
+            fallos.append(f"{str(e)[:40]!r}: dice {ia.no_existe(e)}, debe ser {debe}")
+    return informe("«No existe» no se confunde con cuota ni con caídas", fallos, 7)
+
+
 def p_transcribe_salta_a_quien_sabe():
     limpia()
     # Gemini y Groq saben transcribir; Mistral no, y hay que saltárselo.
@@ -340,6 +407,9 @@ PRUEBAS = [
     p_plazo_releva,
     p_anota_los_relevos,
     p_modelo_fijado_con_degradacion_vieja,
+    p_modelo_que_no_existe,
+    p_proveedor_entero_sin_modelos,
+    p_no_confunde_404_con_lo_demas,
     p_transcribe_salta_a_quien_sabe,
 ]
 

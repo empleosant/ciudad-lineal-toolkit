@@ -787,6 +787,15 @@ def panel_ajustes():
             for linea in relevos:
                 st.caption(f"· {linea}")
 
+        inexistentes = ia.muertos()
+        if inexistentes:
+            # Es el aviso más importante de los tres: significa que la lista de
+            # PROVEEDORES está desfasada y hay que corregirla a mano. Se
+            # comprueba con `scripts/comprobar_ia.py` donde haya claves.
+            st.warning("Modelos que ya no existen: "
+                       + "; ".join(f"{p}: {', '.join(ms)}"
+                                   for p, ms in inexistentes.items()))
+
         apartados = ia.quemados()
         bajados = ia.degradados()
         if apartados:

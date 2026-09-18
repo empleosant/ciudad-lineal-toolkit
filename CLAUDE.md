@@ -17,14 +17,25 @@ cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
 python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
-~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 13 comprobaciones
+~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 16 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
 python3 estres.py --rapido      # salta las pruebas que recorren el catálogo
 
 ~/.venvs/sispe/bin/streamlit run app.py   # la app en local (sin claves: solo lo que no usa IA)
+
+cd ..
+~/.venvs/sispe/bin/python scripts/comprobar_ia.py            # ¿existen los modelos de PROVEEDORES?
+~/.venvs/sispe/bin/python scripts/comprobar_ia.py --llamar   # y además, ¿responden?
 ```
+
+`scripts/comprobar_ia.py` **no es una batería**: habla con las APIs de verdad y
+necesita claves (del entorno o de `.streamlit/secrets.toml`). Es lo único que
+puede decir si los nombres de modelo de `comun/ia.py` siguen existiendo, porque
+los proveedores cierran modelos antes de la fecha que anuncian. Sin ninguna
+clave que responda avisa de que no ha comprobado nada y sale con 2, en vez de
+dar por bueno lo que no ha mirado.
 
 `informes.py` y `cascada.py` **necesitan las dependencias instaladas**, y no
 solo `reportlab`: las dos acaban importando `comun/ia.py`, que importa Streamlit
