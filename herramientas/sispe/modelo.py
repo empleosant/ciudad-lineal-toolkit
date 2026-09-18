@@ -8,11 +8,9 @@ No usa Streamlit: el cliente y la memoria de sesión se reciben como
 parámetros. El cliente lo da `comun.ia.cliente()`.
 """
 
-import json
-import re
-
 from comun import ia
 from comun.texto import normaliza
+from herramientas.sispe import motor
 
 INSTRUCCIONES = """Eres un técnico de codificación de ocupaciones para SilcoiWeb (SEPE).
 
@@ -71,31 +69,9 @@ def interpreta_consulta(cli, texto, memoria=None):
     except Exception:  # noqa: BLE001
         return []
 
-    datos = {}
-    try:
-        bloque = re.search(r"\{.*\}", bruto, re.S)
-        datos = json.loads(bloque.group()) if bloque else {}
-    except Exception:  # noqa: BLE001
-        datos = {}
-
-    crudas = datos.get("lecturas")
-    if not isinstance(crudas, list):
-        crudas = [datos] if datos.get("terminos") else []
-
-    lecturas = []
-    for l in crudas[:3]:
-        terminos = " ".join(
-            re.findall(r"[a-zñáéíóúü]+", normaliza(str(l.get("terminos", ""))))[:12]
-        )
-        if terminos:
-            grupos = tuple(re.findall(r"[1-9]", str(l.get("grupos", ""))))[:2]
-            lecturas.append((terminos, grupos))
-
-    if not lecturas:
-        suelto = " ".join(re.findall(r"[a-zñáéíóúü]+", normaliza(bruto))[:14])
-        if suelto:
-            lecturas = [(suelto, ())]
-
+    # Dar forma a lo que conteste el modelo es cosa del motor: allí es Python
+    # puro y lo prueba `estres.py` con las formas raras que manda de verdad.
+    lecturas = motor.lecturas_de(bruto)
     if memoria is not None:
         memoria[clave] = lecturas
     return lecturas

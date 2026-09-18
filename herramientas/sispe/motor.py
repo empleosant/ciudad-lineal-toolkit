@@ -7,6 +7,7 @@ vez por proceso) y ofrece:
     busca(consulta, ...)     puntúa el catálogo contra un texto libre
     verifica(lista)          filtra lo que propone la IA contra el catálogo
     interpreta(bruto)        convierte la respuesta JSON de la IA en tarjetas
+    lecturas_de(bruto)       las lecturas del intérprete, ya en limpio
     raiz(palabra)            el lematizador mínimo
 
 Lo prueban `pruebas/evaluar.py` y `pruebas/estres.py` importándolo tal cual.
@@ -359,6 +360,22 @@ def verifica(lista):
     limpias, descartadas = [], 0
     vistos = set()
     for o in lista or []:
+        # Misma historia que en `interpreta`: el modelo se salta a veces la
+        # forma pedida y manda los códigos a pelo,
+        #
+        #     {"ocupaciones": ["92101027", "84201043"]}
+        #
+        # en vez de objetos con codigo, nivel y motivo. Aquí duele más que en
+        # ningún otro sitio: es por donde entran los códigos que la persona va
+        # a grabar en SilcoiWeb. Una cadena se toma como el código; lo que no
+        # sea ni cadena ni objeto se descarta como cualquier otra basura.
+        #
+        # El nivel y el motivo se quedan en su valor de fábrica, que es lo
+        # honesto: el modelo no los ha dado.
+        if isinstance(o, (str, int)):
+            o = {"codigo": str(o)}
+        elif not isinstance(o, dict):
+            continue
         codigo = str(o.get("codigo", "")).strip()
         if codigo in vistos:
             continue
@@ -379,13 +396,23 @@ def verifica(lista):
 
 def limpia_opcion(texto):
     t = texto.strip().strip("¿?¡!.,;").strip()
+
+    # Desempaquetar fórmulas «Sí (texto)» / «No (texto)»
+    m_parentesis = re.match(r"^(?:s[íi]|no)\s*\((.+?)\)$", t, flags=re.IGNORECASE)
+    if m_parentesis and len(m_parentesis.group(1).strip()) > 2:
+        t = m_parentesis.group(1).strip()
+
+    # Repeticiones accidentales: «nóminas y nóminas», «palabra palabra»
+    t = re.sub(r"\b(\w{3,})\s+(?:y|e|o|u)\s+\1\b", r"\1", t, flags=re.IGNORECASE)
+    t = re.sub(r"\b(\w{3,})\s+\1\b", r"\1", t, flags=re.IGNORECASE)
+
     for _ in range(4):
         t = re.sub(
             r"^(?:la|el|los|las|un|una|unos|unas|en|a|al|del|de|para|con|por|su|sus)\s+",
             "", t, flags=re.IGNORECASE,
         ).strip()
-    if len(t) > 44:
-        t = t[:44].rsplit(" ", 1)[0]
+    if len(t) > 75:
+        t = t[:75].rsplit(" ", 1)[0]
         # Cortar por una palabra entera no basta: si el corte cae justo detras
         # de un conector queda "Gestion de contabilidad y", que no significa
         # nada. Se retrocede hasta que la ultima palabra tenga contenido.
@@ -397,7 +424,7 @@ def limpia_opcion(texto):
         piezas = t.split()
         while len(piezas) > 1 and piezas[-1].lower().strip(",;") in colgantes:
             piezas.pop()
-        t = " ".join(piezas) + "…"
+        t = " ".join(piezas)
     return t.capitalize()
 
 
@@ -427,6 +454,16 @@ def extraer_opciones(pregunta, opciones_modelo=None):
     for f in fillers:
         q_limpia = re.sub(f, "", q_limpia, flags=re.IGNORECASE).strip()
 
+    # Primero el troceado ancho: una pregunta como «¿pelo de hombre, de mujer
+    # o unisex?» son tres opciones, y cortando solo por el primer « o » se
+    # perdía la del medio.
+    if " o " in q_limpia or "," in q_limpia:
+        partes = [p.strip() for p in re.split(r",\s*|\s+o\s+", q_limpia) if p.strip()]
+        if 2 <= len(partes) <= 3:
+            ops = [limpia_opcion(p) for p in partes]
+            if len(set(ops)) == len(ops) and all(len(x) > 1 for x in ops):
+                return ops
+
     if " o " in q_limpia:
         partes = [p.strip() for p in re.split(r"\s+o\s+", q_limpia, maxsplit=1) if p.strip()]
         if len(partes) == 2:
@@ -436,6 +473,73 @@ def extraer_opciones(pregunta, opciones_modelo=None):
                 return [op1, op2]
 
     return ["Sí", "No"]
+
+
+def lecturas_de(bruto):
+    """Las lecturas del intérprete: [(términos, grupos), ...].
+
+    Estaba en `modelo.py`, pegada a la llamada a la IA, y allí no se podía
+    probar: `modelo.py` importa Streamlit por la vía de `comun/ia.py` y las
+    baterías corren con Python pelado. Aquí es Python puro y `estres.py` le
+    puede tirar las formas raras que devuelve el modelo de verdad.
+    """
+    datos = {}
+    try:
+        bloque = re.search(r"\{.*\}", bruto or "", re.S)
+        datos = json.loads(bloque.group()) if bloque else {}
+    except Exception:  # noqa: BLE001
+        datos = {}
+    if not isinstance(datos, dict):
+        datos = {}
+
+    crudas = datos.get("lecturas")
+    if not isinstance(crudas, list):
+        crudas = [datos] if datos.get("terminos") else []
+
+    def _texto(v):
+        """Lo que venga -> una cadena. El modelo no siempre manda una."""
+        if isinstance(v, (list, tuple)):
+            return " ".join(str(x) for x in v)
+        return str(v if v is not None else "")
+
+    lecturas = []
+    # El bucle entero va protegido. Cualquier forma que no hayamos previsto
+    # deja `lecturas` vacío y cae al rescate de abajo -las palabras sueltas de
+    # la respuesta en bruto-, que ya existía. Una consulta peor interpretada es
+    # mucho menos grave que la pantalla roja de error: esto corre en el paso 1
+    # de TODAS las consultas, así que lo que reviente aquí tumba la
+    # herramienta entera.
+    try:
+        for l in crudas[:3]:
+            # El modelo devuelve a veces las lecturas como CADENAS sueltas
+            # -{"lecturas": ["camarero de piso", "limpieza"]}- en vez de como
+            # objetos con "terminos" y "grupos". Una lista de cadenas pasa el
+            # isinstance de arriba tan tranquila, y entonces l.get() revienta
+            # con AttributeError: 'str' object has no attribute 'get'.
+            #
+            # Es el mismo fallo que el de `interpreta`, en la otra punta: allí
+            # manda la lista sin el objeto que la envuelve, aquí manda el
+            # objeto pero con cadenas dentro. Los dos se arreglan igual:
+            # aceptar lo que manda y darle la forma que necesitamos.
+            if isinstance(l, str):
+                l = {"terminos": l}
+            elif not isinstance(l, dict):
+                continue
+
+            terminos = " ".join(
+                re.findall(r"[a-zñáéíóúü]+", normaliza(_texto(l.get("terminos"))))[:12]
+            )
+            if terminos:
+                grupos = tuple(re.findall(r"[1-9]", _texto(l.get("grupos"))))[:2]
+                lecturas.append((terminos, grupos))
+    except Exception:  # noqa: BLE001
+        lecturas = []
+
+    if not lecturas:
+        suelto = " ".join(re.findall(r"[a-zñáéíóúü]+", normaliza(bruto or ""))[:14])
+        if suelto:
+            lecturas = [(suelto, ())]
+    return lecturas
 
 
 def interpreta(bruto):
@@ -450,6 +554,21 @@ def interpreta(bruto):
                 datos = json.loads(bloque.group())
             except Exception:  # noqa: BLE001
                 datos = {}
+
+    # El modelo contesta a veces con el ARRAY de ocupaciones a pelo, sin el
+    # objeto que lo envuelve. json.loads lo traga tan contento y devuelve una
+    # lista; como una lista no vacía es verdadera, se cuela entera por el
+    # `if not datos` de aquí abajo y revienta en el `datos.get()` siguiente
+    # con AttributeError: 'list' object has no attribute 'get'.
+    #
+    # Se envuelve y sigue el camino de siempre. Cualquier otra forma que no
+    # sea un objeto (un número, una cadena) se trata como respuesta vacía y
+    # cae al rescate de los objetos parciales, que para eso está.
+    if isinstance(datos, list):
+        datos = {"ocupaciones": datos}
+    elif not isinstance(datos, dict):
+        datos = {}
+
     if not datos:
         ocupaciones, descartadas = verifica(objetos_parciales(texto))
         return {"ocupaciones": ocupaciones, "pregunta": "", "opciones": [], "descartadas": descartadas}
