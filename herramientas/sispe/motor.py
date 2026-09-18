@@ -288,8 +288,33 @@ def busca(consulta, tope=20, grupos=None, lexico=None, refuerzos=None):
             + 0.30 * min(1.0, len(cubierto[i]) / n_total)
             + 0.15 * min(1.0, propios / n_term)
         )
+
+        # Quien escribe la denominación oficial quiere ESA ocupación, no una
+        # prima suya con más palabras en común. Se compara con el nombre entero
+        # y con el nombre a secas, sin la coma ni el paréntesis que lo matizan.
+        den_norm = normaliza(reg["denom"])
+        den_corta = normaliza(reg["denom"].split(",")[0].split("(")[0].strip())
+        bonus_exacto = 1.0
+        if q == den_norm or q == den_corta:
+            bonus_exacto = 1.40
+        elif den_corta and (den_corta in q or q in den_corta):
+            bonus_exacto = 1.15
+
+        # «, EN GENERAL» es la ocupación cajón de la familia: cuando la consulta
+        # no precisa la especialidad, es la que hay que grabar.
+        if ", EN GENERAL" in reg["denom"]:
+            bonus_exacto *= 1.12
+
+        # Una denominación larga tiene más palabras que casar por casualidad.
+        palabras_den = max(1, len(reg["denom"].split()))
+        densidad = 1.0 / (0.90 + 0.10 * (palabras_den / 3.0))
+
         resultados.append(
-            (valor * nucleo * cobertura * familia, reg["codigo"], reg["denom"])
+            (
+                valor * nucleo * cobertura * familia * bonus_exacto * densidad,
+                reg["codigo"],
+                reg["denom"],
+            )
         )
     resultados.sort(reverse=True)
     return resultados[:tope]
