@@ -106,9 +106,37 @@ marca `# === FIN DEL MOTOR ===` de `main`, donde el motor y la interfaz viven en
 el mismo archivo y hay que cortarlo con un Streamlit de mentira. **Aquí esa marca
 no existe y no hace falta.**
 
-El menú de herramientas no va en la barra lateral de Streamlit, sino dentro de la
-banda negra de cada página (`comun/estilo.py`), para que se vea igual en el móvil
-y no dependa de ningún control interno de Streamlit.
+## La interfaz (rediseñada el 26/09/2026)
+
+Cada página empieza por `estilo.aplica()` y `estilo.banda(id, título, frase,
+acciones=...)`: una barra negra fina de lado a lado con la marca y el menú
+(chips; en el móvil una tira que se desliza, con la activa primera), y debajo
+el título en el cuerpo. `banda` devuelve un contenedor bajo el título para lo
+que cada herramienta ponga ahí (el codificador, su buscador). El menú no va
+en la barra lateral de Streamlit y todos los saltos entre páginas son
+`st.page_link`: un `<a href>` recargaría la app y perdería la sesión.
+
+- **Lo que puede el tema, lo hace el tema** (`.streamlit/config.toml`:
+  `primaryColor`, `borderColor`, `showWidgetBorder`, `baseRadius`). El CSS a
+  mano de `estilo.py` queda para lo que el tema no cubre, y cada regla que
+  depende de un `data-testid` de Streamlit lleva su comentario.
+- `estilo.fila(clave)` es un `st.container(horizontal=True, wrap=False)`:
+  no se apila en el móvil (las columnas sí, por debajo de 640 px). Ojo:
+  con `vertical_alignment="center"` Streamlit mide el texto como de una
+  línea y lo que se parte se sale por abajo; para texto largo, `"top"` o
+  columnas.
+- La portada (`inicio.py`) pinta las tarjetas en filas de tres, un
+  `st.columns` por fila, para que en el móvil salgan en orden; y usa
+  sentencias, no expresiones sueltas, porque Streamlit pinta el valor de una
+  expresión suelta (salía un «None» bajo cada tarjeta).
+- Las tarjetas del codificador son contenedores de Streamlit con sus dos
+  botones dentro: «+ CV» es un `st.button` y «Copiar» un marco de 34 px por
+  tarjeta (`estilo.marco`), lo único que necesita JavaScript.
+- **Al tocar `comun/estilo.py` hay que reiniciar `streamlit run`**: recarga
+  las páginas al vuelo, pero no los módulos importados.
+- Para verlo de verdad: `~/.venvs/sispe/bin/streamlit run app.py` y capturas
+  con Playwright a 1280 y 390 px (Chromium está en `~/.cache/ms-playwright`,
+  se lanza con `LD_LIBRARY_PATH=~/apps/libshim/ext/usr/lib/x86_64-linux-gnu`).
 
 Las cinco herramientas: **Codificador SISPE** (el buscador de códigos, que es lo
 que hay en producción en `main`), **Codificador de extranjería** (sin IA: el

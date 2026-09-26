@@ -17,10 +17,10 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 app.py                         punto de entrada: solo la navegación
 inicio.py                      portada: una tarjeta por herramienta
 comun/                         lo que comparten varias herramientas
-  registro.py                  la lista de herramientas (nombre, icono, ruta, descripción)
+  registro.py                  la lista de herramientas (nombre, nombre corto, icono, ruta, si usa IA, descripción)
   ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)
   gist.py                      almacén compartido en un Gist de GitHub
-  estilo.py                    CSS común, el menú de la banda negra y el chip de la IA
+  estilo.py                    CSS común, la barra negra con el menú, el título de cada página y el chip de la IA
   texto.py                     normaliza()
 herramientas/
   sispe/
@@ -85,15 +85,25 @@ Reglas de la casa:
 
 ## Añadir una herramienta
 
-1. Crea `herramientas/<nombre>/vista.py` con la pantalla. Al principio de
-   su banda negra llama a `estilo.menu("<nombre>")`.
+1. Crea `herramientas/<nombre>/vista.py` con la pantalla. Empieza por
+   `estilo.aplica()` y `estilo.banda("<nombre>", título, frase)`, que pinta
+   la barra negra con el menú y, debajo, el título de la página. Si la
+   herramienta necesita botones junto al título (ajustes, ayuda), se los
+   pasas en `acciones=`.
 2. Añade una entrada a `HERRAMIENTAS` en `comun/registro.py`, con su
-   descripción. Con eso sale en el menú de todas las páginas y como
-   tarjeta en la portada.
+   nombre corto (el del menú), si usa IA y su descripción. Con eso sale en
+   el menú de todas las páginas y como tarjeta en la portada.
 
-El menú va dentro de la página, no en la barra lateral de Streamlit: la
-barra se podía plegar y el botón para reabrirla quedaba oculto por el CSS
-de la cabecera. Así no depende de ningún control interno.
+El menú va en la barra negra de cada página, no en la barra lateral de
+Streamlit: la barra se podía plegar y el botón para reabrirla quedaba
+oculto por el CSS de la cabecera. En el móvil el menú es una tira que se
+desliza con el dedo, con la herramienta activa la primera. Todos los
+enlaces entre páginas son `st.page_link`: un enlace HTML normal recargaría
+la aplicación y perdería la sesión (el currículo en curso, la búsqueda).
+
+Lo que puede hacer el tema de Streamlit (`.streamlit/config.toml`: color
+primario, borde y fondo de los campos, radio de las esquinas) se hace allí y
+no con CSS, porque los selectores internos de Streamlit cambian de versión.
 
 Las claves de `st.session_state` de cada herramienta llevan su prefijo
 (`sispe_`, `cv_`) para que dos páginas no se pisen.
@@ -114,9 +124,10 @@ Conexiones que hay:
   entrada a la fase de preparación, para no volver a teclear la
   trayectoria.
 
-La primera conexión es codificador → generador de CV: el botón «+ CV» bajo
-las tarjetas llama a `herramientas.cv.estado.anade_experiencia()`, y al
-lado aparece un enlace para abrir el generador con lo que lleva. Como la
+La primera conexión es codificador → generador de CV: el botón «+ CV» de
+cada tarjeta llama a `herramientas.cv.estado.anade_experiencia()`, y bajo
+los resultados una línea dice cuántas experiencias lleva el currículo en
+curso y abre el generador. Como la
 sesión de Streamlit es la misma para todas las páginas, el currículo se
 conserva al cambiar de herramienta.
 
@@ -305,7 +316,7 @@ sin tamaño y sin color** a propósito: así el correo se pega con la letra que
 tenga Outlook configurada y no desentona con la firma de quien lo manda.
 
 El botón necesita JavaScript, así que vive en un marco aparte —`estilo.marco`,
-el mismo que usan las tarjetas del buscador—. Primero prueba la API moderna del
+el mismo que usa el botón de copiar de cada tarjeta del buscador—. Primero prueba la API moderna del
 portapapeles y, si el navegador no la deja usar dentro del marco, cae a
 seleccionar un bloque oculto y copiar la selección, que conserva el formato
 igual. Si fallan las dos, el botón lo dice en vez de quedarse callado.
