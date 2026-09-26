@@ -38,7 +38,6 @@ def columnas_que_faltan(n):
 estilo.aplica()
 st.markdown("""
 <style>
-.st-key-cabecera{ margin-bottom:.6rem; }
 .entrada-t{ font-size:.95rem; font-weight:700; margin:0 0 .15rem; }
 .entrada-d{ font-size:.8rem; color:var(--suave); line-height:1.4; margin:0 0 .5rem; min-height:2.8rem; }
 .recuento{ font-size:.82rem; color:#1B6B3A; font-weight:600; margin:.45rem 0 0; }

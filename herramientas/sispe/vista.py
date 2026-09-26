@@ -13,14 +13,13 @@ consulta (`resuelve`). La lógica está repartida en:
 Conexión con otras herramientas: el botón «+ CV» bajo las tarjetas manda
 la ocupación al generador de CV a través de `herramientas.cv.estado`.
 
-Claves de sesión: todas con prefijo `sispe_`. Las claves de widgets (`consulta`, `buscar`, `marca`,
-`cabecera`, `pregunta`, `reinicio`, `ajustes`) las usa el CSS de
-`comun/estilo.py` por su nombre: no las cambies sin cambiarlo allí.
+Claves de sesión: todas con prefijo `sispe_`. Las claves de los contenedores
+(`buscador`, `titular`, `pregunta`, `oc_*`, `cesta`) las usa el CSS de aquí
+abajo por su nombre: no las cambies sin cambiarlo también.
 """
 
 import csv
 import io
-import math
 import re
 import time
 
@@ -38,6 +37,107 @@ VENTAJA_CLARA = 3.0   # cuántas veces debe superar el 1º del buscador al 2º
                       # mande menos, baja para que mande más)
 
 estilo.aplica()
+st.markdown("""
+<style>
+/* El buscador: campo con borde negro y botón rojo pegado, en una sola línea
+   también en el móvil */
+.st-key-buscador{ gap:0 !important; margin:.2rem 0 .4rem; box-shadow:0 8px 24px rgba(10,10,10,.08); border-radius:var(--radio); }
+.st-key-buscador > div:first-child{ flex:1 1 auto !important; min-width:0; }
+.st-key-buscador > div:last-child{ flex:0 0 auto !important; width:auto !important; }
+.st-key-buscador div[data-testid="stTextInput"] div[data-testid="stTextInputRootElement"],
+.st-key-buscador div[data-testid="stTextInput"]:not(:has(div[data-testid="stTextInputRootElement"])) div[data-baseweb="input"]{
+  border:2px solid var(--negro) !important; border-right:0 !important;
+  border-radius:var(--radio) 0 0 var(--radio) !important; background:#fff !important; box-shadow:none !important;
+}
+.st-key-buscador div[data-testid="stTextInput"] div[data-baseweb="base-input"],
+.st-key-buscador div[data-testid="stTextInput"] input{ background:transparent !important; border:none !important; box-shadow:none !important; }
+.st-key-buscador div[data-testid="stTextInput"] input{
+  padding:.62rem .9rem !important; font-size:.98rem !important; color:var(--texto) !important;
+  font-family:'Libre Franklin',sans-serif !important;
+}
+.st-key-buscador div[data-testid="stTextInput"]:focus-within div[data-testid="stTextInputRootElement"],
+.st-key-buscador div[data-testid="stTextInput"]:not(:has(div[data-testid="stTextInputRootElement"])):focus-within div[data-baseweb="input"]{ border-color:var(--rojo) !important; }
+.st-key-buscador button{
+  background:var(--rojo) !important; color:#fff !important; border:2px solid var(--rojo) !important;
+  border-radius:0 var(--radio) var(--radio) 0 !important; font-weight:700 !important;
+  padding:0 1.3rem !important; min-height:40px !important; height:40px !important; letter-spacing:.02em;
+}
+.st-key-buscador button:hover{ background:var(--rojo-oscuro) !important; border-color:var(--rojo-oscuro) !important; }
+.st-key-buscador button p{ color:#fff !important; font-weight:700 !important; }
+.pie-buscador{ display:flex; justify-content:space-between; gap:.6rem; flex-wrap:wrap; font-size:.74rem; color:var(--tenue); margin:0 0 .4rem; }
+
+/* La consulta como titular, con «Nueva búsqueda» al lado */
+.st-key-titular{ border-bottom:2px solid var(--negro); padding-bottom:.25rem; margin:.6rem 0 .5rem; }
+.st-key-titular div[data-testid="stColumn"]:last-child{ display:flex; justify-content:flex-end; }
+@media (max-width:640px){ .st-key-titular div[data-testid="stColumn"]:last-child{ justify-content:flex-start; } }
+.st-key-titular > div:first-child{ flex:1 1 auto !important; min-width:0; }
+.st-key-titular > div:last-child:not(:first-child){ flex:0 0 auto !important; width:auto !important; }
+.consulta-texto{ font-size:1.05rem; font-weight:700; letter-spacing:-.015em; color:var(--texto); line-height:1.25; }
+.consulta-texto small{ font-weight:500; color:var(--suave); font-size:.9rem; }
+.st-key-titular button{
+  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
+  min-height:0 !important; height:auto !important;
+}
+.st-key-titular button p{ font-size:.8rem !important; font-weight:600 !important; color:var(--suave) !important; white-space:nowrap; }
+.st-key-titular button:hover p{ color:var(--rojo) !important; }
+
+/* La pregunta a la persona: texto a la izquierda, opciones a la derecha */
+.st-key-pregunta{
+  background:#fff; border:1px solid var(--linea); border-left:3px solid var(--rojo); border-radius:var(--radio);
+  padding:.6rem .9rem; margin:0 0 .5rem;
+}
+.pregunta-titulo{ font-size:.62rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--rojo); margin-bottom:.1rem; }
+.pregunta-texto{ font-size:.95rem; line-height:1.3; font-weight:600; color:var(--texto); }
+.st-key-pregunta .stButton button{
+  background:#fff; border:1.5px solid var(--negro); font-weight:600; border-radius:var(--radio);
+  padding:.32rem .8rem; min-height:34px; font-size:.84rem; transition:all .15s ease;
+  white-space:normal !important; height:auto !important;
+}
+.st-key-pregunta .stButton button p{ white-space:normal !important; }
+.st-key-pregunta .stButton button:hover{ background:var(--negro); color:#fff; border-color:var(--negro); }
+.st-key-pregunta .stButton button:hover p{ color:#fff; }
+
+/* Las tarjetas de ocupación: contenedores de verdad, con sus dos botones */
+[class*="st-key-oc_"]{
+  background:#fff; border:1px solid var(--linea); border-radius:var(--radio); padding:.65rem .8rem .6rem .9rem;
+  height:100%;
+}
+[class*="st-key-oc_"][class*="_top"]{ border-color:var(--rojo); box-shadow:inset 0 0 0 1px var(--rojo); }
+[class*="st-key-oc_"][class*="_relleno"]{ background:#FAFAFA; }
+[class*="st-key-oc_"] div[data-testid="stVerticalBlock"]{ gap:.3rem; }
+.oc-cab{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.oc-cod{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.15rem; letter-spacing:.03em; color:var(--negro); }
+.oc-rec{ font-size:.6rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; background:var(--rojo); color:#fff; padding:.14rem .45rem; border-radius:3px; white-space:nowrap; }
+.oc-den{ font-weight:600; font-size:.9rem; line-height:1.25; color:var(--texto); margin-top:.1rem; }
+.oc-mot{ font-size:.78rem; color:var(--suave); line-height:1.3; }
+.oc-niv{ font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--tenue); margin-top:.15rem; }
+.oc-niv.mando{ color:#C2410C; }
+[class*="st-key-oc_"] .st-key-acciones_oc,
+[class*="st-key-oc_"] div[data-testid="stHorizontalBlock"]{ flex-wrap:nowrap !important; gap:.4rem !important; }
+[class*="st-key-oc_"] div[data-testid="stHorizontalBlock"] > div{ flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
+[class*="st-key-oc_"] .stButton button{
+  width:100%; min-height:34px !important; height:34px !important; padding:0 .6rem !important;
+  border-radius:var(--radio) !important; font-size:.8rem !important; font-weight:600 !important;
+}
+[class*="st-key-oc_"] iframe{ height:34px !important; }
+[class*="st-key-oc_"] div[data-testid="stElementContainer"]:has(> iframe){ height:34px !important; flex:0 0 34px !important; }
+
+/* Una línea para el currículo en curso */
+.st-key-cesta{
+  background:#fff; border:1px solid var(--linea); border-radius:var(--radio); padding:.45rem .9rem;
+  margin-top:.6rem; align-items:center !important; flex-wrap:wrap !important; gap:.6rem !important;
+}
+.st-key-cesta > div:first-child{ flex:1 1 14rem !important; min-width:0; }
+.st-key-cesta > div:last-child:not(:first-child){ flex:0 0 auto !important; width:auto !important; }
+.cesta-texto{ font-size:.82rem; color:var(--suave); line-height:1.35; }
+.cesta-texto b{ color:var(--texto); }
+.st-key-cesta a[data-testid="stPageLink-NavLink"]{ font-weight:700; }
+.st-key-cesta a[data-testid="stPageLink-NavLink"] p{ color:var(--rojo) !important; font-size:.84rem; }
+
+/* Los ejemplos: chips */
+.st-key-ejemplos div[data-testid="stButtonGroup"] button{ font-size:.84rem; font-weight:600; border-radius:999px; }
+</style>
+""", unsafe_allow_html=True)
 
 if not motor.IDX["ok"]:
     st.error(f"Falta el archivo **{motor.CATALOGO}**.")
@@ -52,271 +152,94 @@ def _busca(consulta, **k):
 
 
 # ---------------------------------------------------------------------------
-# TARJETAS FLUIDAS
+# TARJETAS
 # ---------------------------------------------------------------------------
+# Cada tarjeta es un contenedor de Streamlit, con lo que dentro caben botones
+# de verdad: el «+ CV» que manda la ocupación al generador va en la propia
+# tarjeta, y no en una lista repetida debajo. Antes las tarjetas vivían todas
+# en un marco aislado por el botón de copiar, y hacía falta calcular desde
+# Python el alto del marco en tres anchos de pantalla. Ahora el marco es solo
+# el botón de copiar, uno por tarjeta, de 34 px: lo único que de verdad
+# necesita JavaScript.
 
-ESTILO_TARJETAS = """
-@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap');
-*{ box-sizing:border-box; }
-body{
-  margin:0; padding:0; background:transparent; font-family:'Libre Franklin',system-ui,sans-serif;
-  --negro:#0A0A0A; --rojo:#D1122E; --texto:#1A1A1A; --suave:#555555;
-  --linea:#E2E8F0; --gris:#F1F5F9;
-  color:var(--texto); overflow:hidden;
+BOTON_COPIAR = """
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600&display=swap');
+  html,body{ margin:0; padding:0; background:transparent; overflow:hidden; }
+  button{
+    width:100%; height:34px; box-sizing:border-box; cursor:pointer;
+    font-family:'Libre Franklin',system-ui,sans-serif; font-size:.8rem; font-weight:600;
+    color:#fff; background:#0A0A0A; border:1px solid #0A0A0A; border-radius:6px;
+    transition:all .15s ease;
+  }
+  button:hover{ background:#333; }
+  button.hecho{ background:#D1122E; border-color:#D1122E; }
+</style>
+<button id="c">Copiar __COD__</button>
+<script>
+const b = document.getElementById('c');
+function hecho(){
+  b.textContent = 'Copiado'; b.classList.add('hecho');
+  setTimeout(() => { b.textContent = 'Copiar __COD__'; b.classList.remove('hecho'); }, 1400);
 }
-.rejilla{
-  display:grid; grid-template-columns:repeat(2,1fr);
-  gap:6px; align-items:stretch;
-}
-@media (max-width:760px){ .rejilla{ grid-template-columns:1fr; } }
-
-.tarjeta{
-  background:#fff; border:1px solid var(--linea); border-left:4px solid #CBD5E1;
-  border-radius:4px; padding:6px 12px; display:flex; flex-direction:column;
-  justify-content:space-between; transition:transform .12s ease, box-shadow .12s ease;
-  box-shadow:0 1px 3px rgba(0,0,0,0.03); cursor:pointer;
-}
-.tarjeta:hover{
-  transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,0.07); border-color:#CBD5E1;
-}
-.tarjeta.top{
-  border-left-color:var(--rojo); background:#FFFFFF;
-  box-shadow:0 2px 6px rgba(209,18,46,0.06);
-}
-.tarjeta.relleno{
-  background:#FAFAFA; border-left-color:#E2E8F0; opacity:.92;
-}
-
-.fila{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:8px; margin-bottom:2px;
-}
-.identificador{ display:flex; align-items:center; gap:8px; }
-.orden{
-  font-size:clamp(0.66rem, 0.72vw, 0.72rem); font-weight:700; color:var(--suave);
-  font-family:'JetBrains Mono',monospace;
-}
-.codigo{
-  font-size:clamp(1.05rem, 1.18vw, 1.2rem); font-weight:700;
-  letter-spacing:.03em; color:var(--negro); font-family:'JetBrains Mono',monospace;
-}
-
-.copiar{
-  font-family:'Libre Franklin',sans-serif; font-size:clamp(0.68rem, 0.74vw, 0.74rem);
-  font-weight:600; color:var(--texto); background:#fff; border:1px solid #C4C4C4;
-  border-radius:3px; padding:.2rem .6rem; cursor:pointer;
-  transition:all .15s ease; white-space:nowrap;
-}
-.copiar:hover{ background:var(--negro); color:#fff; border-color:var(--negro); }
-.copiar.hecho{ background:var(--rojo); border-color:var(--rojo); color:#fff; }
-
-.denominacion{
-  font-size:clamp(0.85rem, 0.94vw, 0.92rem); font-weight:600;
-  line-height:1.25; color:var(--texto); margin:0 0 2px;
-}
-.motivo{
-  font-size:clamp(0.74rem, 0.82vw, 0.8rem); color:var(--suave);
-  line-height:1.24; margin-bottom:3px;
-}
-
-.etiquetas-fila{
-  display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:auto; padding-top:2px;
-}
-.etiqueta{
-  display:inline-flex; align-items:center; font-size:clamp(0.58rem, 0.65vw, 0.64rem);
-  font-weight:700; letter-spacing:.06em; text-transform:uppercase;
-  padding:.12rem .4rem; border-radius:3px; background:var(--gris); color:var(--suave);
-}
-.etiqueta.recomendada{ background:var(--rojo); color:#fff; }
-.etiqueta.mando{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
-"""
-
-GUION_INTERACTIVO = """
-function copiarTexto(texto, boton){
-  navigator.clipboard.writeText(texto).then(() => {
-    boton.textContent = 'Copiado';
-    boton.classList.add('hecho');
-    setTimeout(() => { boton.textContent = 'Copiar'; boton.classList.remove('hecho'); }, 1400);
-  }).catch(() => {
+b.addEventListener('click', () => {
+  navigator.clipboard.writeText('__COD__').then(hecho).catch(() => {
     const caja = document.createElement('textarea');
-    caja.value = texto;
-    document.body.appendChild(caja);
-    caja.select();
-    document.execCommand('copy');
-    document.body.removeChild(caja);
-    boton.textContent = 'Copiado';
-    boton.classList.add('hecho');
-    setTimeout(() => { boton.textContent = 'Copiar'; boton.classList.remove('hecho'); }, 1400);
-  });
-}
-
-function alto(){
-  // El alto del marco lo fija Python, que no sabe el ancho de la pantalla:
-  // calcula el caso peor (una columna) y aqui se ajusta al real. Se mide la
-  // rejilla y no el documento, porque scrollHeight nunca baja del alto del
-  // propio marco y asi no se podria encoger.
-  const rejilla = document.querySelector('.rejilla');
-  if (!rejilla) return;
-  const h = Math.ceil(rejilla.getBoundingClientRect().height) + 2;
-
-  // srcdoc: el marco es del mismo origen que la pagina, asi que se puede
-  // tocar. El postMessage de abajo solo lo escuchan los componentes
-  // declarados con declare_component, no un marco de HTML suelto.
-  try {
-    const marco = window.frameElement;
-    if (marco && Math.abs(marco.getBoundingClientRect().height - h) > 1) {
-      // Con prioridad: el alto de arranque entra por media query, que si no
-      // le ganaria a un estilo en linea normal y el ajuste no serviria.
-      marco.style.setProperty('height', h + 'px', 'important');
-      // Streamlit le pasa el alto al contenedor, y no como 'height' sino
-      // como flex-basis: el contenedor es un hijo flexible en columna, asi
-      // que manda la base y no la altura. Tocando solo 'height' el marco
-      // encogia pero el hueco se quedaba.
-      const caja = marco.parentElement;
-      if (caja) {
-        caja.style.setProperty('height', h + 'px', 'important');
-        caja.style.setProperty('flex', '0 0 ' + h + 'px', 'important');
-      }
-    }
-  } catch (e) {
-    // Si algun dia deja de ser del mismo origen queda el alto de Python:
-    // sobrara espacio debajo, pero no se cortara ninguna tarjeta.
-  }
-  parent.postMessage({type:'streamlit:setFrameHeight', height: h}, '*');
-}
-
-document.querySelectorAll('.copiar').forEach(b => {
-  b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    copiarTexto(b.dataset.cod, b);
+    caja.value = '__COD__'; document.body.appendChild(caja); caja.select();
+    document.execCommand('copy'); document.body.removeChild(caja); hecho();
   });
 });
-
-document.querySelectorAll('.tarjeta').forEach(t => {
-  t.addEventListener('click', () => {
-    const btn = t.querySelector('.copiar');
-    if (btn) btn.click();
-  });
-});
-
-window.addEventListener('keydown', (e) => {
-  if (['1','2','3','4','5','6'].includes(e.key) && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
-    const idx = parseInt(e.key) - 1;
-    const btns = document.querySelectorAll('.copiar');
-    if (btns[idx]) btns[idx].click();
-  }
-});
-
-// Se vigila la rejilla, no el body: el body no encoge por debajo del alto
-// del marco y el observador nunca se enteraria de que sobra sitio.
-const observador = new ResizeObserver(() => alto());
-const rejilla = document.querySelector('.rejilla');
-if (rejilla) observador.observe(rejilla);
-window.addEventListener('load', alto);
-window.addEventListener('resize', alto);
-alto();
+</script>
 """
 
 
-def pinta_tarjetas(ocupaciones):
+def boton_copiar(codigo):
+    estilo.marco(BOTON_COPIAR.replace("__COD__", codigo), 34)
+
+
+def pinta_tarjeta(i, o, interactivo):
+    es_primera = (i == 1 and not o.get("provisional"))
+    es_mando = o.get("nivel") in ("10", "20", "30")
+    clave = f"oc_{i}" + ("_top" if es_primera else "") + ("_relleno" if o.get("relleno") else "")
+    with estilo.caja(clave):
+        st.markdown(
+            '<div class="oc-cab">'
+            f'<span class="oc-cod">{o["codigo"]}</span>'
+            + ('<span class="oc-rec">★ Recomendada</span>' if es_primera else "")
+            + '</div>'
+            f'<div class="oc-den">{o["denominacion"]}</div>'
+            + (f'<div class="oc-mot">{o["motivo"]}</div>' if o.get("motivo") else "")
+            + f'<div class="oc-niv{" mando" if es_mando else ""}">Nivel {o["nivel"]} · {o["nivel_texto"]}</div>',
+            unsafe_allow_html=True,
+        )
+        if interactivo:
+            copiar, anadir = st.columns(2, gap="small")
+            with copiar:
+                boton_copiar(o["codigo"])
+            ya = cv_estado.en_lista(o["codigo"])
+            anadir.button(
+                "Añadido al CV" if ya else "+ CV", key=f"addcv_{o['codigo']}",
+                use_container_width=True, disabled=ya,
+                help=f"Al currículo como «{cv_motor.a_oracion(o['denominacion'])}»",
+                on_click=cv_estado.anade_experiencia,
+                args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
+            )
+        else:
+            boton_copiar(o["codigo"])
+
+
+def pinta_tarjetas(ocupaciones, interactivo=False):
+    """Las tarjetas, de dos en dos. En el móvil las columnas se apilan y salen
+    en orden porque cada fila es su propio `st.columns`."""
     if not ocupaciones:
         return
-
-    trozos = []
-    for i, o in enumerate(ocupaciones, 1):
-        es_primera = (i == 1 and not o.get("provisional"))
-        es_mando = o.get("nivel") in ("10", "20", "30")
-
-        clases = ["tarjeta"]
-        if es_primera:
-            clases.append("top")
-        if o.get("relleno"):
-            clases.append("relleno")
-        clase = " ".join(clases)
-
-        etiquetas_html = []
-        if es_primera:
-            etiquetas_html.append('<span class="etiqueta recomendada">★ Recomendada</span>')
-
-        etiqueta_clase = "etiqueta mando" if es_mando else "etiqueta"
-        etiquetas_html.append(
-            f'<span class="{etiqueta_clase}">Nivel {o["nivel"]} &middot; {o["nivel_texto"]}</span>'
-        )
-
-        motivo_html = f'<div class="motivo">{o["motivo"]}</div>' if o.get("motivo") else ""
-
-        trozos.append(
-            f'<div class="{clase}">'
-            f'  <div>'
-            f'    <div class="fila">'
-            f'      <div class="identificador">'
-            f'        <span class="orden">{i:02d}</span>'
-            f'        <span class="codigo">{o["codigo"]}</span>'
-            f'      </div>'
-            f'      <button class="copiar" data-cod="{o["codigo"]}">Copiar</button>'
-            f'    </div>'
-            f'    <div class="denominacion">{o["denominacion"]}</div>'
-            f'    {motivo_html}'
-            f'  </div>'
-            f'  <div class="etiquetas-fila">{"".join(etiquetas_html)}</div>'
-            f'</div>'
-        )
-
-    # El alto del marco se fija desde Python, y aqui no se sabe el ancho de la
-    # pantalla. Se calculan tres, uno por tramo, y los elige el CSS de abajo:
-    # el de escritorio va en el propio componente y los otros dos entran por
-    # media query. El guion de dentro ajusta luego al alto exacto, pero si
-    # aqui se manda un solo numero el otro lado da un salto de medio metro de
-    # pantalla mientras carga. Antes se calculaba siempre a dos columnas y en
-    # el movil, donde las tarjetas se apilan, el marco se quedaba a la mitad:
-    # la segunda tarjeta no se veia y la primera salia cortada.
-    #
-    # Los caracteres por linea estan medidos sobre el catalogo entero: son el
-    # mayor valor con el que la cuenta nunca se queda corta de lineas.
-    ALTO_FIJO = 58                 # codigo, boton, etiquetas y margenes
-    ALTO_LINEA_DENOMINACION = 17
-    ALTO_LINEA_MOTIVO = 15
-    SEPARACION = 6                 # el gap de la rejilla
-
-    def estima(caracteres_denom, caracteres_motivo, columnas):
-        def mide(o):
-            lineas_denom = max(1, math.ceil(len(o["denominacion"]) / caracteres_denom))
-            lineas_motivo = (math.ceil(len(o["motivo"]) / caracteres_motivo)
-                             if o.get("motivo") else 0)
-            return (ALTO_FIJO
-                    + lineas_denom * ALTO_LINEA_DENOMINACION
-                    + lineas_motivo * ALTO_LINEA_MOTIVO)
-
-        alturas = [mide(o) for o in ocupaciones]
-        filas = [alturas[i:i + columnas] for i in range(0, len(alturas), columnas)]
-        return sum(max(f) for f in filas) + SEPARACION * max(0, len(filas) - 1) + 4
-
-    escritorio = estima(48, 52, 2)       # dos columnas de unos 530 px
-    columna_ancha = estima(50, 100, 1)   # tableta o ventana estrecha
-    movil = estima(20, 38, 1)            # una columna y el texto ocupando más
-
-    estilo.marco(
-        f"<style>{ESTILO_TARJETAS}</style>"
-        f"<div class=\"rejilla\">{''.join(trozos)}</div>"
-        f"<script>{GUION_INTERACTIVO}</script>",
-        escritorio,
-    )
-    # El marco de las tarjetas es el unico de la pagina, asi que no hace falta
-    # marcarlo: 792 px de ventana son 760 de marco, que es donde la rejilla de
-    # dentro pasa a una columna. Se toca tambien flex-basis porque Streamlit le
-    # pasa el alto al contenedor por ahi y no por 'height'.
-    st.markdown(
-        "<style>"
-        + "".join(
-            f"@media (max-width:{ventana}px){{"
-            f"iframe.stIFrame,"
-            f"div[data-testid=\"stElementContainer\"]:has(> iframe.stIFrame)"
-            f"{{height:{px}px !important;flex-basis:{px}px !important;}}}}"
-            for ventana, px in ((792, columna_ancha), (552, movil))
-        )
-        + "</style>",
-        unsafe_allow_html=True,
-    )
+    for fila in range(0, len(ocupaciones), 2):
+        cols = st.columns(2, gap="small")
+        for j, col in enumerate(cols):
+            i = fila + j
+            if i < len(ocupaciones):
+                with col:
+                    pinta_tarjeta(i + 1, ocupaciones[i], interactivo)
 
 
 def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consulta=""):
@@ -338,35 +261,27 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
         st.info("No encuentro coincidencias claras. Prueba con el nombre del puesto o función concreta.")
         return
 
-    # 1. PREGUNTA ARRIBA (antes de las tarjetas)
+    # 1. PREGUNTA ARRIBA (antes de las tarjetas): el texto a la izquierda y
+    #    las opciones a su derecha; en el móvil, debajo.
     if payload.get("pregunta"):
-        try:
-            caja = st.container(key="pregunta")
-        except TypeError:
-            caja = st.container()
-        with caja:
-            st.markdown(
+        with estilo.caja("pregunta"):
+            opciones = (motor.extraer_opciones(payload.get("pregunta", ""), payload.get("opciones"))
+                        if interactivo else [])
+            texto_col, opciones_col = st.columns([5, 5], gap="small") if opciones else (st.container(), None)
+            texto_col.markdown(
                 '<div class="pregunta-titulo">Pregunta para la persona</div>'
                 f'<div class="pregunta-texto">{payload["pregunta"]}</div>',
                 unsafe_allow_html=True,
             )
-            if interactivo:
-                opciones = motor.extraer_opciones(payload.get("pregunta", ""), payload.get("opciones"))
-                # El ancho se reparte segun lo que ocupa cada texto. Con el
-                # limite en 44 caracteres hace falta algo mas de holgura que
-                # antes, o el boton vuelve a cortar la frase por su cuenta.
-                pesos = [max(1.2, len(opc) * 0.105) for opc in opciones]
-                spacer = max(0.2, (9.0 - sum(pesos)) / 2.0)
-                col_weights = [spacer] + pesos + [spacer]
-                cols = st.columns(col_weights, gap="small")
-                for idx, opc in enumerate(opciones):
-                    with cols[idx + 1]:
-                        if st.button(opc, key=f"resp_opt_{idx}", use_container_width=True):
+            if opciones:
+                with opciones_col, estilo.fila("opciones_pregunta", wrap=True):
+                    for idx, opc in enumerate(opciones):
+                        if st.button(opc, key=f"resp_opt_{idx}"):
                             st.session_state["sispe_respuesta"] = (consulta, payload["pregunta"], opc)
                             st.rerun()
 
     # 2. TARJETAS DE OCUPACIONES
-    pinta_tarjetas(ocupaciones)
+    pinta_tarjetas(ocupaciones, interactivo=interactivo)
 
     if estado:
         return
@@ -733,6 +648,7 @@ st.session_state.setdefault("sispe_refuerzos_por_guardar", [])
 st.session_state.setdefault("sispe_ultima", "")
 st.session_state.setdefault("consulta", "")
 
+ARRANQUE = "Una persona que "
 EJEMPLOS = [
     "Una persona que limpia habitaciones de hotel",
     "Una persona que conduce autobuses",
@@ -748,7 +664,7 @@ EJEMPLOS = [
 
 
 def panel_ajustes():
-    with st.popover(":material/tune:", use_container_width=True):
+    with st.popover(":material/tune:", help="Ajustes"):
         st.session_state["sispe_usar_ia"] = st.toggle(
             "Afinar con IA", value=st.session_state["sispe_usar_ia"],
             help="Desactivado, muestra las coincidencias del catálogo al instante.",
@@ -765,14 +681,9 @@ def panel_ajustes():
                 use_container_width=True,
             )
 
-        if not MANTENIMIENTO:
-            st.caption(
-                f"{len(motor.IDX['registros'])} ocupaciones del catálogo oficial. "
-                "Describe solo el puesto: sin datos identificativos."
-            )
-            st.caption(f"Versión {version.commit()}")
-            return
         st.caption(f"Versión {version.commit()}")
+        if not MANTENIMIENTO:
+            return
 
         tiempos = st.session_state.get("sispe_tiempos", [])
         if tiempos:
@@ -838,61 +749,39 @@ def panel_ajustes():
                 (st.success if correcto else st.error)(detalle)
 
 
-def usar_ejemplo(texto_ejemplo):
-    st.session_state["sispe_pendiente"] = texto_ejemplo
+def usar_ejemplo():
+    """Un chip de ejemplo lanza la consulta completa y se suelta él solo."""
+    elegido = st.session_state.get("sispe_ejemplo")
+    if not elegido:
+        return
+    st.session_state["sispe_ejemplo"] = None
+    st.session_state["sispe_pendiente"] = ARRANQUE + elegido
     st.session_state["consulta"] = ""
     st.session_state["sispe_actual"] = None
     st.session_state["sispe_ultima"] = ""
 
 
-def botones_carrito(ocupaciones):
-    """Botones reales bajo las tarjetas: mandan la ocupación al generador de CV.
+def linea_curriculo():
+    """Una línea con lo que lleva el currículo en curso y el enlace al generador.
 
-    No pueden ir dentro: las tarjetas se dibujan en un marco aparte, en un
-    marco aislado, y un botón de ahí dentro no puede avisar a la aplicación.
-    Es la conexión entre las dos herramientas: pasa por `herramientas.cv.estado`.
+    Los «+ CV» van en cada tarjeta; esto solo dice cuántas experiencias hay ya
+    y abre el generador. Es la conexión entre las dos herramientas: pasa por
+    `herramientas.cv.estado`.
     """
-    if not ocupaciones:
+    exps = cv_estado.experiencias()
+    if not exps:
         return
-    # La clave la usa el CSS de comun/estilo.py: en el movil, donde Streamlit
-    # apila las columnas, invierte cada fila para que el nombre vaya ENCIMA de
-    # su boton. Sin eso el boton salia primero, pegado al nombre del anterior,
-    # y no se sabia a cual de los dos pertenecia.
-    try:
-        zona = st.container(key="carrito")
-    except TypeError:
-        zona = st.container()
-    with zona:
-        st.markdown('<div class="seccion">Añadir al currículo</div>', unsafe_allow_html=True)
-        for o in ocupaciones:
-            ya = cv_estado.en_lista(o["codigo"])
-            boton, texto = st.columns([1.5, 8.5], gap="small")
-            boton.button(
-                "Añadido" if ya else "+ CV",
-                key=f"addcv_{o['codigo']}", use_container_width=True, disabled=ya,
-                type="secondary" if ya else "primary",
-                on_click=cv_estado.anade_experiencia,
-                args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
-            )
-            # El nombre oficial manda, pero entre parentesis va como se llamaria
-            # el puesto en un curriculo. De momento sale de convertir la
-            # denominacion; el nombre de mercado de verdad ("montador de placa
-            # de pladur") lo tiene que proponer el modelo, y eso va en el paso
-            # siguiente.
-            sugerencia = cv_motor.a_oracion(o["denominacion"])
-            texto.markdown(
-                f'<div style="padding-top:.35rem;line-height:1.3">'
-                f'<span style="font-size:.82rem;font-weight:600">{o["denominacion"]}</span><br>'
-                f'<span style="font-size:.78rem;color:var(--suave)">'
-                f'En el currículo: <b>{sugerencia}</b> · {o["codigo"]}</span></div>',
-                unsafe_allow_html=True,
-            )
-        n = len(cv_estado.experiencias())
-        if n:
-            st.page_link(
-                cv_estado.PAGINA, icon=":material/description:",
-                label=f"Abrir el generador de CV ({n} experiencia{'s' if n != 1 else ''})",
-            )
+    n = len(exps)
+    nombres = " · ".join(cv_motor.titulo_experiencia(e) for e in exps[-3:])
+    if n > 3:
+        nombres = f"… · {nombres}"
+    with estilo.fila("cesta", wrap=True, vertical_alignment="top"):
+        st.markdown(
+            f'<div class="cesta-texto"><b>Currículo en curso:</b> {n} experiencia{"s" if n != 1 else ""}'
+            f' · {nombres}</div>',
+            unsafe_allow_html=True, **estilo._ancho("stretch"),
+        )
+        st.page_link(cv_estado.PAGINA, label="Abrir el generador de CV →")
 
 
 def empezar_de_nuevo():
@@ -923,25 +812,26 @@ if not entrada:
     entrada = st.session_state.pop("sispe_pendiente", None)
 
 # ---------------------------------------------------------------------------
-# Banda de cabecera
+# Barra, título y buscador
 # ---------------------------------------------------------------------------
 
-banda = estilo.banda(
-    "sispe", "Codificador de ocupaciones",
+with estilo.banda(
+    "sispe", "Codificador SISPE",
     "Describe el puesto con las palabras de la persona y te propone el código oficial.",
-    al_pulsar_titulo=empezar_de_nuevo,
-)
-with banda:
-    campo, boton, ajustes = st.columns([6.4, 1.1, 0.5], gap="small")
-    with campo:
+    acciones=panel_ajustes,
+):
+    with estilo.fila("buscador", vertical_alignment="center"):
         texto = st.text_input(
             "Consulta", label_visibility="collapsed", key="consulta",
-            placeholder="Describe el puesto o introduce un código de 8 cifras...",
+            placeholder="Describe el puesto o escribe un código de 8 cifras",
         )
-    with boton:
-        buscar = st.button("Buscar", key="buscar", use_container_width=True)
-    with ajustes:
-        panel_ajustes()
+        buscar = st.button("Buscar", key="buscar")
+    st.markdown(
+        f'<div class="pie-buscador"><span>{len(motor.IDX["registros"])} ocupaciones del catálogo '
+        'oficial · describe solo el puesto, sin datos identificativos</span>'
+        f'<span>Afinar con IA: {"activado" if st.session_state["sispe_usar_ia"] else "desactivado"}</span></div>',
+        unsafe_allow_html=True,
+    )
 
     escrito = (texto or "").strip()
     if escrito and not entrada:
@@ -952,15 +842,31 @@ with banda:
 if entrada:
     st.session_state["sispe_ultima"] = entrada
 
+
+def titular(consulta, n=None):
+    """La consulta como titular, con la cuenta de resultados y «Nueva búsqueda».
+
+    Van en columnas y no en un contenedor horizontal: en el horizontal,
+    Streamlit mide el texto como si fuera una sola línea y, cuando en el
+    móvil se parte en dos, la segunda se sale por debajo del filo. En
+    columnas, el botón pasa debajo del texto en el móvil y no se pierde nada.
+    """
+    with estilo.caja("titular"):
+        texto_col, boton_col = st.columns([7, 3], gap="small", vertical_alignment="bottom")
+        cuenta = (f"{n} ocupación para " if n == 1 else f"{n} ocupaciones para ") if n else ""
+        texto_col.markdown(
+            f'<div class="consulta-texto"><small>{cuenta}</small>«{consulta}»</div>',
+            unsafe_allow_html=True,
+        )
+        boton_col.button("↺ Nueva búsqueda", key="reinicio", on_click=empezar_de_nuevo)
+
+
 # ---------------------------------------------------------------------------
 # Cuerpo
 # ---------------------------------------------------------------------------
 
 if entrada:
-    st.markdown(
-        f'<div class="consulta-box"><div class="consulta-texto">{rotulo or entrada}</div></div>',
-        unsafe_allow_html=True,
-    )
+    titular(rotulo or entrada)
     zona = st.empty()
     payload = resuelve(
         entrada, zona,
@@ -976,40 +882,18 @@ if entrada:
 
 elif st.session_state["sispe_actual"]:
     consulta, payload = st.session_state["sispe_actual"]
-    st.markdown(
-        f'<div class="consulta-box"><div class="consulta-texto">{consulta}</div></div>',
-        unsafe_allow_html=True,
-    )
+    titular(consulta, len(payload.get("ocupaciones", [])))
     pinta_resultado(payload, interactivo=True, consulta=consulta)
-    botones_carrito(payload.get("ocupaciones", []))
-
-    st.markdown('<div class="separa"></div>', unsafe_allow_html=True)
-    st.button("↺", key="reinicio", help="Nueva búsqueda", on_click=empezar_de_nuevo)
-    st.markdown('<div class="pie-nueva">Nueva búsqueda</div>', unsafe_allow_html=True)
+    linea_curriculo()
 
 else:
-    st.markdown('<div class="seccion">Prueba con</div>', unsafe_allow_html=True)
-    arranque = "Una persona que "
-    # La clave la usa el CSS de comun/estilo.py para dejar que estos rotulos
-    # pasen a dos lineas: en un movil estrecho no cabian y Streamlit los
-    # cortaba con puntos suspensivos ("...organiza eventos para e...").
-    try:
-        zona_ej = st.container(key="ejemplos")
-    except TypeError:
-        zona_ej = st.container()
-    with zona_ej:
-        for i in range(0, len(EJEMPLOS), 2):
-            fila = EJEMPLOS[i:i + 2]
-            cols = st.columns(2, gap="small")
-            for col, ej in zip(cols, fila):
-                rotulo_ej = (
-                    f"{arranque}**{ej[len(arranque):]}**"
-                    if ej.startswith(arranque) else f"**{ej}**"
-                )
-                col.button(
-                    rotulo_ej, use_container_width=True, key=f"ej_{i}_{ej[-14:]}",
-                    on_click=usar_ejemplo, args=(ej,),
-                )
+    st.markdown('<div class="seccion">Prueba con «una persona que…»</div>', unsafe_allow_html=True)
+    with estilo.caja("ejemplos"):
+        st.pills(
+            "Ejemplos", [ej[len(ARRANQUE):] for ej in EJEMPLOS], key="sispe_ejemplo",
+            label_visibility="collapsed", on_change=usar_ejemplo,
+        )
+    linea_curriculo()
 
 # Estas dos escrituras van a la API de GitHub y ocurren AL TERMINAR la
 # busqueda, cuando el usuario ya cree que ha acabado. No se veian en el panel

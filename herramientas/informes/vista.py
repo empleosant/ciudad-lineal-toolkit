@@ -40,19 +40,12 @@ from herramientas.informes import modelo, motor
 estilo.aplica()
 st.markdown("""
 <style>
-.st-key-cabecera{ margin-bottom:.6rem; }
 .aviso-clave{
   font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
   color:#B15A2B; margin:.1rem 0 -.2rem;
 }
 </style>
 """, unsafe_allow_html=True)
-
-estilo.banda(
-    "informes", "Generador de informes de orientación",
-    "Prepara la cita leyendo el currículo, recoge lo que solo se ve en la sala "
-    "y cierra con el correo a la persona.",
-)
 
 try:
     MANTENIMIENTO = st.query_params.get("mantenimiento") == "1"
@@ -130,9 +123,11 @@ def _estado():
 
 
 # ---------------------------------------------------------------------------
-# Lo de arriba: cómo funciona y el expediente. Los dos, plegados.
+# La ayuda y el expediente: dos botones junto al título, que despliegan.
+# Antes eran dos desplegables encima de las pestañas y abrían la página; no
+# hacen falta para el trabajo de un día corriente.
 # ---------------------------------------------------------------------------
-with st.expander("Cómo funciona esto"):
+def _ayuda():
     st.markdown(
         "**1 · Antes de la cita.** Pega el currículo de la persona, sin nombre ni "
         "teléfono, y pulsa el botón. Sale un PDF de dos páginas para imprimir y "
@@ -143,44 +138,59 @@ with st.expander("Cómo funciona esto"):
         "dónde busca empleo.\n\n"
         "**3 · Para cerrar.** En la tercera sale el correo para la persona, con "
         "empresas a las que presentarse. Se copia y se pega en Outlook.\n\n"
-        "Si la cita es otro día, **guarda el expediente** ahí abajo al terminar el "
-        "paso 1 y súbelo cuando vuelvas: si no, hay que empezar de nuevo."
+        "Si la cita es otro día, **guarda el expediente** con el botón de la carpeta "
+        "al terminar el paso 1 y súbelo cuando vuelvas: si no, hay que empezar de nuevo."
     )
 
-with st.expander("Guardar para otro día, o recuperar lo guardado"):
+
+def _expediente():
+    st.markdown("**Guardar para otro día, o recuperar lo guardado**")
     st.caption(
         "El archivo se queda en tu equipo. Aquí no se guarda nada de nadie."
     )
-    guarda, recupera = st.columns(2, gap="medium")
-    with guarda:
-        _actual = _estado()
-        _rasgo = (st.session_state.get("inf_ficha") or {}).get("rasgo")
-        _nombre = motor.nombre_expediente(_rasgo)
-        st.download_button(
-            f"Guardar {_nombre}.json", motor.expediente(_actual),
-            file_name=f"{_nombre}.json", mime="application/json",
-            use_container_width=True, disabled=not _actual,
-            help="Se nombra por el rasgo del perfil, nunca por la persona.",
-        )
-    with recupera:
+    _actual = _estado()
+    _rasgo = (st.session_state.get("inf_ficha") or {}).get("rasgo")
+    _nombre = motor.nombre_expediente(_rasgo)
+    st.download_button(
+        f"Guardar {_nombre}.json", motor.expediente(_actual),
+        file_name=f"{_nombre}.json", mime="application/json",
+        use_container_width=True, disabled=not _actual,
+        help="Se nombra por el rasgo del perfil, nunca por la persona.",
+    )
+    with estilo.caja("soltar_expediente"):
         _subido = st.file_uploader("Expediente .json", type=["json"],
                                    key="inf_w_expediente", label_visibility="collapsed")
-        if _subido is not None:
-            _huella = f"{_subido.name}:{_subido.size}"
-            if st.session_state.get("inf_expediente") != _huella:
-                st.session_state["inf_expediente"] = _huella
-                _datos, _error = motor.lee_expediente(_subido.getvalue())
-                if _error:
-                    st.error(_error)
-                else:
-                    # lee_expediente ya ha descartado lo que no era de su tipo.
-                    st.session_state["inf_cargar"] = {
-                        DEL_ARCHIVO[c]: v for c, v in _datos.items() if c in DEL_ARCHIVO
-                    }
-                    st.session_state["inf_correo"] = ""
-                    for _fase in ("lectura", "ficha", "correo"):
-                        st.session_state.pop(f"inf_uso_{_fase}", None)
-                    st.rerun()
+    if _subido is not None:
+        _huella = f"{_subido.name}:{_subido.size}"
+        if st.session_state.get("inf_expediente") != _huella:
+            st.session_state["inf_expediente"] = _huella
+            _datos, _error = motor.lee_expediente(_subido.getvalue())
+            if _error:
+                st.error(_error)
+            else:
+                # lee_expediente ya ha descartado lo que no era de su tipo.
+                st.session_state["inf_cargar"] = {
+                    DEL_ARCHIVO[c]: v for c, v in _datos.items() if c in DEL_ARCHIVO
+                }
+                st.session_state["inf_correo"] = ""
+                for _fase in ("lectura", "ficha", "correo"):
+                    st.session_state.pop(f"inf_uso_{_fase}", None)
+                st.rerun()
+
+
+def _acciones():
+    with st.popover(":material/folder_open:", help="Guardar para otro día, o recuperar lo guardado"):
+        _expediente()
+    with st.popover(":material/help:", help="Cómo funciona esto"):
+        _ayuda()
+
+
+estilo.banda(
+    "informes", "Informes de orientación",
+    "Prepara la cita leyendo el currículo, recoge lo que solo se ve en la sala "
+    "y cierra con el correo a la persona.",
+    acciones=_acciones,
+)
 
 fase1, fase2, fase3 = st.tabs(["1 · Preparación", "2 · La cita", "3 · Cierre"])
 
@@ -189,15 +199,6 @@ fase1, fase2, fase3 = st.tabs(["1 · Preparación", "2 · La cita", "3 · Cierre
 # FASE 1 — Preparación
 # ---------------------------------------------------------------------------
 with fase1:
-    estilo.pasos([
-        ("El currículo", "Pégalo o arrástralo",
-         "hecho" if (st.session_state.get("inf_w_cv") or "").strip() else "activo"),
-        ("El documento", "Dos páginas para imprimir",
-         "hecho" if st.session_state["inf_ficha"] else ""),
-        ("La cita", "Se cuenta en la pestaña 2",
-         "hecho" if (st.session_state.get("inf_w_notas") or "").strip() else ""),
-    ])
-
     st.markdown('<div class="seccion">El currículo, sin datos personales</div>',
                 unsafe_allow_html=True)
     st.caption("Sin nombre, teléfono, correo, dirección ni DNI. Las fechas, las "
@@ -296,7 +297,7 @@ with fase1:
         if pdf:
             st.download_button(
                 f"Descargar {nombre}.pdf", pdf, file_name=f"{nombre}.pdf",
-                mime="application/pdf", use_container_width=True, type="primary",
+                mime="application/pdf", use_container_width=True,
             )
             _chip("ficha")
             st.caption("Imprímelo y llévatelo a la entrevista. La última sección va "

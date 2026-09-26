@@ -31,9 +31,20 @@ TIE = "TIE (tarjeta de identidad de extranjero)"
 estilo.aplica()
 st.markdown("""
 <style>
-.ext-codigo{ font-size:2.1rem; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
-.ext-codigo.largo{ font-size:1.15rem; line-height:1.3; }
-.ext-codigo.no{ color:var(--rojo); }
+/* El resultado: una tarjeta negra con lo que se graba, que en el móvil va
+   ANTES del formulario (las dos columnas se apilan del revés por debajo de
+   640 px) para leerlo sin bajar. */
+.ext-resultado{ background:var(--negro); color:#fff; border-radius:var(--radio); padding:.8rem 1rem .9rem; }
+.ext-resultado .l{ font-size:.64rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#B9B9BE; }
+.ext-codigo{ font-size:2.1rem; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin:.15rem 0 .3rem; font-family:'JetBrains Mono',monospace; }
+.ext-codigo.largo{ font-size:1.05rem; line-height:1.3; font-family:'Libre Franklin',sans-serif; }
+.ext-codigo.no{ color:#FF6B7A; }
+.ext-codigo.vacio{ color:#8E8E93; font-family:'Libre Franklin',sans-serif; font-size:1.1rem; font-weight:600; }
+.ext-resultado .n{ font-size:.82rem; color:#D6D6DA; line-height:1.4; }
+@media (max-width:640px){
+  /* Solo la fila de las dos columnas grandes, no las de las fechas de dentro */
+  .st-key-ext_principal > div > div[data-testid="stHorizontalBlock"]{ flex-direction:column-reverse; flex-wrap:nowrap; }
+}
 .ext-aviso{ font-size:.86rem; line-height:1.45; padding:.5rem .7rem; border-radius:6px;
             margin:.3rem 0; border:1px solid var(--linea); }
 .ext-aviso.rojo{ background:#FEF2F2; border-color:#FECACA; color:#991B1B; }
@@ -124,7 +135,7 @@ que_codigo, consultar, plazos = st.tabs(["¿Qué código es?", "Consultar un có
 # 1 · ¿Qué código es?
 # ---------------------------------------------------------------------------
 
-with que_codigo:
+with que_codigo, estilo.caja("ext_principal"):
     izq, der = st.columns([5, 6], gap="large")
     with izq:
         st.markdown('<div class="seccion">1 · Qué trae y qué pone</div>', unsafe_allow_html=True)
@@ -138,11 +149,15 @@ with que_codigo:
 
         st.markdown('<div class="seccion">2 · Fechas (las que traiga el documento)</div>',
                     unsafe_allow_html=True)
+        # Dos filas de dos: en el móvil las columnas se apilan y así salen
+        # en el orden en que se leen (emisión, válido hasta, nacimiento,
+        # solicitud), no por columnas.
         c1, c2 = st.columns(2, gap="small")
         emision = fecha("Emisión / presentación", "ext_w_emision", c1)
         valido_hasta = fecha("Válido hasta", "ext_w_valido", c2)
-        nacimiento = fecha("Fecha de nacimiento", "ext_w_nacimiento", c1)
-        solicitud = fecha("Solicitud de renovación", "ext_w_solicitud", c2)
+        c3, c4 = st.columns(2, gap="small")
+        nacimiento = fecha("Fecha de nacimiento", "ext_w_nacimiento", c3)
+        solicitud = fecha("Solicitud de renovación", "ext_w_solicitud", c4)
         sin_alta = False
         if documento == motor.DOC_RESOLUCION:
             sin_alta = st.radio("¿La resolución condiciona expresamente la autorización al alta en la Seguridad Social, y aún no la hay?",
@@ -155,28 +170,28 @@ with que_codigo:
                        sin_alta_ss=sin_alta, hoy=hoy)
 
     with der:
-        st.markdown('<div class="seccion">Resultado</div>', unsafe_allow_html=True)
+        st.markdown('<div class="seccion">Se graba</div>', unsafe_allow_html=True)
         if not r.valido:
-            st.markdown(f'<div class="estado-doc"><div class="l">Código</div>'
-                        f'<div class="ext-codigo largo" style="color:var(--tenue)">{e(r.mensaje)}</div></div>',
+            st.markdown(f'<div class="ext-resultado"><div class="l">Código</div>'
+                        f'<div class="ext-codigo vacio">{e(r.mensaje)}</div></div>',
                         unsafe_allow_html=True)
         else:
             clase = "ext-codigo" + ("" if len(r.codigo) <= 16 else " largo") + \
                     (" no" if r.codigo == motor.NO_SE_INSCRIBE else "")
             que_es = r.ficha.get("que_es", "") if r.ficha else ""
-            st.markdown(f'<div class="estado-doc"><div class="l">Código</div>'
+            st.markdown(f'<div class="ext-resultado"><div class="l">Código</div>'
                         f'<div class="{clase}">{e(r.codigo)}</div>'
                         + (f'<div class="n">{e(que_es)}</div>' if que_es else "") + "</div>",
                         unsafe_allow_html=True)
             if r.se_inscribe:
                 c1, c2 = st.columns(2, gap="small")
                 with c1:
-                    tarjeta("¿Puede trabajar?", r.puede_trabajar or "—")
+                    tarjeta("Fecha fin a grabar", r.fecha_fin_texto or "—")
                     tarjeta("Restricción · colectivo",
                             (f"Restricción {r.restriccion}" if r.restriccion else "—"),
                             (f"Colectivo: {r.colectivo}" if r.colectivo else ""))
                 with c2:
-                    tarjeta("Fecha fin a grabar", r.fecha_fin_texto or "—")
+                    tarjeta("¿Puede trabajar?", r.puede_trabajar or "—")
                     if r.datos:
                         tarjeta("Lo que dicen las fechas", " · ".join(r.datos))
             for a in r.avisos:
