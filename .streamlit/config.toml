@@ -1,9 +1,21 @@
-# Tema de la aplicación. Sin esto, Streamlit pinta los focos y los acentos
-# en su rojo por defecto (#FF4B4B), que no es el rojo corporativo (#D1122E).
+# Tema de la aplicación. Lo que el tema sabe hacer no se hace con CSS: los
+# selectores de Streamlit cambian de versión y estas opciones no.
+#
+#   primaryColor         el rojo corporativo, para focos, botones primarios
+#                        y pestañas (sin esto Streamlit pinta su #FF4B4B)
+#   secondaryBackground  el fondo de los campos: blanco, con borde
+#   borderColor          el borde de campos, tarjetas y desplegables
+#   showWidgetBorder     los campos llevan borde (de serie van sin él y no
+#                        se distinguen del fondo)
+#   baseRadius           un solo radio de esquina para todo
 
 [theme]
 primaryColor = "#D1122E"
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F2F2F2"
+secondaryBackgroundColor = "#FFFFFF"
 textColor = "#1A1A1A"
+linkColor = "#A50E24"
+borderColor = "#D3D6DC"
+showWidgetBorder = true
+baseRadius = "6px"
 font = "sans serif"

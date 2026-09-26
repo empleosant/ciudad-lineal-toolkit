@@ -20,7 +20,7 @@ from comun.registro import PAGINAS
 
 # Única llamada permitida a set_page_config. Las páginas no deben repetirla.
 st.set_page_config(
-    page_title="Herramientas · Oficina de Empleo",
+    page_title="Herramientas de orientación · Oficina de Empleo",
     page_icon="◉",
     layout="wide",
 )
