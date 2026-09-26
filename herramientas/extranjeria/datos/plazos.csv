@@ -1,0 +1,13 @@
+supuesto,codigo,regla
+Familiar de español con solicitud en trámite,R0,Fecha de presentación + 2 meses (prorrogable)
+Arraigo sociolaboral en trámite,R5,Fecha de admisión a trámite + 3 meses (prorrogable)
+Regularización extraordinaria con comunicación de inicio,RE,Fecha de solicitud + 3 meses (prorrogable)
+Resolución condicionada al alta en SS sin alta,IC,Fecha de resolución + 6 meses
+Documento de intermediación (empleador no contrata),T1,Fecha de emisión + 3 meses
+Menor tutelado sin autorización,M2,Fecha de nacimiento + 18 años + 90 días
+Ciudadano UE sin NIE (identificador U),UE (id. U),Fecha de registro + 180 días
+Familiar UE sin documentación (identificador W),F1,Fecha de registro + 180 días
+Familiar UE con resolución desfavorable,F1,Fecha de resolución + 5 años
+Tarjeta familiar UE: pide la permanente con resguardo,F1,Fecha fin de la tarjeta + 1 mes
+Larga duración con TIE caducada y cita previa,P1,Fecha de la cita + 100 días
+Larga duración con TIE caducada sin cita,P1,Fecha de hoy (personación) + 1 mes

@@ -1,0 +1,8 @@
+documento,lista,donde_mirar
+TIE (tarjeta de identidad de extranjero),L_TIE,anverso «TIPO DE PERMISO» y reverso «OBSERVACIONES». Entre «» van textos literales confirmados.
+Resolución de concesión (todavía sin TIE),L_TIE,qué autorización concede y si la condiciona al alta en la Seguridad Social.
+"Solicitud, resguardo o comunicación de Extranjería en trámite",L_TRAM,"qué se solicita, fecha de presentación y si consta la admisión a trámite."
+"Documento de protección internacional, apatridia o protección temporal",L_PI,"tipo de documento, fecha de presentación y si pone «autoriza a trabajar»."
+Visado pegado en el pasaporte,L_VIS,tipo de visado en la etiqueta del pasaporte y sus fechas.
+Ciudadano UE/EEE/Suiza o familiar de UE sin tarjeta,L_UE,"nacionalidad, si tiene NIE o certificado de registro y el vínculo familiar."
+"Otro documento (menores, penados, silencio positivo…)",L_OTRO,"quién lo emite (Protección de Menores, Instituciones Penitenciarias, Extranjería…)."

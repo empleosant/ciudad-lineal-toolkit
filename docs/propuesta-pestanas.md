@@ -2,6 +2,11 @@
 
 Rama `pruebas-cv` · 26/09/2026
 
+> **Estado (26/09/2026):** la pestaña 1, el codificador de extranjería, ya está
+> hecha en esta misma rama (`herramientas/extranjeria/`, `pruebas/extranjeria.py`).
+> Lo que se propone cambiar en el Excel tras cotejarlo con el curso está en
+> `docs/mejoras-excel-extranjeria.md`.
+
 Cuatro pestañas candidatas, ordenadas por lo que aportan al día a día de la
 oficina dividido por lo que cuesta hacerlas. La primera es la que más pesa y
 la que está más madura, porque su lógica ya existe: es el Excel de códigos de

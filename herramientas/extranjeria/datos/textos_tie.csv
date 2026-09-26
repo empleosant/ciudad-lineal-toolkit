@@ -1,0 +1,15 @@
+donde,texto,codigo,ojo,fuente
+Anverso,Campo «TIPO DE PERMISO»: la denominación del tipo de autorización (modelo UE desde el 19/05/2020).,—,Las tarjetas anteriores a mayo 2020 siguen en uso con otro diseño.,"Dirección General de la Policía, nota 08/06/2020"
+Reverso,"Campo «OBSERVACIONES»: aspectos laborales o motivo de concesión (autoriza / no autoriza a trabajar, ocupación, ámbito…).",—,Aquí suelen estar las pistas decisivas.,Descripción del modelo uniforme de TIE
+Anverso / reverso,«RESIDENCIA» + «RESIDENCIA LARGA DURACIÓN AUTORIZA A TRABAJAR»,P1,,Testimonio de titular (parainmigrantes.info)
+Tarjeta,«RESIDENCIA TEMPORAL AUTORIZA A TRABAJAR CUENTA AJENA» en una tarjeta de arraigo,R5,La tarjeta no nombra el arraigo: el mismo texto puede ser T0/T1. Mirar resolución y duración.,"Testimonio de titular, tarjeta de 2024 (parainmigrantes.info)"
+Anverso / reverso,«RÉGIMEN COMUNITARIO» · «FAMILIAR CIUDADANO DE LA UNIÓN» · observaciones «RESIDENTE» + DNI/NIE del familiar,F1,"Antes de 2025 los familiares de españoles también tenían esta tarjeta: si está en vigor, F1.",Testimonios de titulares (parainmigrantes.info)
+Anverso / reverso,«ARTÍCULO 50 TUE» (y «PERMANENTE» si es la de 10 años) · «EMITIDO BAJO ART. 18.4 ACUERDO RETIRADA»,P0,,Despachos especializados en Brexit (varias fuentes coinciden)
+Tarjeta,Estancia por estudios + «AUTORIZA A TRABAJAR» (desde 16/08/2022) o «NO AUTORIZA A TRABAJAR» (anteriores),E1,Máximo 30 h/semana.,Despachos de extranjería (varias fuentes coinciden)
+Reverso,Una ocupación o un ámbito concreto en observaciones (p. ej. «EMPLEADO ADMINISTRATIVO…»),T1 / T3,Grabar ámbito territorial y actividad/ocupación.,Consulta de titular en blog de extranjería
+Tarjeta,«HABILITA PARA TRABAJAR POR CUENTA PROPIA Y POR CUENTA AJENA» (jóvenes extutelados),M3 / R5,M3 si venía de M1; R5 si no tuvo autorización de menor.,"Curso 2026CE310502, parte 3"
+Tarjeta,Reagrupación + «NO AUTORIZA A TRABAJAR» expedida cuando era menor,R7,Ya en edad laboral sí puede trabajar.,Tabla comentada junio 2026
+Tarjeta,Mención a la «EDAD LABORAL» (texto exacto pendiente de copiar de una tarjeta real),R7,M1 si es menor tutelado por la CM. Menor de 16: no se inscribe todavía.,Visto en la oficina · base legal: art. 19 LO 4/2000 e Instrucción SEM 1/2020
+Tarjeta,«RESIDENCIA LARGA DURACIÓN» + «A CARGO DE» y el NIE del familiar,P1,Reagrupado que ya pasó a larga duración: manda la larga duración.,Testimonio de titular (legalteam.es)
+Tarjeta roja,«AUTORIZA A TRABAJAR»,A1,"Sin esa anotación, y entre el 2º y 5º mes: C1 + Col. 17.",Tabla comentada junio 2026
+Pendiente,"R0 (familiar de español, RD 1155/2024), R8, R9, RF, RE, A2, A3, A4, D1",—,Sin texto literal confirmado: completad con lo que veáis.,

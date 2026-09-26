@@ -1,0 +1,37 @@
+{
+  "titulo": "CÓDIGOS DE AUTORIZACIÓN PARA INSCRIBIR A PERSONAS EXTRANJERAS · actualizado septiembre 2026",
+  "fuente": "Fuente: Tabla comentada de autorizaciones administrativas (junio 2026) y Curso 2026CE310502 (14-16/09/2026, Manual de Instrucciones v.22). RESTR.: S = con restricciones · N = sin restricciones.  ¿PUEDE TRABAJAR?:  SÍ · SÍ, con límites · NO (se inscribe, pero para trabajar necesita otra autorización o modificación).",
+  "tramite": [
+    "Recurso de reposición: NO sirve para inscribir (salvo en protección internacional).",
+    "Regla general: cualquier autorización de residencia o de estancia por estudios permite inscribir, aunque no autorice a trabajar, si la ley permite modificarla a una que sí lo haga.",
+    "Plazo general de Extranjería para resolver: 3 meses. Prórrogas, renovaciones y larga duración sin respuesta se entienden ESTIMADAS (silencio positivo); el resto, desestimadas."
+  ],
+  "plazos": [
+    "Fechas fijas: certificado de registro UE y británicos (P0) con certificado → 01/01/2200.",
+    "Aviso en renovación: «ACTZAR FCH. AUTORIZ.» = hay que actualizar la fecha de la autorización presencialmente.",
+    "Autorización renovada con TIE nueva o solo con la resolución: grabar la nueva fecha fin de vigencia (se borra la fecha de solicitud de renovación).",
+    "Silencio positivo acreditado: grabar el código y la fecha que tendría la autorización renovada.",
+    "La fecha de solicitud de renovación no puede ser anterior en más de 61 días a la fecha fin de vigencia.",
+    "Ámbito territorial: desde el 20/05/2025 solo ámbito autonómico."
+  ],
+  "duraciones_tarjeta": [
+    "La fecha de la tarjeta puede ser posterior a la concesión: una renovación de 4 años puede aparecer como de 3 y pico. Acota, no decide."
+  ],
+  "textos_tie": "No hay un listado oficial público con el texto de cada tarjeta. Esto es lo confirmado a septiembre 2026; añadid abajo (celdas amarillas) los textos que veáis en la oficina, sin datos personales.",
+  "novedades": "QUÉ HA CAMBIADO RESPECTO AL EXCEL DE JUNIO 2025",
+  "leyenda": [
+    [
+      "SÍ",
+      "Puede trabajar sin límites (por cuenta ajena y, en general, propia)."
+    ],
+    [
+      "SÍ, con límites",
+      "Puede trabajar, pero con límite de horas, territorio, ocupación o actividad."
+    ],
+    [
+      "NO",
+      "Se inscribe, pero para trabajar necesita otra autorización o una modificación."
+    ]
+  ],
+  "aviso": "Es una ayuda para decidir: ante la duda manda la tabla comentada de autorizaciones y la consulta del expediente en Extranjería. Si ves un texto de TIE que no está, apúntalo en la pestaña TEXTOS TIE."
+}

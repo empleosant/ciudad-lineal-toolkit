@@ -1,0 +1,15 @@
+codigo,cambio
+IC,"Nuevo código (junio 2026): resolución que exige alta en SS y aún no la hay. Vigencia: resolución + 6 meses. Ya no se exige acreditar el alta para inscribir con resolución (T0, T1, M3, R5)."
+RE,Nuevo código: regularización extraordinaria del RD 316/2026. Trabaja sin límites desde la comunicación de inicio.
+R0,Con la solicitud admitida a trámite ya puede trabajar sin restricción. Solo «otros a cargo» (art. 97.1.i) llevan Col. 17.
+R5,El arraigo sociolaboral en trámite permite inscribir (admisión + 3 meses). R5 por protección internacional: sin concesiones ni renovaciones desde el 12/06/2026.
+D1,Cambia de nombre: «residencia temporal con excepción de la autorización de trabajo».
+R1 · RF,Ya no llevan Col. 17 (salvo autorizaciones antiguas del RD 557). RF permite trabajar hasta 30 h/semana.
+T2,Vigencia de la renovación: 4 años (antes 2 o 4).
+V1,Vigencia: 12 meses (el Excel anterior decía 3). El antiguo V2 se graba como V1.
+E2,Vigencia: 24 meses.
+A4,Protección temporal de Ucrania prorrogada hasta el 04/03/2027.
+R4 · T4 · V3,"Ya no se usan: R6, T2 y R8, respectivamente."
+PI (PEMA),"Desde el 12/06/2026: el documento de registro sustituye a la manifestación de voluntad (no se inscribe) y el nuevo resguardo trae la fecha de registro, desde la que se cuentan los meses. Nº de expediente nuevo (LARES): empieza por ES_EA0054388_2026_EXP_."
+DT 5ª,Disposición transitoria 5ª del RD 1155/2024 (arraigo tras PI denegada): derogada por el RD 316/2026.
+COVID,Se eliminan las prórrogas del estado de alarma de 2020 (ya no aplican).

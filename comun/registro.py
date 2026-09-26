@@ -27,6 +27,16 @@ HERRAMIENTAS = [
                        "en SilcoiWeb. Manda las experiencias al generador de CV.",
     },
     {
+        "id": "extranjeria",
+        "ruta": "herramientas/extranjeria/vista.py",
+        "titulo": "Codificador de extranjería",
+        "icono": ":material/badge:",
+        "url": "extranjeria",
+        "descripcion": "Qué código de autorización y qué fecha fin de vigencia se graban al "
+                       "inscribir a una persona extranjera, a partir de lo que pone su "
+                       "documento. Sin IA: es el Excel de la oficina hecho pantalla.",
+    },
+    {
         "id": "cv",
         "ruta": "herramientas/cv/vista.py",
         "titulo": "Generador de CV",

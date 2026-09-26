@@ -1,0 +1,24 @@
+codigo,minimo,maximo,normal
+P1,3.5,10.5,5 o 10 años
+P0,3.5,10.5,5 o 10 años
+F1,3.5,10.5,"5 años, 10 la permanente"
+R0,0,5.5,hasta 5 años
+R1,0,1.3,1 año
+R2,1.3,2.5,2 años
+R6,0,1.3,1 año
+T0,0,1.3,hasta 1 año
+T1,0,1.3,hasta 1 año
+T2,0,4.5,"4 años, o 1 si la inicial fue menor de un año"
+T3,0,1.3,1 año
+R5,0,5.5,"1 año en arraigos, 5 en arraigo familiar o definitivas"
+R5 (ex-MENA),0,2.5,2 años
+RF,0,1.3,1 año
+RE,0,4.5,"1 año, prórroga de 1 o 4"
+R8,0,3.5,"hasta 3 años, renovación de 2"
+M1,0,3.5,"2 años, renovada 3"
+M3,0,2.5,2 años
+E2,0,2.2,24 meses
+E3,0,1.3,12 meses
+A3,0,2.5,2 años
+V1 (hijos/nietos),0,1.1,12 meses
+V1 (ocupaciones),0,1.1,12 meses

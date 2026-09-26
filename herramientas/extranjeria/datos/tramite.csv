@@ -1,0 +1,30 @@
+apartado,situacion,codigo,como_se_graba
+SI,Renovación o prórroga presentada en plazo (60 días antes o 90 después de caducar).,El mismo código,"Grabar «Fecha de solicitud de renovación». Si han pasado más de 3 meses: certificado de silencio positivo o consultar el expediente (si sigue en trámite, se renueva)."
+SI,R0 · solicitud de familiar de español admitida a trámite.,R0,"Fecha de presentación + 2 meses, prorrogable hasta resolución. Solo «otros a cargo» (art. 97.1.i) con Col. 17."
+SI,Arraigo sociolaboral admitido a trámite.,R5,"Fecha de admisión + 3 meses, prorrogable comprobando que sigue en trámite. Trabaja por cuenta ajena provisionalmente."
+SI,Regularización extraordinaria (RD 316/2026) con comunicación de inicio.,RE,"Fecha de solicitud + 3 meses, prorrogable de 3 en 3. Pedir NIE, solicitud admitida y pasaporte."
+SI,Larga duración (P1) inicial pedida en plazo.,El código anterior,Se trata como una renovación de la autorización que tenía.
+SI,"Al cumplir 18 años con M1, solicitud de M3.",M1,El M1 queda prorrogado hasta la resolución.
+SI,Estudiante E1 que pide E2.,E1,El E1 queda prorrogado hasta la resolución.
+SI,Estudiante E1 que pide modificación a residencia y trabajo (art. 190).,E1,Desde la admisión a trámite puede trabajar provisionalmente hasta la resolución.
+SI,Circunstancias excepcionales vigente (o caducada con solicitud en plazo) + solicitud de residencia y trabajo inicial.,El código anterior,Queda prorrogada hasta la resolución.
+SI,Modificaciones de residencia a residencia y trabajo (art. 191) o de residencia y trabajo (art. 192).,El código anterior,Queda prorrogada hasta la resolución.
+SI,Solicitud de R8 o de su renovación.,El código anterior,Prorroga la situación de estancia o residencia que tuviera.
+SI,Visado de búsqueda de empleo + solicitud de autorización inicial de residencia y trabajo.,V1,El visado queda prorrogado hasta la resolución (art. 43).
+SI,Tarjeta de familiar UE: solicitud de la permanente con resguardo.,F1,Fecha fin de vigencia + 1 mes.
+SI,Recurso contencioso-administrativo con medida cautelar favorable.,El código anterior,Solo con la medida cautelar acreditada.
+SI,Protección internacional recurrida.,C1 / A1,En PI cualquier recurso prorroga la solicitud.
+NO,"Documento de registro de la solicitud de protección internacional (antes «manifestación de voluntad»), aunque sea en formato casero.",,
+NO,"Solicitantes de PI durante el primer mes, o inadmitidas a trámite en el primer mes (aunque estén recurridas).",,
+NO,"Solicitudes iniciales de autorización (salvo las excepciones de arriba: R0, arraigo sociolaboral, RE y prórrogas).",,
+NO,"Solicitudes de arraigo que parten de situación irregular, hasta que se resuelvan (salvo arraigo sociolaboral).",,
+NO,Arraigo socioformativo solicitado y aún no concedido.,,
+NO,Denegaciones recurridas en reposición o contencioso sin medida cautelar (salvo PI).,,
+NO,"PI denegada firme, no recurrida o desistida, esperando a pedir arraigo o con el arraigo en trámite.",,
+NO,Trabajadores de temporada (arts. 100-112 RD 1155/2024).,,
+NO,"Deportistas profesionales, alta dirección, artistas, gestión colectiva de contrataciones en origen.",,
+NO,Trabajadores fronterizos (autorización de trabajo sin residencia).,,
+NO,Personal consular o de embajadas y sus familiares (salvo autorización expresa según convenio).,,
+NO,Estancias de corta duración (visados de menos de 90 días).,,
+NO,Orden de expulsión suspendida o cédula de inscripción por imposibilidad de documentación.,,
+NO,Extracomunitarios residentes en otro país UE que quieren importar su prestación a España.,,

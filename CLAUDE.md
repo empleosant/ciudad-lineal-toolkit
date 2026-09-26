@@ -19,6 +19,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
+~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -61,23 +62,25 @@ prueba; `cv.py` porque el motor del CV importa reportlab para el PDF). Con el
 `python3` del sistema no corren (no trae ni `pip` ni
 `ensurepip`); se lanzan con el entorno `~/.venvs/sispe` (Python 3.13, creado con
 `uv`), que es también el que hay que usar para levantar la app entera. Las otras
-dos baterías sí son Python puro y corren con el `python3` de siempre.
+tres (`evaluar.py`, `estres.py` y `extranjeria.py`) son Python puro y corren con el
+`python3` de siempre; `extranjeria.py` solo se salta, sin ese entorno, la
+comprobación de la pantalla.
 
-Las cinco baterías **son** la suite: no hay pytest, ni linter, ni formateador.
+Las seis baterías **son** la suite: no hay pytest, ni linter, ni formateador.
 No llaman a la IA y no gastan cuota: `cascada.py` le pone proveedores de mentira
 que contestan, tardan o fallan a la orden.
 
-`cv.py` es la única que además **pulsa botones**: sus dos últimas
-comprobaciones levantan la pantalla del generador con el banco de pruebas de
-Streamlit (`streamlit.testing.v1.AppTest`, sin navegador) y comprueban que al
+`cv.py` y `extranjeria.py` son las que además **pulsan botones**: sus últimas
+comprobaciones levantan la pantalla (el generador de CV, el codificador de
+extranjería) con el banco de pruebas de Streamlit (`streamlit.testing.v1.AppTest`, sin navegador) y comprueban que al
 marcar «Carnet B» cambia de verdad la caja de texto de al lado. La pantalla se
 ejecuta con un envoltorio que desactiva `page_link`, que solo existe con la
 navegación de `app.py` montada.
 
-**Aquí las pruebas no corren en GitHub Actions.** Esta rama solo tiene
-`.github/workflows/mantener-despierta.yml`; el `pruebas.yml` que vigila cada push
-está únicamente en `main`. Hasta que se añada, las baterías solo las pasa quien
-se acuerde de pasarlas.
+**Las pruebas corren en GitHub Actions desde el 17/09/2026**:
+`.github/workflows/pruebas.yml` pasa las seis baterías con cada push que toque
+`comun/`, `herramientas/` o `pruebas/`. Cada batería nueva necesita su paso allí:
+`cascada.py` y `cv.py` estuvieron nueve días sin él.
 
 ## Arquitectura
 
@@ -93,8 +96,8 @@ herramientas/<nombre>/vista.py    la pantalla; lo ÚNICO que usa Streamlit
 herramientas/<nombre>/motor.py    la lógica, Python puro
 herramientas/<nombre>/modelo.py   los datos de la herramienta
 herramientas/<nombre>/datos/      catálogos, vocabularios, plantillas
-pruebas/                     las tres baterías
-scripts/                     despertar.py y enriquecer.py
+pruebas/                     las seis baterías
+scripts/                     despertar.py, enriquecer.py y extraer_extranjeria.py
 ```
 
 **`motor.py` no puede importar Streamlit.** `pruebas/motor_pruebas.py` lo
@@ -107,9 +110,11 @@ El menú de herramientas no va en la barra lateral de Streamlit, sino dentro de 
 banda negra de cada página (`comun/estilo.py`), para que se vea igual en el móvil
 y no dependa de ningún control interno de Streamlit.
 
-Las cuatro herramientas: **Codificador SISPE** (el buscador de códigos, que es lo
-que hay en producción en `main`), **Generador de CV**, **Asesor de formación** e
-**Informes de orientación**. Se pasan datos entre sí: el codificador manda las
+Las cinco herramientas: **Codificador SISPE** (el buscador de códigos, que es lo
+que hay en producción en `main`), **Codificador de extranjería** (sin IA: el
+Excel de códigos de autorizaciones de la oficina, hecho pantalla; las fórmulas
+viven en su `motor.py` y los datos en CSV), **Generador de CV**, **Asesor de
+formación** e **Informes de orientación**. Se pasan datos entre sí: el codificador manda las
 experiencias al generador de CV, y el de CV manda el perfil al asesor de
 formación.
 
@@ -152,6 +157,12 @@ traspaso es en un solo sentido, no se fusionan ramas.
   las regresiones; hoy el script aborta si se usa.
 - El catálogo (`herramientas/sispe/datos/ocupaciones_sispe_ultraligero.txt`,
   2.218 ocupaciones) es la fuente oficial y no se toca.
+- El Excel de extranjería (`CODIGOS_Autorizaciones_extranjeria_SEPT_2026.xlsx`,
+  en la carpeta de Drive del curso 2026CE310502) **no entra en el repo**: entran
+  los CSV de `herramientas/extranjeria/datos/`, que genera
+  `scripts/extraer_extranjeria.py`. Cuando cambie el Excel se pasa el script y se
+  mira el diff. `pruebas/casos_extranjeria.csv` solo se edita a mano, como
+  `casos.csv`, con cada caso comprobado contra la tabla comentada.
 - **En local no hay claves.** Las claves de IA y las del Gist (`GIST_ID`,
   `GITHUB_TOKEN`) salen de los Secrets de Streamlit o del entorno; sin
   `secrets.toml` la app levanta pero solo sirve lo que no llama a la IA. Basta un

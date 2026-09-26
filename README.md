@@ -9,6 +9,7 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 | Generador de CV con IA en pocos pasos | `herramientas/cv/` | en uso |
 | Asesor de formación | `herramientas/formacion/` | en uso |
 | Generador de informes de orientación | `herramientas/informes/` | en uso |
+| Codificador de extranjería (sin IA) | `herramientas/extranjeria/` | nuevo, 26/09/2026 |
 
 ## Estructura
 
@@ -31,6 +32,10 @@ herramientas/
       vocabulario.json         palabras vacías y sinónimos base
       ocupaciones_sispe_ultraligero.txt   catálogo oficial (nombre exacto)
       terminos_ampliados.txt   jerga por ocupación (lo genera scripts/enriquecer.py)
+  extranjeria/
+    vista.py                   tres pestañas: qué código es, consultar un código, plazos de la demanda
+    motor.py                   las fórmulas del Excel de códigos, en Python puro
+    datos/                     los CSV que salen del Excel (scripts/extraer_extranjeria.py)
   cv/
     vista.py                   la pantalla: cuatro pasos (datos, experiencia, formación, documento)
     motor.py                   el currículo como datos, vista previa y el PDF. Python puro
@@ -54,8 +59,13 @@ pruebas/
   casos.csv                    los 40 casos (referencia, se edita a mano)
   estres.py                    robustez: que nada se rompa por lo bajo
   informes.py                  que el documento de preparación quepa en dos páginas
+  cascada.py                   la cascada de proveedores, con proveedores de mentira
+  cv.py                        los botones de «Otros datos» del generador de CV
+  extranjeria.py               el codificador de extranjería: casos, fechas, plazos y pantalla
+  casos_extranjeria.csv        los casos de extranjería (referencia, se edita a mano)
   informe_evaluacion.csv       salida de --informe, regenerable, no versionado
 scripts/
+  extraer_extranjeria.py       saca los CSV del Excel de códigos de extranjería (no lo usa la app)
   enriquecer.py                genera terminos_ampliados.txt (no lo usa la app)
   despertar.py                 despertador (no lo usa la app)
 .github/workflows/             programa el despertador
@@ -617,3 +627,42 @@ ya no hace falta.
 
 Ninguna denominación procede del modelo: se toma del catálogo a partir del
 código. Los códigos inexistentes se descartan antes de mostrarse.
+
+# Codificador de extranjería
+
+Qué código de autorización (R5, T2, A1, IC…), qué restricción y qué fecha fin
+de vigencia se graban al inscribir a una persona extranjera. No usa IA: es el
+Excel de la oficina («CÓDIGOS Autorizaciones extranjería», septiembre de 2026,
+en la carpeta de Drive del curso 2026CE310502) hecho pantalla.
+
+**El Excel sigue siendo el documento de la oficina y no entra en el repo.** Lo
+que entra son los CSV de `herramientas/extranjeria/datos/`, que genera
+`scripts/extraer_extranjeria.py` a partir del `.xlsx`. Cuando el Excel cambie,
+se vuelve a pasar el script y se mira el diff antes de hacer commit. Las
+fórmulas de las hojas IDENTIFICAR, CONSULTAR CÓDIGO y FECHAS no se extraen:
+viven traducidas en `motor.py`, y `pruebas/extranjeria.py` comprueba que la
+traducción es fiel.
+
+Tres pestañas:
+
+- **¿Qué código es?** El árbol de decisión. Qué documento trae (siete
+  tipos), qué pone (la lista depende del documento) y las fechas que traiga.
+  Sale el código, si puede trabajar, restricción y colectivo, la fecha fin a
+  grabar y los avisos: caducado, renovación en plazo o fuera, menor de 16,
+  concedida después del 16/04/2026 (puede ser RE y no R5), duración rara para
+  ese código.
+- **Consultar un código.** La ficha de cada código. Plegados: qué se inscribe
+  estando en trámite y qué no, los textos literales de las tarjetas, enlaces y
+  teléfonos, y las novedades respecto al Excel de junio de 2025.
+- **Plazos de la demanda.** Cuándo toca la próxima renovación de la demanda
+  (la menor de hoy + 91 días y el límite de la autorización), si es normal o
+  especial, y si la renovación de la autorización se pidió en plazo.
+
+Las fechas se suman como en Excel (`EDATE`: 31/01 + 1 mes = 28/02) y «hoy» es
+un parámetro del motor, no `date.today()`, para poder probar la caducidad.
+`pruebas/casos_extranjeria.csv` se edita a mano, con cada caso comprobado
+contra la tabla comentada de autorizaciones (junio 2026); los primeros los
+dedujo Claude de las reglas del Excel y están pendientes de revisión.
+
+Un pie fijo, que ya llevaba el Excel: es una ayuda para decidir; ante la duda
+mandan la tabla comentada y la consulta del expediente en Extranjería.
