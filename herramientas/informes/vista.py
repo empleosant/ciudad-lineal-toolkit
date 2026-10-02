@@ -7,6 +7,11 @@ El flujo de una orientación individual, en tres pestañas:
     2 · La cita       lo que se habló, en prosa o dictado, y lo que se acordó
     3 · Cierre        el cuerpo del correo para la persona, listo para pegar en Outlook
 
+Las empresas del correo salen de la guía de empleo (`comun/guia.py`): el
+sector se deduce del objetivo con el buscador del codificador, sin IA, y quien
+orienta lo corrige si hace falta. Las webs de empleo y los recursos para la
+situación de la persona los añade el programa al final, no la IA.
+
 REGLA DE LA PANTALLA: lo obligatorio, a la vista; lo opcional, plegado. Esto no
 lo usa solo quien lo montó: la calibración de la matriz, la firma o el
 expediente son cosas que no hacen falta para el trabajo de un día corriente, y
@@ -33,9 +38,10 @@ import time
 
 import streamlit as st
 
-from comun import estilo, ia
+from comun import estilo, guia, ia
 from herramientas.cv import estado as cv_estado
 from herramientas.informes import modelo, motor
+from herramientas.sispe import motor as sispe
 
 estilo.aplica()
 st.markdown("""
@@ -544,10 +550,44 @@ with fase3:
         )
         st.caption("Lo que adjuntes va sin firmar y sin mención de la oficina.")
 
+    with st.expander("Recursos de la guía para su situación · opcional"):
+        st.caption("Lo que marques va al final del correo, con su web. Lo eliges tú, no la IA, "
+                   "y se puede cambiar después de redactarlo.")
+        _situaciones = st.pills("Su situación", list(motor.SITUACIONES), selection_mode="multi",
+                                key="inf_w_situaciones")
+        _opciones = {f["id"]: f for f in motor.recursos_de(_situaciones)}
+        # Si se desmarca una situación, sus entidades salen de la selección
+        # antes de pintar el desplegable, que no admite valores fuera de la lista.
+        st.session_state["inf_w_recursos"] = [
+            i for i in st.session_state.get("inf_w_recursos", []) if i in _opciones]
+        st.multiselect(
+            "Qué entidades van en el correo", list(_opciones), key="inf_w_recursos",
+            format_func=lambda i: _opciones[i]["nombre"], disabled=not _opciones,
+            placeholder="Elige entre las de la guía" if _opciones else "Marca antes una situación",
+        )
+
     objetivo = (st.session_state.get("inf_w_objetivo1") or "").strip()
     if not objetivo:
         st.info("Escribe el objetivo principal en la pestaña de la cita: el correo se "
                 "ordena alrededor de él.")
+
+    # El sector de cada objetivo, con el buscador del codificador y sin IA. Puede
+    # fallar («limpiadora en colectividades» le suena a máquina limpiadora), así
+    # que se enseña y se corrige: lo que quede marcado es lo que recibe la IA.
+    _objetivos = [o for o in (objetivo, (st.session_state.get("inf_w_objetivo2") or "").strip()) if o]
+    _codigos = [r[0][1] for r in (sispe.busca(o, tope=1) for o in _objetivos) if r]
+    _deducidas = {x["capitulo"]: x for x in guia.secciones(_codigos, generales=False)
+                  if x["capitulo"] != "24-portales"}
+    _todas = list(_deducidas) + [c for c in guia.sectores() if c not in _deducidas]
+    _marcados = st.multiselect(
+        "Sectores de la guía para el correo", _todas, default=list(_deducidas)[:4],
+        format_func=lambda c: guia.CAPITULOS[c]["titulo"], disabled=not objetivo,
+        key="inf_w_sectores_" + hashlib.md5("|".join(_objetivos).encode()).hexdigest()[:8],
+        help="Salen del objetivo. Las empresas que nombre el correo serán de estos sectores, "
+             "comprobadas en la guía. Sin ninguno, las propone la IA y hay que repasarlas.",
+    )
+    _secciones = [_deducidas.get(c) or guia.seccion(c) for c in _marcados]
+    _texto_guia, _fichas_guia = motor.empresas_de_la_guia([x for x in _secciones if x])
 
     if st.button("Redactar el correo", type="primary", use_container_width=True,
                  disabled=not objetivo):
@@ -570,23 +610,44 @@ with fase3:
                             (st.session_state.get("inf_w_firma") or "").strip()
                             or "tu orientador laboral",
                             (st.session_state.get("inf_w_canal") or "").strip(),
+                            empresas=_texto_guia,
                         )
+                        st.session_state["inf_correo_guia"] = _fichas_guia
                 except Exception as e:  # noqa: BLE001
                     st.error(f"No he podido redactar el correo. {type(e).__name__}: {e}")
 
-    correo = st.session_state["inf_correo"]
-    if correo:
+    correo_ia = st.session_state["inf_correo"]
+    if correo_ia:
+        # Lo de la guía se añade al pintar, no al redactar: así cambiar los
+        # recursos elegidos no obliga a rehacer el correo.
+        _dadas = st.session_state.get("inf_correo_guia") or []
+        correo = motor.con_la_guia(
+            correo_ia, motor.nombradas(correo_ia, _dadas),
+            [_opciones[i] for i in st.session_state.get("inf_w_recursos", []) if i in _opciones],
+        )
         with st.container(border=True):
             st.markdown(correo)
         _chip("correo")
         _copiar(correo)
-        st.warning(
-            "**Repasa las empresas, las calles y los horarios antes de enviar.** Los "
-            "propone la IA de lo que sabe, sin consultar nada: puede equivocarse de "
-            "nombre, nombrar una empresa que ya cerró o dar una franja horaria que no "
-            "es la de ese sector. Cada empresa lleva su tipo y su zona, así que lo que "
-            "no cuadre se sustituye sin rehacer el correo."
-        )
+        if _dadas:
+            st.info(
+                f"**Las empresas salen de la guía de empleo** (comprobadas en "
+                f"{guia.EDICION['verificado']}) y sus webs van al final, copiadas de la guía. "
+                "Repasa las calles y los horarios, que esos los escribe la IA."
+            )
+            _fuera = motor.ajenas(correo_ia, _dadas)
+            if _fuera:
+                st.warning("Estos nombres en negrita no están en la guía: "
+                           + ", ".join(f"**{x}**" for x in _fuera)
+                           + ". Si son empresas, compruébalas o quítalas antes de enviar.")
+        else:
+            st.warning(
+                "**Repasa las empresas, las calles y los horarios antes de enviar.** Los "
+                "propone la IA de lo que sabe, sin consultar nada: puede equivocarse de "
+                "nombre, nombrar una empresa que ya cerró o dar una franja horaria que no "
+                "es la de ese sector. Cada empresa lleva su tipo y su zona, así que lo que "
+                "no cuadre se sustituye sin rehacer el correo."
+            )
         st.caption("Pégalo en Outlook con «Mantener formato de origen»: llegan las "
                    "negritas y las listas, y la letra la pone tu Outlook. Léelo antes "
                    "de enviarlo, que lo firmas tú.")

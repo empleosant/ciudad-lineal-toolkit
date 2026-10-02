@@ -8,6 +8,7 @@ capítulos le tocan a cada ocupación del catálogo SISPE
 
     destinos(codigo)          (capítulo, apartado) de una ocupación, el principal primero
     secciones(codigos)        lo que hay que enseñar para una o varias ocupaciones
+    seccion(capitulo)         un capítulo entero (o algunos apartados) con la misma forma
     pdf(secciones, ...)       la lista para imprimir, en blanco y negro
 
 Lo usan el codificador SISPE («Dónde enviar el CV», bajo las tarjetas) y el
@@ -153,22 +154,37 @@ def secciones(codigos, generales=True):
 
     salida = []
     for capitulo in sorted(orden, key=lambda c: (-votos[c], orden.index(c))):
-        cap = CAPITULOS[capitulo]
-        quiere = elegidos[capitulo]
-        apartados = []
-        for nombre in cap["apartados"]:   # en el orden de la guía, no en el de la tabla
-            if quiere is not None and nombre not in quiere:
-                continue
-            suyas = fichas(capitulo, nombre)
-            if suyas:
-                apartados.append((nombre, suyas))
-        if apartados:
-            salida.append({
-                "capitulo": capitulo, "titulo": cap["titulo"], "corto": cap["corto"],
-                "entero": quiere is None, "apartados": apartados,
-                "n": sum(len(f) for _, f in apartados), "general": general,
-            })
+        s = seccion(capitulo, elegidos[capitulo], general)
+        if s:
+            salida.append(s)
     return salida
+
+
+def seccion(capitulo, apartados=None, general=False):
+    """Un capítulo como sección: entero, o solo esos apartados (en el orden de
+    la guía, no en el de la tabla). None si no tiene fichas."""
+    cap = CAPITULOS.get(capitulo)
+    if cap is None:
+        return None
+    suyos = []
+    for nombre in cap["apartados"]:
+        if apartados is not None and nombre not in apartados:
+            continue
+        suyas = fichas(capitulo, nombre)
+        if suyas:
+            suyos.append((nombre, suyas))
+    if not suyos:
+        return None
+    return {
+        "capitulo": capitulo, "titulo": cap["titulo"], "corto": cap["corto"],
+        "entero": apartados is None, "apartados": suyos,
+        "n": sum(len(f) for _, f in suyos), "general": general,
+    }
+
+
+def sectores():
+    """Los capítulos de «Sectores que contratan» (la parte IV), en el orden de la guía."""
+    return [c for c, cap in CAPITULOS.items() if cap["parte"] == "IV"]
 
 
 # ---------------------------------------------------------------------------

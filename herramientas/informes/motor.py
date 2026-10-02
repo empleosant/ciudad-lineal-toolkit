@@ -6,6 +6,8 @@ Motor del generador de informes de orientación. Python puro: no importa Streaml
     nombre_archivo(rasgo)             Preparacion_sesion_<rasgo>
     documento_pdf(ficha)              el documento de dos páginas A4, en bytes
     lo_acordado(datos)                los campos duros de la cita, para el prompt
+    empresas_de_la_guia(secciones)    las empresas comprobadas que se le dan al correo
+    con_la_guia(correo, ...)          el correo con las webs de empleo y los recursos al final
     expediente(datos) / lee_expediente(crudo)   guardar y recuperar entre citas
     fila_calibracion(datos)           la fila de la hoja de calibración, en CSV
 
@@ -20,6 +22,7 @@ import os
 import re
 from datetime import datetime
 
+from comun import guia
 from comun.texto import normaliza
 
 # ---------------------------------------------------------------------------
@@ -170,6 +173,168 @@ def lo_acordado(datos):
     if motivacion != MOTIVACIONES[0]:
         piezas.append(f"Motivación observada en la cita: {motivacion.lower()}")
     return "\n".join(piezas)
+
+
+# ---------------------------------------------------------------------------
+# Las empresas y los recursos de la guía de empleo
+# ---------------------------------------------------------------------------
+# El correo de cierre proponía empresas «de lo que sabe» la IA, y la pantalla
+# avisaba de que podían haber cerrado o llamarse de otra forma. Ahora se le da
+# la lista comprobada de la guía para el sector del objetivo y se le pide que
+# los nombres salgan de ahí. La IA sigue sin escribir enlaces: las webs de
+# empleo las pone el programa al final, copiadas de la guía, para las empresas
+# que el correo nombra. Igual con los recursos para la situación de la
+# persona, que los elige quien orienta y no la IA.
+
+SITUACIONES = {
+    "Menos de 30 años": [("04-jovenes", "Garantía Juvenil"),
+                         ("04-jovenes", "Programas de empleo y prácticas")],
+    "Más de 45 años": [("33-colectivos", "Si tienes más de 45 años")],
+    "Mujer": [("33-colectivos", "Si eres mujer")],
+    "De otro país": [("33-colectivos", "Si vienes de otro país")],
+    "Con discapacidad": [("33-colectivos", "Si tienes discapacidad")],
+    "Salud mental": [("33-colectivos", "Si tienes un problema de salud mental")],
+    "Por su cuenta": [("33-colectivos", "Si quieres trabajar por tu cuenta")],
+}
+
+POR_SECCION = 24      # fichas por sector que se le dan a la IA; elige de 8 a 14
+
+
+def recursos_de(situaciones):
+    """Las fichas de la guía para esas situaciones, sin repetir, en su orden."""
+    vistas, salida = set(), []
+    for s in situaciones or []:
+        for capitulo, apartado in SITUACIONES.get(s, []):
+            for f in guia.fichas(capitulo, apartado):
+                if f["id"] not in vistas:
+                    vistas.add(f["id"])
+                    salida.append(f)
+    return salida
+
+
+def empresas_de_la_guia(secciones, tope=POR_SECCION):
+    """(texto para el prompt, fichas que van en él).
+
+    Por cada sector, sus fichas con a qué se dedican, cómo se entra y dónde
+    están. Lo que no lleve nombre de esta lista, el correo lo describe por
+    tipo y zona.
+    """
+    lineas, fichas = [], []
+    for s in secciones:
+        if s.get("general"):
+            continue
+        suyas = [f for _, fs in s["apartados"] for f in fs][:tope]
+        if not suyas:
+            continue
+        lineas.append(f"[{s['titulo']}]")
+        for f in suyas:
+            donde = f.get("municipio") or "sin dirección: se entra por internet"
+            como = f" | Cómo se entra: {f['como']}" if f.get("como") else ""
+            lineas.append(f"- {f['nombre']} — {f.get('que') or '(sin descripción)'}{como} | {donde}")
+            fichas.append(f)
+        lineas.append("")
+    return "\n".join(lineas).strip(), fichas
+
+
+def _variantes(nombre):
+    """Cómo puede aparecer el nombre de una ficha en el correo: entero, sin el
+    paréntesis, lo de dentro del paréntesis («Compass Group (Eurest)») o sin lo
+    que va tras los dos puntos."""
+    dentro = re.findall(r"\(([^)]*)\)", nombre)
+    candidatas = [nombre, nombre.split(" (")[0], nombre.split(":")[0]]
+    candidatas += [t for d in dentro for t in re.split(r",| y ", d)]
+    salida = set()
+    for v in candidatas:
+        v = normaliza(v).strip(" .,")
+        if len(v) >= 4 and not v.startswith("antes "):
+            salida.add(v)
+    return salida
+
+
+def nombradas(correo, fichas):
+    """Las fichas que el correo nombra en negrita, en el orden en que salen.
+
+    Solo en negrita, que es como el prompt pide escribir cada empresa: en el
+    texto corrido, «Limpiadores» (que es una empresa de la guía) sería
+    cualquier frase sobre limpiadores.
+    """
+    texto = " " + " | ".join(normaliza(b) for b in _NEGRITA.findall(correo or "")) + " "
+    halladas = []
+    for f in fichas:
+        posiciones = [m.start() for v in _variantes(f["nombre"])
+                      for m in re.finditer(rf"(?<![a-z0-9]){re.escape(v)}(?![a-z0-9])", texto)]
+        if posiciones:
+            halladas.append((min(posiciones), f))
+    vistos, salida = set(), []
+    for _, f in sorted(halladas, key=lambda x: x[0]):
+        if f["id"] not in vistos:
+            vistos.add(f["id"])
+            salida.append(f)
+    return salida
+
+
+_EN_NEGRITA_DE_LISTA = re.compile(r"^\s*[-*\u2022]\s+\*\*(.+?)\*\*", re.M)
+
+
+def ajenas(correo, fichas):
+    """Los nombres en negrita al principio de una línea de lista que no están
+    en la guía. Con la lista dada, son empresas que la IA ha puesto por su
+    cuenta (o rótulos de otra lista): se enseñan para revisarlas."""
+    conocidas = set().union(*(_variantes(f["nombre"]) for f in fichas)) if fichas else set()
+    salida = []
+    for m in _EN_NEGRITA_DE_LISTA.finditer(correo or ""):
+        nombre = m.group(1).strip(" .,:")
+        n = normaliza(nombre)
+        if len(nombre.split()) > 6:            # una frase en negrita, no un nombre
+            continue
+        if not any(n == v or n in v or v in n for v in conocidas):
+            salida.append(nombre)
+    return salida
+
+
+def _enlace_md(f):
+    url, _ = guia.enlace(f)
+    return f"[{guia.vista(url, 52)}]({url})" if url else ""
+
+
+def _primera_frase(texto):
+    texto = (texto or "").strip()
+    corte = re.search(r"(?<=[.;])\s", texto)
+    return (texto[:corte.start()] if corte else texto).rstrip(".;")
+
+
+def con_la_guia(correo, empresas=(), recursos=()):
+    """El correo con lo de la guía antes de la firma.
+
+    `empresas`: las fichas que el correo nombra, para dar su web de empleo.
+    `recursos`: las fichas que quien orienta ha elegido para su situación.
+    Va antes del último párrafo, que es la firma; si no hay nada que añadir,
+    el correo sale tal cual.
+    """
+    bloques = []
+    con_web = [f for f in empresas if _enlace_md(f)]
+    if con_web:
+        bloques.append(
+            "**Dónde dejar el currículum por internet.** Estas empresas de la lista recogen "
+            "candidaturas en su página:\n"
+            + "\n".join(f"- **{f['nombre']}**: {_enlace_md(f)}" for f in con_web))
+    if recursos:
+        lineas = []
+        for f in recursos:
+            que = _primera_frase(f.get("que"))
+            enlace = _enlace_md(f)
+            lineas.append(f"- **{f['nombre']}**" + (f". {que}." if que else "")
+                          + (f" {enlace}" if enlace else ""))
+        bloques.append("**Quién más te puede acompañar.** Por tu situación, estas entidades "
+                       "ayudan en la búsqueda de empleo:\n" + "\n".join(lineas))
+    if not bloques or not (correo or "").strip():
+        return correo
+    partes = re.split(r"\n\s*\n", correo.strip())
+    if len(partes) > 1:
+        partes = partes[:-1] + bloques + partes[-1:]
+    else:
+        partes += bloques
+    return "\n\n".join(partes)
 
 
 # ---------------------------------------------------------------------------
@@ -459,9 +624,17 @@ _NEGRITA = re.compile(r"\*\*(.+?)\*\*", re.S)
 _CURSIVA = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", re.S)
 
 
+_ENLACE = re.compile(r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)")
+
+
 def rico(texto):
-    """Texto escapado, con **negrita** y *cursiva* pasadas a marcado."""
+    """Texto escapado, con **negrita**, *cursiva* y [enlaces](https://…) pasados a marcado.
+
+    Los enlaces solo los escribe el programa (las webs de la guía al final del
+    correo): el prompt sigue prohibiéndoselos a la IA.
+    """
     salida = _esc(str(texto if texto is not None else ""))
+    salida = _ENLACE.sub(r'<a href="\2">\1</a>', salida)
     salida = _NEGRITA.sub(r"<b>\1</b>", salida)
     return _CURSIVA.sub(r"<i>\1</i>", salida)
 

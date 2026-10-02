@@ -12,7 +12,7 @@ contar. El CV que llega aquí viene ya tachado por `motor.limpia_datos_personale
 import json
 import re
 
-from comun import ia
+from comun import guia, ia
 from herramientas.informes import motor
 
 MATRIZ = f"""{motor.MATRIZ}
@@ -316,6 +316,16 @@ DÓNDE IR: NO ES UNA LISTA, SON NIVELES
 - Después de todo el bloque, UNA sola frase diciendo que conviene confirmar que siguen
   contratando antes de acercarse. Una vez, sin repetirlo ni ponerse solemne.
 
+SI RECIBES «EMPRESAS DE LA GUÍA», LOS NOMBRES SALEN DE AHÍ. Es una lista comprobada a
+mano hace poco: nombre, a qué se dedica, cómo se entra y dónde está. Toda empresa que
+nombres en el bloque 4 tiene que estar en esa lista y escrita igual que allí, y lo que
+digas de cómo se entra sale de su ficha, no de lo que supongas. Elige las que encajen con
+el objetivo, la zona y los límites de la persona: no hace falta usarlas todas ni llegar a
+ocho nombres si no encajan tantas. El comercio y los servicios de barrio no están en la
+lista: esos se describen por tipo y por calle o zona, sin inventarles nombre. Las webs de
+empleo de las que nombres las añade el programa al final del correo; tú no escribas
+ninguna. Si no recibes la lista, sigue las reglas de arriba tal cual.
+
 CUANDO LO QUE PROPONES CHOCA CON UN LÍMITE DE LA PERSONA, SE DICE. Si las notas fijan un
 límite —solo mañanas, sin coche, una lesión, cargas de cuidado, un radio de
 desplazamiento— y lo que propones lo roza, nómbralo en la misma línea y di qué hacer con
@@ -412,13 +422,17 @@ def prepara(cli, cv, lectura):
     return ficha if isinstance(ficha, dict) else {}
 
 
-def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal):
+def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal, empresas=""):
     """El correo de cierre, en markdown para pegarlo con el formato puesto.
 
     Le llega todo el hilo: el curriculo, la lectura previa y lo que se anoto
     despues de la cita. Asi es como se venia trabajando —una conversacion por
     persona, el contexto acumulandose— y sin ese hilo el cierre no sabria de
     donde viene.
+
+    `empresas` es la lista comprobada de la guía de empleo para el sector del
+    objetivo (`motor.empresas_de_la_guia`). Si llega, los nombres del bloque
+    «dónde ir» salen de ahí; si no, el correo se escribe como antes.
     """
     peticion = (
         f"HOY ES {motor.hoy()}.\n\n"
@@ -429,6 +443,8 @@ def escribe_correo(cli, cv, lectura, notas, acordado, firma, canal):
         f"FIRMA EL CORREO: {firma}"
         + (f"\nCANAL DE CONTACTO: {canal}" if canal else
            "\nCANAL DE CONTACTO: no se ha indicado; ofrece responder a este mismo correo.")
+        + (f"\n\nEMPRESAS DE LA GUÍA (comprobadas en {guia.EDICION['verificado']}; los nombres "
+           f"del bloque 4 salen de aquí):\n{empresas}" if empresas else "")
     )
     # 4096 y no 2048: el correo llega a 750 palabras y Gemini cuenta el
     # razonamiento dentro del mismo presupuesto de salida.

@@ -295,6 +295,11 @@ def correo_en_html():
         ("</script> y <div>", "<p>&lt;/script&gt; y &lt;div&gt;</p>"),
         # El prompt prohíbe los encabezados, pero si llega uno no sale la almohadilla.
         ("## Empresas", "<p>Empresas</p>"),
+        # Los enlaces solo los pone el programa (las webs de la guía, al final).
+        ("- **Alsea**: [europe.alsea.net/talento](https://europe.alsea.net/talento)",
+         '<ul><li><b>Alsea</b>: <a href="https://europe.alsea.net/talento">'
+         'europe.alsea.net/talento</a></li></ul>'),
+        ("[pincha](javascript:alert(1))", "<p>[pincha](javascript:alert(1))</p>"),
         ("", ""),
         (None, ""),
     ]
@@ -542,6 +547,7 @@ def cierre_con_reglas():
         "no se inventan datos": "No inventes",
         "sin enlaces": "Nada de urls",
         "la medida del correo": "de 550 a 750 palabras",
+        "con la guía, los nombres salen de ella": "LOS NOMBRES SALEN DE AHÍ",
     }
     malas = [f"no lleva {que}" for que, marca in reglas.items()
              if marca not in modelo.CIERRE]
@@ -552,6 +558,49 @@ def cierre_con_reglas():
         malas.append("el presupuesto de salida sigue en 2048 para un correo de 750 palabras")
     return anota("El correo de cierre lleva sus reglas", not malas,
                  f"{len(reglas) - len(malas)}/{len(reglas)} reglas"), malas
+
+
+@prueba("Las empresas del correo salen de la guía")
+def correo_con_la_guia():
+    """Lo que hace la pestaña de cierre con la guía de empleo, sin llamar a la IA.
+
+    La IA recibe la lista comprobada del sector y nombra empresas de ella; el
+    programa reconoce cuáles ha nombrado (solo en negrita: «Limpiadores» es una
+    empresa de la guía y también una palabra), pone sus webs antes de la firma
+    y señala los nombres que no vienen de la lista.
+    """
+    from comun import guia
+    malas = []
+    texto, fichas = motor.empresas_de_la_guia(guia.secciones(["51201038"]))
+    if "[Hostelería, restauración y hoteles]" not in texto or "Cómo se entra:" not in texto:
+        malas.append("la lista para el prompt no lleva el sector o el cómo se entra")
+    if not 8 <= len(fichas) <= 2 * motor.POR_SECCION:
+        malas.append(f"{len(fichas)} fichas para un camarero")
+    correo = ("Hola:\n\nLos limpiadores de sala también cuentan.\n\n**Dónde ir.**\n"
+              "- **Alsea** — restauración, toda Madrid.\n- **Eurest** — colectividades.\n"
+              "- **Bar Manolo** — bar de barrio.\n\nUn saludo,\nÁlvaro")
+    nombradas = [f["nombre"] for f in motor.nombradas(correo, fichas)]
+    if nombradas != ["Alsea", "Compass Group (Eurest)"]:
+        malas.append(f"nombradas: {nombradas} (Eurest es el paréntesis de Compass Group)")
+    if motor.ajenas(correo, fichas) != ["Bar Manolo"]:
+        malas.append(f"ajenas: {motor.ajenas(correo, fichas)}")
+    recursos = motor.recursos_de(["Más de 45 años"])[:1]
+    final = motor.con_la_guia(correo, motor.nombradas(correo, fichas), recursos)
+    partes = final.split("\n\n")
+    if not partes[-1].startswith("Un saludo"):
+        malas.append("la firma ya no cierra el correo")
+    if "europe.alsea.net/talento](https://europe.alsea.net/talento)" not in final:
+        malas.append("falta la web de empleo de Alsea")
+    if recursos[0]["nombre"] not in final or "Quién más te puede acompañar" not in final:
+        malas.append("falta el recurso elegido para la situación")
+    if motor.con_la_guia(correo) != correo:
+        malas.append("sin nada que añadir, el correo cambia")
+    limpiadores = {"id": "x", "nombre": "Limpiadores", "web_empleo": "https://l.es"}
+    if motor.nombradas("Busca de **limpiadores**, no limpiadores sueltos", [limpiadores]) != [limpiadores] \
+            or motor.nombradas("Hay limpiadores en todos lados", [limpiadores]):
+        malas.append("una empresa que es palabra común se reconoce fuera de la negrita")
+    return anota("Las empresas del correo salen de la guía", not malas,
+                 f"{8 - len(malas)}/8"), malas
 
 
 @prueba("Lo acordado llega al prompt")

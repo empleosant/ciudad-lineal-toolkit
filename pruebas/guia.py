@@ -13,7 +13,8 @@ cada ocupación del catálogo SISPE con sus capítulos
   · que la mayoría del catálogo tiene sector, y que lo que no lo tiene cae en lo general;
   · que juntar varias ocupaciones (las de un currículo) ordena bien;
   · que la lista para imprimir se construye y lleva lo que tiene que llevar;
-  · y las dos pantallas: el desplegable del codificador y el paso 4 del CV.
+  · y las tres pantallas: el desplegable del codificador, el paso 4 del CV y
+    el cierre de los informes, que pide las empresas a la guía.
 
 `casos_guia.csv` SOLO SE EDITA A MANO: el código y la denominación se copian
 del catálogo y el capítulo se decide leyendo la guía, nunca copiándolo de lo
@@ -21,7 +22,7 @@ que conteste `comun/guia.py`.
 
 USO
     python3 guia.py                     # los datos y la tabla, con el python3 del sistema
-    ~/.venvs/sispe/bin/python guia.py   # también el PDF y las pantallas (AppTest)
+    ~/.venvs/sispe/bin/python guia.py   # también el PDF y las tres pantallas (AppTest)
 
 No llama a la IA ni gasta cuota.
 """
@@ -323,6 +324,38 @@ def p_pantalla_curriculo():
     return informe(nombre, fallos, 3)
 
 
+def p_pantalla_informes():
+    """El cierre de los informes: el sector sale del objetivo y el correo lleva las webs."""
+    nombre = "Informes: el correo con las empresas de la guía"
+    if not _hay_streamlit(nombre):
+        return True
+    from herramientas.informes import motor as inf
+    _, fichas = inf.empresas_de_la_guia(guia.secciones(["51201038"]))
+    correo = ("Hola:\n\n**Dónde ir.**\n- **Alsea** — restauración.\n- **Bar Manolo** — barrio."
+              "\n\nUn saludo,\nÁlvaro")
+    fallos = []
+    at = abre("herramientas/informes/vista.py", {
+        "inf_w_objetivo1": "Camarero de sala", "inf_correo": correo, "inf_correo_guia": fichas,
+    })
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 4)
+    sectores = [m for m in at.multiselect if (m.key or "").startswith("inf_w_sectores_")]
+    if not sectores or not sectores[0].value or sectores[0].value[0] != "11-hosteleria":
+        fallos.append(f"el sector del camarero no sale marcado: {sectores[0].value if sectores else '—'}")
+    texto = " ".join(m.value for m in at.markdown)
+    if "https://europe.alsea.net/talento" not in texto:
+        fallos.append("el correo no lleva la web de empleo de Alsea")
+    if not any("Bar Manolo" in w.value for w in at.warning):
+        fallos.append("no avisa de que «Bar Manolo» no está en la guía")
+    at.session_state["inf_w_situaciones"] = ["Más de 45 años"]
+    at.run()
+    recursos = [m for m in at.multiselect if m.key == "inf_w_recursos"]
+    if not recursos or not recursos[0].options:
+        fallos.append("al marcar «Más de 45 años» no salen entidades que elegir")
+    return informe(nombre, fallos, 4)
+
+
 PRUEBAS = [
     p_la_copia_esta_entera,
     p_la_tabla_apunta_a_lo_que_existe,
@@ -333,6 +366,7 @@ PRUEBAS = [
     p_la_lista_para_imprimir,
     p_pantalla_codificador,
     p_pantalla_curriculo,
+    p_pantalla_informes,
 ]
 
 
