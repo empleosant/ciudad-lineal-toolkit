@@ -139,6 +139,15 @@ section.stMain{ overflow-x:hidden; }
   color:var(--tenue); margin:1.1rem 0 .5rem;
 }
 .nota{ font-size:.76rem; color:var(--suave); margin:.15rem 0; }
+/* Fichas de la guía de empleo (comun/guia.py: ficha_html y apartado_html) */
+.gu-apartado{ font-size:.66rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--suave); margin:.7rem 0 .25rem; }
+.gu-ficha{ padding:.4rem 0; border-bottom:1px solid var(--linea); }
+.gu-nom{ font-weight:700; font-size:.88rem; color:var(--texto); line-height:1.25; }
+.gu-que{ font-size:.78rem; color:var(--suave); line-height:1.3; }
+.gu-como{ font-size:.78rem; color:var(--texto); line-height:1.3; margin-top:.1rem; }
+.gu-datos{ font-size:.78rem; line-height:1.35; margin-top:.1rem; overflow-wrap:anywhere; }
+.gu-datos a{ color:var(--rojo); font-weight:600; text-decoration:none; }
+.gu-datos a:hover{ text-decoration:underline; }
 .separa{ height:1px; background:var(--linea); margin:.5rem 0; }
 .ok{ color:#1B6B3A; } .aviso{ color:#C2410C; }
 /* Tarjeta plana: vías de entrada, pasos, explicaciones */

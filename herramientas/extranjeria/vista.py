@@ -13,6 +13,9 @@ obligatorio a la vista; lo de consulta, plegado. Se usa en el mostrador con
 la tarjeta en la mano, muchas veces desde el móvil: tres desplegables y dos
 fechas caben en una pantalla de teléfono.
 
+En «Consultar un código», plegadas, las entidades que la guía de empleo
+recoge para quien viene de otro país (`comun/guia.py`).
+
 No usa IA. Claves de sesión con prefijo `ext_`; las de widgets, `ext_w_`.
 """
 
@@ -20,7 +23,7 @@ from datetime import date
 
 import streamlit as st
 
-from comun import estilo
+from comun import estilo, guia
 from comun.texto import esc as e
 from herramientas.extranjeria import motor
 
@@ -246,6 +249,14 @@ with consultar:
                 st.markdown(f"- {en['nombre']}: [{dato}]({dato})")
             else:
                 st.markdown(f"- {en['nombre']}: {dato}")
+
+    with st.expander("Entidades que acompañan a quien viene de otro país · de la guía de empleo"):
+        st.markdown(guia.apartados_html(
+            [(a, guia.fichas(c, a)) for c, a in (("33-colectivos", "Si vienes de otro país"),
+                                                 ("47-tercer-sector", "Migración, sinhogarismo e inclusión"))]
+        ), unsafe_allow_html=True)
+        st.caption(f"De la «{guia.EDICION['titulo']}» ({guia.EDICION['edicion'].lower()}), "
+                   f"comprobada en {guia.EDICION['verificado']}.")
 
     with st.expander(motor.NOTAS["novedades"].capitalize()):
         tabla(["Código", "Qué cambia"], [(n["codigo"], n["cambio"]) for n in motor.NOVEDADES])

@@ -10,6 +10,7 @@ capítulos le tocan a cada ocupación del catálogo SISPE
     secciones(codigos)        lo que hay que enseñar para una o varias ocupaciones
     seccion(capitulo)         un capítulo entero (o algunos apartados) con la misma forma
     pdf(secciones, ...)       la lista para imprimir, en blanco y negro
+    apartados_html(...)       las mismas fichas en pantalla (las clases .gu-* de comun/estilo.py)
 
 Lo usan el codificador SISPE («Dónde enviar el CV», bajo las tarjetas) y el
 generador de CV (la hoja aparte del paso 4). Lo prueba `pruebas/guia.py`.
@@ -21,6 +22,8 @@ import json
 import os
 import re
 from xml.sax.saxutils import escape as _esc
+
+from comun.texto import esc
 
 DATOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos")
 GUIA = os.path.join(DATOS, "guia")
@@ -240,6 +243,36 @@ def enlace(f):
     if f.get("web"):
         return f["web"], "Web"
     return "", ""
+
+
+def ficha_html(f):
+    """Una ficha en pantalla: nombre, a qué se dedica, cómo presentarse y el canal."""
+    renglon = f.get("formato") == "renglon"
+    url, _ = enlace(f)
+    datos = []
+    if url:
+        datos.append(f'<a href="{esc(url)}" target="_blank">{esc(vista(url, 44))}</a>')
+    if f.get("correo") and not renglon:
+        datos.append(f'<a href="mailto:{esc(f["correo"])}">{esc(f["correo"])}</a>')
+    tel = "" if renglon else telefonos(f)
+    if tel:
+        datos.append(esc(tel))
+    return (
+        f'<div class="gu-ficha"><div class="gu-nom">{esc(f["nombre"])}</div>'
+        + (f'<div class="gu-que">{esc(f["que"])}</div>' if f.get("que") else "")
+        + (f'<div class="gu-como"><b>Cómo:</b> {esc(f["como"])}</div>' if f.get("como") and not renglon else "")
+        + (f'<div class="gu-datos">{" · ".join(datos)}</div>' if datos else "")
+        + "</div>"
+    )
+
+
+def apartados_html(apartados):
+    """[(apartado, fichas)] en pantalla, cada apartado con su rótulo."""
+    trozos = []
+    for apartado, suyas in apartados:
+        trozos.append(f'<div class="gu-apartado">{esc(apartado)}</div>')
+        trozos += [ficha_html(f) for f in suyas]
+    return "".join(trozos)
 
 
 # ---------------------------------------------------------------------------

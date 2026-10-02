@@ -23,7 +23,6 @@ import streamlit as st
 
 from comun import estilo, guia, ia
 from herramientas.cv import estado, modelo, motor, plantilla
-from herramientas.sispe import motor as sispe
 
 estilo.aplica()
 st.markdown("""
@@ -105,24 +104,6 @@ def empezar_de_nuevo():
     for k in [k for k in st.session_state if k.startswith("cv_w_")]:
         del st.session_state[k]
     st.session_state["cv_paso"] = 0
-
-
-def codigos_del_cv(cv):
-    """El código SISPE de cada experiencia, para buscarle sector en la guía.
-
-    Si vino del codificador, el suyo. Si se escribió a mano, el primero que
-    da el buscador del codificador para el puesto, sin IA: para elegir sector
-    basta con acertar la familia, y el buscador la acierta casi siempre.
-    """
-    codigos = []
-    for e in cv["experiencias"]:
-        codigo = e.get("codigo") or ""
-        if not re.fullmatch(r"\d{8}", codigo):
-            hallados = sispe.busca(e.get("puesto") or "", tope=1) if (e.get("puesto") or "").strip() else []
-            codigo = hallados[0][1] if hallados else ""
-        if codigo and codigo not in codigos:
-            codigos.append(codigo)
-    return codigos
 
 
 def campo(etiqueta, clave, **k):
@@ -611,7 +592,7 @@ else:
         # Hoja aparte y no una segunda página del currículo: el currículo se
         # manda a las empresas y esta lista es para la persona.
         st.markdown('<div class="seccion">Dónde enviarlo</div>', unsafe_allow_html=True)
-        secs = guia.secciones(codigos_del_cv(cv), generales=False)
+        secs = guia.secciones(estado.codigos_sispe(cv), generales=False)
         if not secs:
             st.caption("Cuando haya experiencias, aquí salen las empresas de su sector según la "
                        "guía de empleo, en una hoja aparte para imprimir.")

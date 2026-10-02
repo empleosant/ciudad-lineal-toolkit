@@ -13,8 +13,9 @@ cada ocupación del catálogo SISPE con sus capítulos
   · que la mayoría del catálogo tiene sector, y que lo que no lo tiene cae en lo general;
   · que juntar varias ocupaciones (las de un currículo) ordena bien;
   · que la lista para imprimir se construye y lleva lo que tiene que llevar;
-  · y las tres pantallas: el desplegable del codificador, el paso 4 del CV y
-    el cierre de los informes, que pide las empresas a la guía.
+  · y las pantallas: el desplegable del codificador, el paso 4 del CV, el
+    cierre de los informes (que pide las empresas a la guía), y lo plegado
+    en formación y extranjería.
 
 `casos_guia.csv` SOLO SE EDITA A MANO: el código y la denominación se copian
 del catálogo y el capítulo se decide leyendo la guía, nunca copiándolo de lo
@@ -22,7 +23,7 @@ que conteste `comun/guia.py`.
 
 USO
     python3 guia.py                     # los datos y la tabla, con el python3 del sistema
-    ~/.venvs/sispe/bin/python guia.py   # también el PDF y las tres pantallas (AppTest)
+    ~/.venvs/sispe/bin/python guia.py   # también el PDF y las pantallas (AppTest)
 
 No llama a la IA ni gasta cuota.
 """
@@ -356,6 +357,32 @@ def p_pantalla_informes():
     return informe(nombre, fallos, 4)
 
 
+def p_pantalla_formacion_y_extranjeria():
+    """Formación abre en el sector del currículo; extranjería, con sus entidades plegadas."""
+    nombre = "Formación y extranjería: lo de la guía, plegado"
+    if not _hay_streamlit(nombre):
+        return True
+    from herramientas.cv import motor as cv_motor
+    fallos = []
+    at = abre("herramientas/formacion/vista.py")
+    pildoras = [b for b in at.get("button_group") if b.key == "fmc_w_guia"]
+    if at.exception or not pildoras or pildoras[0].value != "Buscadores de cursos gratuitos":
+        fallos.append("sin currículo, formación no abre en los buscadores de cursos")
+    cv = cv_motor.nuevo()
+    cv["experiencias"].append(cv_motor.experiencia("84321042", "CONDUCTORES DE CAMIÓN, EN GENERAL"))
+    at = abre("herramientas/formacion/vista.py", {"cv_datos": cv})
+    sector = [x for x in at.selectbox if x.key == "fmc_w_guia_sector"]
+    if at.exception or not sector or sector[0].value != "35-mensajeria":
+        fallos.append("con un camionero en el CV, formación no abre en mensajería y camión")
+    elif "Permisos y formación" not in " ".join(m.value for m in at.markdown):
+        fallos.append("no se pintan los permisos y la formación del sector")
+    at = abre("herramientas/extranjeria/vista.py")
+    texto = " ".join(m.value for m in at.markdown)
+    if at.exception or "Pueblos Unidos" not in texto:
+        fallos.append("extranjería no lleva las entidades de la guía")
+    return informe(nombre, fallos, 3)
+
+
 PRUEBAS = [
     p_la_copia_esta_entera,
     p_la_tabla_apunta_a_lo_que_existe,
@@ -367,6 +394,7 @@ PRUEBAS = [
     p_pantalla_codificador,
     p_pantalla_curriculo,
     p_pantalla_informes,
+    p_pantalla_formacion_y_extranjeria,
 ]
 
 

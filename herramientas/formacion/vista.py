@@ -12,14 +12,20 @@ las cabeceras y a veces faltan columnas. Por eso aquí no se da por supuesta
 ninguna columna (las etiquetas que no tienen dato no se pintan) y hay un
 informe de qué ha entendido la aplicación de ESTE archivo.
 
+Debajo de las sugerencias, plegado, lo que la guía de empleo dice de dónde
+más mirar (`comun/guia.py`): centros, buscadores, acreditación de la
+experiencia y la formación propia de cada sector, con el sector del
+currículo en curso ya elegido si lo hay.
+
 Claves de sesión con prefijo `fmc_`; las de widgets, `fmc_w_`.
 """
 
 import os
+import re
 
 import streamlit as st
 
-from comun import estilo, ia
+from comun import estilo, guia, ia
 from comun.texto import esc
 from herramientas.cv import estado as cv_estado
 from herramientas.formacion import modelo, motor
@@ -444,6 +450,49 @@ if res:
         # wrap_lines: en el movil el cuadro no cabe a lo ancho y sin esto hay
         # que arrastrarlo de lado para leer cada linea.
         st.code("\n".join(lineas), language=None, wrap_lines=True)
+
+# ---------------------------------------------------------------------------
+# Fuera del catálogo: la guía de empleo
+# ---------------------------------------------------------------------------
+# El Excel es lo que hay abierto hoy en la Comunidad; la guía dice dónde más
+# mirar. Educación se queda fuera de «del sector»: sus academias son sitios
+# donde trabajar, no donde formarse.
+
+GENERAL = guia.CAPITULOS["06-formacion"]["apartados"]
+POR_SECTOR = {
+    c: [a for a in guia.CAPITULOS[c]["apartados"]
+        if re.search(r"formaci|carn|permisos|habilitaci", a, re.I)]
+    for c in guia.sectores() if c != "29-educacion"
+}
+POR_SECTOR = {c: a for c, a in POR_SECTOR.items() if a}
+DEL_SECTOR = "Del sector"
+
+st.markdown('<div class="seccion">Fuera de este catálogo</div>', unsafe_allow_html=True)
+with st.expander("Centros, buscadores y acreditaciones · de la guía de empleo",
+                 icon=":material/travel_explore:"):
+    sector_cv = next((x["capitulo"] for x in guia.secciones(cv_estado.codigos_sispe(), generales=False)
+                      if x["capitulo"] in POR_SECTOR), None)
+    que = st.pills(
+        "Qué mirar", GENERAL + [DEL_SECTOR], key="fmc_w_guia", label_visibility="collapsed",
+        default=DEL_SECTOR if sector_cv else "Buscadores de cursos gratuitos",
+    )
+    apartados = []
+    if que == DEL_SECTOR:
+        sectores = list(POR_SECTOR)
+        sector = st.selectbox(
+            "Sector", sectores, index=sectores.index(sector_cv) if sector_cv else None,
+            format_func=lambda c: guia.CAPITULOS[c]["titulo"], key="fmc_w_guia_sector",
+            placeholder="Elige un sector",
+            help="Sale del currículo en curso, si lo hay. Permisos, carnés y formación propia del sector.",
+        )
+        if sector:
+            apartados = [(a, guia.fichas(sector, a)) for a in POR_SECTOR[sector]]
+    elif que:
+        apartados = [(que, guia.fichas("06-formacion", que))]
+    if apartados:
+        st.markdown(guia.apartados_html(apartados), unsafe_allow_html=True)
+    st.caption(f"De la «{guia.EDICION['titulo']}» ({guia.EDICION['edicion'].lower()}), "
+               f"comprobada en {guia.EDICION['verificado']}.")
 
 # ---------------------------------------------------------------------------
 # El indicador de pasos, ya con todo contado

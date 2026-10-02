@@ -28,7 +28,7 @@ import time
 import streamlit as st
 
 from comun import estilo, gist, guia, ia, version
-from comun.texto import esc, normaliza
+from comun.texto import normaliza
 from herramientas.cv import estado as cv_estado
 from herramientas.cv import motor as cv_motor
 from herramientas.sispe import aprendizaje, modelo, motor
@@ -139,16 +139,8 @@ st.markdown("""
 /* Los ejemplos: chips */
 .st-key-ejemplos div[data-testid="stButtonGroup"] button{ font-size:.84rem; font-weight:600; border-radius:999px; }
 
-/* Dónde enviar el CV: las fichas de la guía, plegadas bajo las tarjetas */
+/* Dónde enviar el CV: el rótulo del desplegable (las fichas, en comun/estilo.py) */
 .st-key-guia div[data-testid="stExpander"] summary p{ font-weight:700; font-size:.88rem; }
-.gu-apartado{ font-size:.66rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--suave); margin:.7rem 0 .25rem; }
-.gu-ficha{ padding:.4rem 0; border-bottom:1px solid var(--linea); }
-.gu-nom{ font-weight:700; font-size:.88rem; color:var(--texto); line-height:1.25; }
-.gu-que{ font-size:.78rem; color:var(--suave); line-height:1.3; }
-.gu-como{ font-size:.78rem; color:var(--texto); line-height:1.3; margin-top:.1rem; }
-.gu-datos{ font-size:.78rem; line-height:1.35; margin-top:.1rem; overflow-wrap:anywhere; }
-.gu-datos a{ color:var(--rojo); font-weight:600; text-decoration:none; }
-.gu-datos a:hover{ text-decoration:underline; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -337,27 +329,6 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
     pinta_chip(payload)
 
 
-def _ficha_guia(f):
-    """Una ficha de la guía: nombre, a qué se dedica, cómo presentarse y el canal."""
-    renglon = f.get("formato") == "renglon"
-    url, _ = guia.enlace(f)
-    datos = []
-    if url:
-        datos.append(f'<a href="{esc(url)}" target="_blank">{esc(guia.vista(url, 44))}</a>')
-    if f.get("correo") and not renglon:
-        datos.append(f'<a href="mailto:{esc(f["correo"])}">{esc(f["correo"])}</a>')
-    tel = "" if renglon else guia.telefonos(f)
-    if tel:
-        datos.append(esc(tel))
-    return (
-        f'<div class="gu-ficha"><div class="gu-nom">{esc(f["nombre"])}</div>'
-        + (f'<div class="gu-que">{esc(f["que"])}</div>' if f.get("que") else "")
-        + (f'<div class="gu-como"><b>Cómo:</b> {esc(f["como"])}</div>' if f.get("como") and not renglon else "")
-        + (f'<div class="gu-datos">{" · ".join(datos)}</div>' if datos else "")
-        + "</div>"
-    )
-
-
 def pinta_donde_enviar(ocupaciones):
     """«Dónde enviar el CV», plegado bajo las tarjetas.
 
@@ -406,12 +377,7 @@ def pinta_donde_enviar(ocupaciones):
         st.caption(f"De la guía «{guia.EDICION['titulo_empresas']}» "
                    f"({guia.EDICION['edicion'].lower()}), comprobada en {guia.EDICION['verificado']}. "
                    "Que una empresa salga aquí no garantiza que tenga vacantes.")
-        sec = secs[elegida or 0]
-        trozos = []
-        for apartado, suyas in sec["apartados"]:
-            trozos.append(f'<div class="gu-apartado">{esc(apartado)}</div>')
-            trozos += [_ficha_guia(f) for f in suyas]
-        st.markdown("".join(trozos), unsafe_allow_html=True)
+        st.markdown(guia.apartados_html(secs[elegida or 0]["apartados"]), unsafe_allow_html=True)
 
 
 def pinta_chip(payload):

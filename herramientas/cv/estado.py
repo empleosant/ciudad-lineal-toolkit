@@ -8,9 +8,12 @@ otra herramienta que quiera aportar algo al currículo entra por aquí.
 Claves de sesión: todas con prefijo `cv_`.
 """
 
+import re
+
 import streamlit as st
 
 from herramientas.cv import motor
+from herramientas.sispe import motor as sispe
 
 PAGINA = "herramientas/cv/vista.py"   # para st.page_link desde otras herramientas
 
@@ -58,3 +61,23 @@ def anade_a_mano(**campos):
 
 def vacia():
     st.session_state["cv_datos"] = motor.nuevo()
+
+
+def codigos_sispe(cv_=None):
+    """El código SISPE de cada experiencia, para buscarle sector en la guía de empleo.
+
+    Si vino del codificador, el suyo. Si se escribió a mano, el primero que
+    da el buscador del codificador para el puesto, sin IA: para elegir sector
+    basta con acertar la familia, y el buscador la acierta casi siempre. Lo
+    usan el paso 4 del generador de CV y el asesor de formación.
+    """
+    codigos = []
+    for e in (cv_ or cv())["experiencias"]:
+        codigo = e.get("codigo") or ""
+        puesto = (e.get("puesto") or "").strip()
+        if not re.fullmatch(r"\d{8}", codigo):
+            hallados = sispe.busca(puesto, tope=1) if puesto else []
+            codigo = hallados[0][1] if hallados else ""
+        if codigo and codigo not in codigos:
+            codigos.append(codigo)
+    return codigos

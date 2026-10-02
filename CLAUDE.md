@@ -16,11 +16,11 @@ documentación y mensajes de commit. Sigue esa convención.
 cd pruebas
 python3 evaluar.py          # aciertos del buscador: los 40 casos de casos.csv
 python3 estres.py           # robustez del buscador: 10 comprobaciones
-~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 16 comprobaciones
+~/.venvs/sispe/bin/python informes.py   # la herramienta de informes: 17 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # «Dónde enviar el CV» (la guía de empleo): 9 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía de empleo en las cinco herramientas: 11 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -65,7 +65,7 @@ prueba; `cv.py` porque el motor del CV importa reportlab para el PDF). Con el
 `uv`), que es también el que hay que usar para levantar la app entera. Las otras
 tres (`evaluar.py`, `estres.py` y `extranjeria.py`) son Python puro y corren con el
 `python3` de siempre; `extranjeria.py` solo se salta, sin ese entorno, la
-comprobación de la pantalla, y `guia.py`, el PDF y las dos pantallas.
+comprobación de la pantalla, y `guia.py`, el PDF y las pantallas.
 
 Las siete baterías **son** la suite: no hay pytest, ni linter, ni formateador.
 No llaman a la IA y no gastan cuota: `cascada.py` le pone proveedores de mentira
@@ -164,13 +164,26 @@ capítulo «-» quita el sector. Hoy tiene sector el 84 % del catálogo; lo que 
 (campo, minas, mar, ciencia) cae en portales generalistas y grandes ETT.
 `pruebas/casos_guia.csv` se edita a mano como `casos.csv`.
 
-Dónde sale: en el **codificador**, un desplegable cerrado «Dónde enviar el CV»
-bajo las tarjetas (sectores en píldoras, fichas y la lista en PDF); en el
-**generador de CV**, «Dónde enviarlo» en el paso 4, con los sectores de todas
-las experiencias (las escritas a mano, por el buscador sin IA). La lista es
-siempre una hoja **aparte** del currículo, en blanco y negro y a dos columnas,
-con el guion de la llamada de la guía y el puesto ya puesto. El PDF se genera
-solo al pulsar (`download_button` con función).
+Dónde sale:
+
+- **Codificador**: un desplegable cerrado «Dónde enviar el CV» bajo las
+  tarjetas (sectores en píldoras, fichas y la lista en PDF).
+- **Generador de CV**: «Dónde enviarlo» en el paso 4, con los sectores de todas
+  las experiencias (las escritas a mano, por el buscador sin IA:
+  `cv/estado.codigos_sispe()`). La lista es siempre una hoja **aparte** del
+  currículo, en blanco y negro y a dos columnas, con el guion de la llamada de
+  la guía y el puesto ya puesto. El PDF se genera solo al pulsar.
+- **Informes**: el correo de cierre recibe la lista comprobada del sector del
+  objetivo (deducido sin IA y corregible en un selector) y el prompt le pide
+  que los nombres salgan de ahí. La IA sigue sin escribir enlaces: las webs
+  de empleo de las empresas que nombra en negrita, y los recursos que quien
+  orienta marque para la situación de la persona, los añade
+  `motor.con_la_guia()` antes de la firma. Los nombres en negrita que no están
+  en la guía se señalan para revisarlos.
+- **Formación** y **extranjería**: plegado, lo que la guía dice de dónde más
+  formarse (con el sector del CV en curso ya elegido) y las entidades para
+  quien viene de otro país. Las fichas se pintan con `guia.apartados_html()`
+  y las clases `.gu-*` de `comun/estilo.py`.
 
 ## El motor SISPE, ya al día con `main`
 
