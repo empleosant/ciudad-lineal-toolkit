@@ -74,6 +74,10 @@ st.markdown("""
 @media (max-width:640px){ .st-key-titular div[data-testid="stColumn"]:last-child{ justify-content:flex-start; } }
 .st-key-titular > div:first-child{ flex:1 1 auto !important; min-width:0; }
 .st-key-titular > div:last-child:not(:first-child){ flex:0 0 auto !important; width:auto !important; }
+/* Streamlit le pone al markdown un margen de -16px abajo, pensado para el
+   párrafo que aquí no hay: la caja medía 5px, el texto se salía por debajo y
+   la raya del titular lo tachaba en el ordenador. */
+.st-key-titular div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
 .consulta-texto{ font-size:1.05rem; font-weight:700; letter-spacing:-.015em; color:var(--texto); line-height:1.25; }
 .consulta-texto small{ font-weight:500; color:var(--suave); font-size:.9rem; }
 .st-key-titular button{
