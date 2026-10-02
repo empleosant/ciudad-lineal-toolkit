@@ -1,0 +1,355 @@
+"""
+Batería de «Dónde enviar el CV»: la guía de empleo dentro de la app.
+
+Las fichas son una copia de la Guía de empleo de Madrid (`comun/datos/guia/`,
+la saca `scripts/traer_guia.py`) y lo único hecho a mano es la tabla que une
+cada ocupación del catálogo SISPE con sus capítulos
+(`comun/datos/ocupaciones_sectores.csv`). Lo que se comprueba:
+
+  · que la copia está entera: cada ficha en un capítulo y un apartado que existen;
+  · que la tabla no apunta a nada que no exista, ni lleva prefijos que no casan
+    con ninguna ocupación del catálogo;
+  · los casos de `casos_guia.csv`: el sector que tiene que salir primero;
+  · que la mayoría del catálogo tiene sector, y que lo que no lo tiene cae en lo general;
+  · que juntar varias ocupaciones (las de un currículo) ordena bien;
+  · que la lista para imprimir se construye y lleva lo que tiene que llevar;
+  · y las dos pantallas: el desplegable del codificador y el paso 4 del CV.
+
+`casos_guia.csv` SOLO SE EDITA A MANO: el código y la denominación se copian
+del catálogo y el capítulo se decide leyendo la guía, nunca copiándolo de lo
+que conteste `comun/guia.py`.
+
+USO
+    python3 guia.py                     # los datos y la tabla, con el python3 del sistema
+    ~/.venvs/sispe/bin/python guia.py   # también el PDF y las pantallas (AppTest)
+
+No llama a la IA ni gasta cuota.
+"""
+
+import csv
+import os
+import sys
+import tempfile
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:  # noqa: BLE001
+    pass
+
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
+
+from comun import guia  # noqa: E402
+
+CATALOGO = os.path.join(RAIZ, "herramientas", "sispe", "datos", "ocupaciones_sispe_ultraligero.txt")
+CASOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "casos_guia.csv")
+COBERTURA_MINIMA = 0.80      # hoy, 1.865 de 2.218 (84 %): lo que falta es campo, minas, mar y ciencia
+
+RESUMEN = []
+
+
+def informe(nombre, fallos, total):
+    pasa = not fallos
+    RESUMEN.append((nombre, pasa))
+    print(f"[{' OK ' if pasa else 'MAL'}] {nombre:52} {max(0, total - len(fallos)):4}/{total}")
+    for f in fallos[:12]:
+        print(f"          · {f}")
+    if len(fallos) > 12:
+        print(f"          · … y {len(fallos) - 12} más")
+    return pasa
+
+
+def catalogo():
+    with open(CATALOGO, encoding="utf-8") as f:
+        return dict(l.strip().split(":", 1) for l in f if ":" in l)
+
+
+def _todas():
+    return [f for c in guia.CAPITULOS for f in guia.fichas(c)]
+
+
+def p_la_copia_esta_entera():
+    fallos = []
+    todas = _todas()
+    if len(todas) != guia.EDICION["fichas"]:
+        fallos.append(f"edicion.json dice {guia.EDICION['fichas']} fichas y se leen {len(todas)}")
+    for f in todas:
+        cap = guia.CAPITULOS.get(f["capitulo"])
+        if cap is None:
+            fallos.append(f"{f['id']}: capítulo {f['capitulo']} que no existe")
+        elif f["apartado"] not in cap["apartados"]:
+            fallos.append(f"{f['id']}: apartado «{f['apartado']}» que no está en {f['capitulo']}")
+        if not f["nombre"]:
+            fallos.append(f"{f['id']}: sin nombre")
+        if not any(f.get(k) for k in ("web", "web_empleo", "correo", "telefono", "direccion")):
+            fallos.append(f"{f['id']}: sin ninguna forma de contacto")
+    return informe("La copia de la guía está entera", fallos, len(todas))
+
+
+def p_la_tabla_apunta_a_lo_que_existe():
+    fallos = []
+    codigos = list(catalogo())
+    filas = 0
+    for prefijo, destinos in guia._TABLA.items():
+        filas += len(destinos)
+        if not prefijo.isdigit() or len(prefijo) > 8:
+            fallos.append(f"prefijo raro: {prefijo!r}")
+        if not any(c.startswith(prefijo) for c in codigos):
+            fallos.append(f"{prefijo}: no casa con ninguna ocupación del catálogo")
+        if len(set(destinos)) != len(destinos):
+            fallos.append(f"{prefijo}: filas repetidas")
+        for capitulo, apartado in destinos:
+            if capitulo == "-":
+                continue
+            cap = guia.CAPITULOS.get(capitulo)
+            if cap is None:
+                fallos.append(f"{prefijo}: capítulo {capitulo} que no existe")
+            elif apartado and apartado not in cap["apartados"]:
+                fallos.append(f"{prefijo}: «{apartado}» no es un apartado de {capitulo}")
+    return informe("La tabla apunta a capítulos y apartados que existen", fallos, filas)
+
+
+def p_los_casos():
+    fallos = []
+    nombres = catalogo()
+    with open(CASOS, encoding="utf-8", newline="") as f:
+        casos = list(csv.DictReader(l for l in f if not l.startswith("#")))
+    for c in casos:
+        if nombres.get(c["codigo"]) != c["denominacion"]:
+            fallos.append(f"{c['codigo']}: en el catálogo es «{nombres.get(c['codigo'])}»")
+            continue
+        secs = guia.secciones([c["codigo"]])
+        primero = "" if not secs or secs[0]["general"] else secs[0]["capitulo"]
+        if primero != c["capitulo"]:
+            fallos.append(f"{c['codigo']} {c['denominacion'][:40]}: sale «{primero or 'lo general'}» "
+                          f"y debe salir «{c['capitulo'] or 'lo general'}»")
+    return informe("Cada ocupación de casos_guia.csv, su sector", fallos, len(casos))
+
+
+def p_cobertura_y_lo_general():
+    fallos = []
+    codigos = list(catalogo())
+    con = [c for c in codigos if guia.destinos(c)]
+    parte = len(con) / len(codigos)
+    print(f"          {len(con)} de {len(codigos)} ocupaciones con sector ({parte:.0%})")
+    if parte < COBERTURA_MINIMA:
+        fallos.append(f"solo el {parte:.0%} del catálogo tiene sector (mínimo {COBERTURA_MINIMA:.0%})")
+    sin = next(c for c in codigos if not guia.destinos(c))
+    secs = guia.secciones([sin])
+    if not secs or not all(s["general"] for s in secs):
+        fallos.append(f"{sin}: sin sector no cae en lo general")
+    elif [s["capitulo"] for s in secs] != [c for c, _ in guia.GENERALES]:
+        fallos.append(f"lo general sale como {[s['capitulo'] for s in secs]}")
+    if guia.secciones([sin], generales=False):
+        fallos.append("con generales=False, una ocupación sin sector devuelve algo")
+    if guia.secciones([]):
+        fallos.append("sin ocupaciones devuelve algo")
+    return informe("La mayoría tiene sector; lo demás cae en lo general", fallos, 4)
+
+
+def p_un_curriculo_con_varias():
+    """Lo que hace el paso 4 del CV: varias ocupaciones, un solo listado."""
+    fallos = []
+    camarero, dependiente, reponedor = "51201038", "52201079", "98201011"
+    secs = guia.secciones([camarero, dependiente, reponedor])
+    caps = [s["capitulo"] for s in secs]
+    if caps[:2] != ["10-comercio", "11-hosteleria"]:
+        fallos.append(f"comercio (dos ocupaciones) tiene que ir antes que hostelería (una): {caps[:3]}")
+    if len(caps) != len(set(caps)):
+        fallos.append("un capítulo sale dos veces")
+    comercio = secs[0]
+    if not comercio["entero"]:
+        fallos.append("el dependiente pide el capítulo de comercio entero y sale recortado")
+    n_entero = len(guia.fichas("10-comercio"))
+    if comercio["n"] != n_entero:
+        fallos.append(f"comercio entero son {n_entero} fichas y salen {comercio['n']}")
+    hoste = secs[1]
+    if hoste["entero"] or [a for a, _ in hoste["apartados"]] != ["Cadenas de restauración", "Hoteles"]:
+        fallos.append(f"hostelería del camarero: {[a for a, _ in hoste['apartados']]}")
+    if any(s["general"] for s in secs):
+        fallos.append("con sector, no tiene que salir lo general")
+    return informe("Varias ocupaciones: un listado, ordenado por votos", fallos, 6)
+
+
+def p_las_direcciones_se_leen_como_en_la_guia():
+    fallos = []
+    esperado = {
+        "https://europe.alsea.net/talento": "europe.alsea.net/talento",
+        "https://www.ejemplo.com/": "ejemplo.com",
+        "https://empleo.ejemplo.es/ofertas?utm=1#arriba": "empleo.ejemplo.es/ofertas",
+        "https://portal.ejemplo.com/una/ruta/muy/larga/que/no/cabe/Candidatos": "portal.ejemplo.com/…/Candidatos",
+    }
+    for url, debe in esperado.items():
+        if guia.vista(url) != debe:
+            fallos.append(f"{url} -> {guia.vista(url)!r}, debe {debe!r}")
+    f = {"telefono": "915221101;611672682", "direccion": "C/ Fuencarral, 43", "cp": "28004",
+         "municipio": "Madrid", "web": "https://a.es", "web_empleo": ""}
+    if guia.telefonos(f) != "915 221 101 · 611 672 682":
+        fallos.append(f"teléfonos: {guia.telefonos(f)!r}")
+    if guia.direccion(f) != "C/ Fuencarral, 43 · 28004 Madrid":
+        fallos.append(f"dirección: {guia.direccion(f)!r}")
+    if guia.enlace(f) != ("https://a.es", "Web"):
+        fallos.append(f"sin web de empleo, el enlace es la web: {guia.enlace(f)}")
+    return informe("Direcciones, teléfonos y enlaces, como en la guía", fallos, len(esperado) + 3)
+
+
+def p_la_lista_para_imprimir():
+    try:
+        import reportlab  # noqa: F401
+    except ImportError:
+        print("[ -- ] La lista para imprimir: sin reportlab no se prueba (usa ~/.venvs/sispe)")
+        return True
+    fallos = []
+    secs = guia.secciones(["51201038"])
+    datos = guia.pdf(secs, "Dónde enviar tu currículum", "Camarero de sala",
+                     puesto="camarero de sala", nombre="Lucía")
+    if not datos.startswith(b"%PDF"):
+        fallos.append("no es un PDF")
+    try:
+        import pypdfium2
+    except ImportError:
+        print("          (sin pypdfium2 no se lee el texto: solo se comprueba que se construye)")
+        return informe("La lista para imprimir se construye", fallos, 1)
+    doc = pypdfium2.PdfDocument(datos)
+    texto = " ".join(doc[i].get_textpage().get_text_range() for i in range(len(doc)))
+    texto = " ".join(texto.split())
+    for debe in ("Busco trabajo de camarero de sala", "me llamo Lucía", "Alsea",
+                 "europe.alsea.net/talento", "Portales de empleo", guia.EDICION["verificado"]):
+        if debe not in texto:
+            fallos.append(f"no aparece «{debe}»")
+    if not 2 <= len(doc) <= 6:
+        fallos.append(f"{len(doc)} páginas para un camarero (se esperan de 2 a 6)")
+    general = guia.pdf(guia.secciones(["95111016"]), "Dónde enviar tu currículum")
+    doc = pypdfium2.PdfDocument(general)
+    texto = " ".join(" ".join(doc[i].get_textpage().get_text_range() for i in range(len(doc))).split())
+    if "La guía no tiene un sector" not in texto or "[tu nombre]" not in texto:
+        fallos.append("sin sector ni nombre, la lista no lo dice o no deja los huecos")
+    return informe("La lista para imprimir lleva lo que tiene que llevar", fallos, 9)
+
+
+# ---------------------------------------------------------------------------
+# Las pantallas
+# ---------------------------------------------------------------------------
+
+ENVOLTORIO = """
+import os, sys
+RAIZ = {raiz!r}
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
+os.chdir(RAIZ)
+import streamlit as st
+from streamlit.delta_generator import DeltaGenerator
+DeltaGenerator.page_link = lambda self, *a, **k: None
+st.page_link = lambda *a, **k: None
+ruta = os.path.join(RAIZ, {pagina!r})
+exec(compile(open(ruta, encoding="utf-8").read(), ruta, "exec"),
+     {{"__name__": "__main__", "__file__": ruta}})
+"""
+
+
+def abre(pagina, estado=None):
+    from streamlit.testing.v1 import AppTest
+    tmp = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8")
+    tmp.write(ENVOLTORIO.format(raiz=RAIZ, pagina=pagina))
+    tmp.close()
+    at = AppTest.from_file(tmp.name, default_timeout=120)
+    for k, v in (estado or {}).items():
+        at.session_state[k] = v
+    at.run()
+    return at
+
+
+def _hay_streamlit(nombre):
+    try:
+        import streamlit  # noqa: F401
+        return True
+    except ImportError:
+        print(f"[ -- ] {nombre}: sin Streamlit no se prueba (usa ~/.venvs/sispe)")
+        return False
+
+
+def p_pantalla_codificador():
+    """Buscar sin IA un camarero: bajo las tarjetas salen los sectores y sus fichas."""
+    nombre = "Codificador: «Dónde enviar el CV» bajo las tarjetas"
+    if not _hay_streamlit(nombre):
+        return True
+    fallos = []
+    at = abre("herramientas/sispe/vista.py", {"sispe_usar_ia": False})
+    at.text_input(key="consulta").input("camarero de sala").run()
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 4)
+    pildoras = [b for b in at.get("button_group") if (b.key or "").startswith("sispe_guia_sec_")]
+    if not pildoras:
+        fallos.append("no están las píldoras de sectores")
+    elif not pildoras[0].options or not pildoras[0].options[0].startswith("Hostelería"):
+        fallos.append(f"el primer sector no es Hostelería: {pildoras[0].options[:2]}")
+    html = " ".join(m.value for m in at.markdown)
+    if "gu-ficha" not in html or "Alsea" not in html:
+        fallos.append("no se pintan las fichas de hostelería")
+    if not any("imprimir" in b.proto.label for b in at.get("download_button")):
+        fallos.append("falta el botón de la lista para imprimir")
+    return informe(nombre, fallos, 4)
+
+
+def p_pantalla_curriculo():
+    """El paso 4 del CV saca los sectores de las experiencias, también de las escritas a mano."""
+    nombre = "Generador de CV: «Dónde enviarlo» en el paso 4"
+    if not _hay_streamlit(nombre):
+        return True
+    from herramientas.cv import motor as cv_motor
+    cv = cv_motor.nuevo()
+    cv["nombre"] = "Lucía Pérez"
+    cv["experiencias"].append(cv_motor.experiencia("51201038", "CAMAREROS DE SALA O JEFES DE RANGO"))
+    for i, puesto in enumerate(["Dependienta de comercio", "Reponedora de hipermercado"], 1):
+        e = cv_motor.experiencia()
+        e.update(codigo=f"mano-{i}", puesto=puesto)
+        cv["experiencias"].append(e)
+    fallos = []
+    at = abre("herramientas/cv/vista.py", {"cv_datos": cv, "cv_paso": 3})
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 3)
+    pildoras = [b for b in at.get("button_group") if (b.key or "").startswith("cv_w_sectores_")]
+    if not pildoras:
+        fallos.append("no están las píldoras de sectores")
+    else:
+        valor = list(pildoras[0].value or [])
+        if valor[:2] != ["10-comercio", "11-hosteleria"]:
+            fallos.append(f"marcados de entrada: {valor} (comercio, con dos experiencias a mano, va primero)")
+    if not any("Dónde enviar" in b.proto.label for b in at.get("download_button")):
+        fallos.append("falta el botón «Dónde enviar este CV»")
+    return informe(nombre, fallos, 3)
+
+
+PRUEBAS = [
+    p_la_copia_esta_entera,
+    p_la_tabla_apunta_a_lo_que_existe,
+    p_los_casos,
+    p_cobertura_y_lo_general,
+    p_un_curriculo_con_varias,
+    p_las_direcciones_se_leen_como_en_la_guia,
+    p_la_lista_para_imprimir,
+    p_pantalla_codificador,
+    p_pantalla_curriculo,
+]
+
+
+def main():
+    print(f"«Dónde enviar el CV»: {guia.EDICION['fichas']} fichas en {len(guia.CAPITULOS)} capítulos · "
+          f"{guia.EDICION['edicion']} · {len(guia._TABLA)} prefijos en la tabla\n")
+    for prueba in PRUEBAS:
+        try:
+            prueba()
+        except Exception as e:  # noqa: BLE001
+            nombre = prueba.__name__.removeprefix("p_").replace("_", " ")
+            RESUMEN.append((nombre, False))
+            print(f"[MAL] {nombre:52} {type(e).__name__}: {e}")
+    bien = sum(1 for _, ok in RESUMEN if ok)
+    print(f"\n{bien} de {len(RESUMEN)} pruebas pasan")
+    return 0 if bien == len(RESUMEN) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

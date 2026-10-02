@@ -1,0 +1,637 @@
+# Qué capítulos de la guía le tocan a cada ocupación del catálogo SISPE.
+#
+# Se edita a mano. Cada fila une un PREFIJO del código SISPE (las cuatro
+# primeras cifras son el grupo de la CNO-11; se puede bajar hasta las ocho)
+# con un capítulo de la guía y, si hace falta afinar, uno de sus apartados.
+# Apartado vacío: el capítulo entero.
+#
+# Manda el prefijo MÁS LARGO que case, con todas sus filas y en su orden: el
+# primero es el sector principal. Así un código concreto (8 cifras) corrige a
+# su grupo (4 cifras) sin heredar nada de él. Capítulo «-»: esa ocupación no
+# tiene sector en la guía aunque su grupo sí lo tenga.
+#
+# Lo que no casa con nada no tiene sector: la app lo dice y remite a los
+# portales generalistas. Mejor eso que un sector que no le toca.
+#
+# Los nombres de capítulo y apartado son los de comun/datos/guia/capitulos.csv:
+# pruebas/guia.py comprueba que existen y que cada prefijo casa con alguna
+# ocupación del catálogo.
+prefijo,capitulo,apartado
+
+# --- 1 · Dirección: solo donde el sector es inequívoco -------------------
+1113,47-tercer-sector,
+1322,47-tercer-sector,
+1323,27-sanidad,
+1324,14-cuidados,Residencias y centros de día
+1324,47-tercer-sector,
+1325,47-tercer-sector,
+1326,29-educacion,
+1327,32-banca,
+141,11-hosteleria,Hoteles
+142,11-hosteleria,Cadenas de restauración
+1432,10-comercio,
+14321021,30-industria,"Automoción: fábricas, talleres y concesionarios"
+14321049,30-industria,"Automoción: fábricas, talleres y concesionarios"
+1501,15-monitores,
+15011024,16-deporte,Gimnasios y centros deportivos
+15091019,17-ocio-y-cultura,Agencias de viajes
+15091046,17-ocio-y-cultura,Agencias de viajes
+15091073,13-limpieza,
+
+# --- 2 · Profesiones de grado ----------------------------------------------
+211,27-sanidad,Hospitales y clínicas
+211,24-portales,Sanidad y cuidados
+212,27-sanidad,Hospitales y clínicas
+212,14-cuidados,Residencias y centros de día
+212,24-portales,Sanidad y cuidados
+213,44-animales,Clínicas y hospitales veterinarios
+213,44-animales,Formación y colegio profesional
+214,41-farmacias,Farmacias y grupos de farmacias
+214,41-farmacias,Distribución y laboratorios farmacéuticos
+214,41-farmacias,Formación y colegios profesionales
+215,27-sanidad,Hospitales y clínicas
+215,24-portales,Sanidad y cuidados
+2151,27-sanidad,"Dental, óptica y laboratorios"
+2151,24-portales,Sanidad y cuidados
+2155,41-farmacias,Ópticas y audiología
+2155,27-sanidad,"Dental, óptica y laboratorios"
+2156,14-cuidados,Residencias y centros de día
+2156,27-sanidad,Hospitales y clínicas
+2156,47-tercer-sector,Discapacidad y salud mental
+222,29-educacion,Academias y formación
+222,24-portales,Educación
+223,29-educacion,Colegios y grupos educativos
+223,29-educacion,Academias y formación
+223,24-portales,Educación
+224,29-educacion,Colegios y grupos educativos
+224,24-portales,Educación
+225,29-educacion,Escuelas infantiles
+225,29-educacion,Colegios y grupos educativos
+225,24-portales,Educación
+231,29-educacion,Colegios y grupos educativos
+231,47-tercer-sector,Discapacidad y salud mental
+231,24-portales,Educación
+232,29-educacion,Academias y formación
+232,24-portales,Educación
+2326,15-monitores,Ocio y tiempo libre
+2326,15-monitores,"Granjas escuela, albergues y campamentos"
+243,30-industria,Industria y fabricación
+243,24-portales,"Construcción, arquitectura e ingeniería"
+244,34-instalaciones,Compañías de energía y agua
+244,30-industria,Industria y fabricación
+244,24-portales,"Construcción, arquitectura e ingeniería"
+245,21-construccion,Constructoras
+245,24-portales,"Construcción, arquitectura e ingeniería"
+246,30-industria,Industria y fabricación
+246,24-portales,"Construcción, arquitectura e ingeniería"
+247,34-instalaciones,Compañías de energía y agua
+247,30-industria,Industria y fabricación
+247,24-portales,"Construcción, arquitectura e ingeniería"
+2481,21-construccion,Constructoras
+2481,24-portales,"Construcción, arquitectura e ingeniería"
+2482,10-comercio,"Moda: marcas, portales y escuelas"
+2482,30-industria,Industria y fabricación
+2483,21-construccion,Constructoras
+2483,24-portales,"Construcción, arquitectura e ingeniería"
+2484,45-publicidad,"Agencias de publicidad, marketing y comunicación"
+2484,45-publicidad,"Imprentas, packaging y rotulación"
+2484,45-publicidad,Formación y portales del sector
+251,39-asesorias,Despachos de abogados
+251,39-asesorias,Colegios profesionales y bolsas de empleo
+259,39-asesorias,Asesorías y gestorías
+259,39-asesorias,Despachos de abogados
+261,39-asesorias,Auditoras y grandes consultoras
+261,39-asesorias,Asesorías y gestorías
+262,39-asesorias,
+263,17-ocio-y-cultura,Agencias de viajes
+263,24-portales,Hostelería y turismo
+2640,10-comercio,
+26401038,30-industria,"Automoción: fábricas, talleres y concesionarios"
+26401056,41-farmacias,Distribución y laboratorios farmacéuticos
+265,45-publicidad,"Agencias de publicidad, marketing y comunicación"
+265,45-publicidad,Formación y portales del sector
+26531018,22-tecnologia,Consultoras y servicios tecnológicos
+271,22-tecnologia,Consultoras y servicios tecnológicos
+271,22-tecnologia,Telecomunicaciones y electrónica
+271,24-portales,Tecnología
+272,22-tecnologia,Consultoras y servicios tecnológicos
+272,22-tecnologia,Telecomunicaciones y electrónica
+272,24-portales,Tecnología
+2810,39-asesorias,Auditoras y grandes consultoras
+2810,32-banca,Bancos
+2823,27-sanidad,Hospitales y clínicas
+2823,47-tercer-sector,Discapacidad y salud mental
+2823,39-asesorias,"Recursos humanos, nóminas y prevención"
+2824,47-tercer-sector,
+2824,15-monitores,Intervención social y educativa
+2824,24-portales,Ámbito social y ONG
+2825,47-tercer-sector,
+2825,24-portales,Ámbito social y ONG
+2921,45-publicidad,Editoriales y distribución de libros
+2922,45-publicidad,"Prensa, radio y medios digitales"
+29231038,47-tercer-sector,Discapacidad y salud mental
+29231083,47-tercer-sector,Discapacidad y salud mental
+293,17-ocio-y-cultura,Cines y teatros
+293,17-ocio-y-cultura,Audiovisual
+293,40-eventos,Promotoras de conciertos y espectáculos
+293,24-portales,Artes escénicas y audiovisual
+
+# --- 3 · Técnicos ----------------------------------------------------------
+311,21-construccion,Constructoras
+311,24-portales,"Construcción, arquitectura e ingeniería"
+3122,21-construccion,Constructoras
+3122,24-portales,"Construcción, arquitectura e ingeniería"
+3123,34-instalaciones,"Electricidad, climatización y fontanería"
+3123,34-instalaciones,Compañías de energía y agua
+3124,22-tecnologia,Telecomunicaciones y electrónica
+3124,42-servicios-tecnicos,Servicios técnicos de electrodomésticos y aparatos
+3125,22-tecnologia,Telecomunicaciones y electrónica
+3126,30-industria,Industria y fabricación
+3127,30-industria,Industria y fabricación
+3129,45-publicidad,"Imprentas, packaging y rotulación"
+3129,45-publicidad,"Prensa, radio y medios digitales"
+313,34-instalaciones,Compañías de energía y agua
+313,30-industria,Industria y fabricación
+316,30-industria,Industria y fabricación
+3202,21-construccion,
+3203,37-alimentacion,
+3204,30-industria,Industria y fabricación
+3205,30-industria,Industria y fabricación
+3206,30-industria,Industria y fabricación
+3207,45-publicidad,"Imprentas, packaging y rotulación"
+3209,30-industria,Industria y fabricación
+331,27-sanidad,Hospitales y clínicas
+331,27-sanidad,"Dental, óptica y laboratorios"
+331,24-portales,Sanidad y cuidados
+3321,27-sanidad,"Dental, óptica y laboratorios"
+3322,27-sanidad,Hospitales y clínicas
+3323,27-sanidad,Hospitales y clínicas
+3324,41-farmacias,Ópticas y audiología
+3324,27-sanidad,"Dental, óptica y laboratorios"
+3325,16-deporte,Gimnasios y centros deportivos
+3326,39-asesorias,"Recursos humanos, nóminas y prevención"
+33261029,-,
+3327,44-animales,Clínicas y hospitales veterinarios
+3327,44-animales,Formación y colegio profesional
+3401,32-banca,Bancos
+3402,32-banca,Bancos
+3402,39-asesorias,Auditoras y grandes consultoras
+3403,39-asesorias,Asesorías y gestorías
+34051021,38-inmobiliarias,Redes y agencias inmobiliarias
+34051030,30-industria,"Automoción: fábricas, talleres y concesionarios"
+351,24-portales,"Comercio, administración y banca"
+3521,32-banca,Seguros
+3522,24-portales,"Comercio, administración y banca"
+3531,12-logistica,Operadores logísticos
+3532,40-eventos,
+3534,38-inmobiliarias,
+3535,45-publicidad,"Agencias de publicidad, marketing y comunicación"
+35391014,40-eventos,Promotoras de conciertos y espectáculos
+35391023,45-publicidad,"Agencias de publicidad, marketing y comunicación"
+361,18-administracion,"Administración, recepción y secretariado"
+361,39-asesorias,Despachos de abogados
+361,24-portales,"Comercio, administración y banca"
+362,25-empleo-publico,Dónde se publican las convocatorias
+362,25-empleo-publico,Cómo preparar una oposición
+363,25-empleo-publico,"Policía, bomberos y Fuerzas Armadas"
+3711,39-asesorias,Despachos de abogados
+3713,47-tercer-sector,
+3713,15-monitores,Intervención social y educativa
+3713,24-portales,Ámbito social y ONG
+37131078,17-ocio-y-cultura,
+3714,47-tercer-sector,
+3714,24-portales,Ámbito social y ONG
+3715,15-monitores,Ocio y tiempo libre
+3715,15-monitores,Intervención social y educativa
+37151029,14-cuidados,Residencias y centros de día
+37151029,15-monitores,Ocio y tiempo libre
+3721,16-deporte,
+3722,16-deporte,
+3723,16-deporte,Gimnasios y centros deportivos
+3723,16-deporte,Federaciones y formación
+37231040,44-animales,"Hípicas, granjas y centros con animales"
+37231040,16-deporte,
+3724,15-monitores,Ocio y tiempo libre
+3724,15-monitores,"Granjas escuela, albergues y campamentos"
+37241016,17-ocio-y-cultura,Parques de ocio
+37241016,15-monitores,Ocio y tiempo libre
+3731,45-publicidad,"Prensa, radio y medios digitales"
+3731,17-ocio-y-cultura,Audiovisual
+3732,40-eventos,"Montaje, producción y técnica"
+3732,17-ocio-y-cultura,Audiovisual
+37321028,10-comercio,Grandes almacenes y moda
+37321046,36-jardineria,Empresas de jardinería y parques
+3734,11-hosteleria,Cadenas de restauración
+3734,11-hosteleria,Hoteles
+3734,40-eventos,Catering y restauración de eventos
+3734,24-portales,Hostelería y turismo
+3739,17-ocio-y-cultura,Cines y teatros
+3739,40-eventos,"Montaje, producción y técnica"
+37391038,-,
+381,22-tecnologia,Consultoras y servicios tecnológicos
+381,24-portales,Tecnología
+382,22-tecnologia,Consultoras y servicios tecnológicos
+382,24-portales,Tecnología
+3831,17-ocio-y-cultura,Audiovisual
+3831,40-eventos,"Montaje, producción y técnica"
+3831,45-publicidad,"Prensa, radio y medios digitales"
+3832,17-ocio-y-cultura,Audiovisual
+3832,45-publicidad,"Prensa, radio y medios digitales"
+38321030,17-ocio-y-cultura,Cines y teatros
+3833,34-instalaciones,Telecomunicaciones y fibra
+3833,22-tecnologia,Telecomunicaciones y electrónica
+
+# --- 4 · Administración, atención al público -------------------------------
+4111,18-administracion,"Administración, recepción y secretariado"
+4111,39-asesorias,Asesorías y gestorías
+4111,24-portales,"Comercio, administración y banca"
+4112,39-asesorias,"Recursos humanos, nóminas y prevención"
+4112,18-administracion,"Administración, recepción y secretariado"
+4113,32-banca,
+4113,18-administracion,Back office y gestión documental
+4121,12-logistica,Operadores logísticos
+4121,12-logistica,Comercio electrónico y distribución
+41211034,37-alimentacion,Envasado y plataformas de alimentación
+41211034,12-logistica,Operadores logísticos
+4122,18-administracion,Back office y gestión documental
+4122,18-administracion,"Administración, recepción y secretariado"
+4123,12-logistica,Operadores logísticos
+4123,35-mensajeria,Transporte por carretera
+41231014,28-aeropuerto,Handling y servicios en pista
+41231014,28-aeropuerto,Aerolíneas
+41231032,20-transporte,"Metro, tren y otros"
+41231083,20-transporte,
+421,18-administracion,Back office y gestión documental
+4221,35-mensajeria,Mensajería y paquetería
+4222,18-administracion,Back office y gestión documental
+4223,39-asesorias,"Recursos humanos, nóminas y prevención"
+4223,18-administracion,"Administración, recepción y secretariado"
+430,18-administracion,Back office y gestión documental
+430,18-administracion,"Administración, recepción y secretariado"
+43091010,25-empleo-publico,"Universidades, hospitales y justicia"
+4411,18-administracion,Atención al cliente y televenta
+4411,18-administracion,Contact center
+4412,18-administracion,"Administración, recepción y secretariado"
+4412,40-eventos,"Azafatas, auxiliares y personal de eventos"
+44121039,28-aeropuerto,"Tiendas, restauración y servicios al pasajero"
+44121039,18-administracion,"Administración, recepción y secretariado"
+4421,17-ocio-y-cultura,Agencias de viajes
+4421,24-portales,Hostelería y turismo
+4422,11-hosteleria,Hoteles
+4422,24-portales,Hostelería y turismo
+4423,18-administracion,Contact center
+4424,18-administracion,Contact center
+4424,18-administracion,Atención al cliente y televenta
+4430,18-administracion,Contact center
+4441,32-banca,Bancos
+4445,18-administracion,Contact center
+4446,35-mensajeria,Mensajería y paquetería
+4446,25-empleo-publico,Empresas y entidades públicas
+4500,18-administracion,"Administración, recepción y secretariado"
+4500,18-administracion,Atención al cliente y televenta
+
+# --- 5 · Hostelería, comercio, cuidados, seguridad -------------------------
+5000,11-hosteleria,
+5110,11-hosteleria,Cadenas de restauración
+5110,11-hosteleria,Hoteles
+5110,40-eventos,Catering y restauración de eventos
+5110,15-monitores,Comedores escolares y restauración colectiva
+5110,24-portales,Hostelería y turismo
+51101048,15-monitores,Comedores escolares y restauración colectiva
+51101048,29-educacion,Escuelas infantiles
+51101059,40-eventos,Catering y restauración de eventos
+51101059,15-monitores,Comedores escolares y restauración colectiva
+51101059,11-hosteleria,
+51101071,11-hosteleria,
+51101071,37-alimentacion,"Panadería, pastelería y obradores"
+51101082,40-eventos,Catering y restauración de eventos
+51101082,15-monitores,Comedores escolares y restauración colectiva
+51101082,11-hosteleria,
+5120,11-hosteleria,Cadenas de restauración
+5120,11-hosteleria,Hoteles
+5120,40-eventos,Catering y restauración de eventos
+5120,28-aeropuerto,"Tiendas, restauración y servicios al pasajero"
+5120,24-portales,Hostelería y turismo
+5210,10-comercio,
+52101012,11-hosteleria,
+5220,10-comercio,
+52201024,10-comercio,"Hogar, bricolaje y electrónica"
+52201068,10-comercio,Supermercados e hipermercados
+52201068,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+52201080,10-comercio,"Hogar, bricolaje y electrónica"
+52201091,10-comercio,"Hogar, bricolaje y electrónica"
+52201110,41-farmacias,Farmacias y grupos de farmacias
+52201110,41-farmacias,Ortopedias y parafarmacias
+52201121,36-jardineria,Viveros y centros de jardinería
+52201121,10-comercio,
+52201132,10-comercio,Supermercados e hipermercados
+52201132,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+52201143,10-comercio,Supermercados e hipermercados
+52201143,10-comercio,Grandes almacenes y moda
+52201143,10-comercio,"Hogar, bricolaje y electrónica"
+52201154,41-farmacias,Ortopedias y parafarmacias
+52201154,10-comercio,
+52201198,41-farmacias,Ortopedias y parafarmacias
+52201204,41-farmacias,Ópticas y audiología
+52201213,10-comercio,"Hogar, bricolaje y electrónica"
+52201231,37-alimentacion,"Panadería, pastelería y obradores"
+52201231,10-comercio,Supermercados e hipermercados
+52201251,10-comercio,Perfumería y otros
+52201262,10-comercio,Supermercados e hipermercados
+52201262,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+52201273,10-comercio,Supermercados e hipermercados
+52201273,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+52201284,10-comercio,Supermercados e hipermercados
+52201284,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+52201295,30-industria,"Automoción: fábricas, talleres y concesionarios"
+52201295,10-comercio,
+52201325,10-comercio,"Hogar, bricolaje y electrónica"
+52201325,10-comercio,Grandes almacenes y moda
+52201334,10-comercio,Grandes almacenes y moda
+52201334,10-comercio,"Moda: marcas, portales y escuelas"
+52201057,10-comercio,Grandes almacenes y moda
+52201057,10-comercio,"Moda: marcas, portales y escuelas"
+52201240,10-comercio,Grandes almacenes y moda
+52201240,10-comercio,"Moda: marcas, portales y escuelas"
+52201013,10-comercio,"Deporte, ocio y cultura"
+52201187,10-comercio,"Deporte, ocio y cultura"
+52201176,10-comercio,"Deporte, ocio y cultura"
+52201165,10-comercio,"Deporte, ocio y cultura"
+52201035,10-comercio,"Deporte, ocio y cultura"
+5300,10-comercio,
+5420,18-administracion,Atención al cliente y televenta
+5420,18-administracion,Contact center
+5430,43-movilidad,Estaciones de servicio y lavado
+5492,40-eventos,"Azafatas, auxiliares y personal de eventos"
+5492,10-comercio,
+5493,10-comercio,"Moda: marcas, portales y escuelas"
+5493,40-eventos,"Azafatas, auxiliares y personal de eventos"
+5499,10-comercio,
+5500,10-comercio,Supermercados e hipermercados
+5500,10-comercio,Grandes almacenes y moda
+5500,10-comercio,"Hogar, bricolaje y electrónica"
+55001027,18-administracion,"Administración, recepción y secretariado"
+55001036,17-ocio-y-cultura,Cines y teatros
+55001036,17-ocio-y-cultura,Parques de ocio
+55001036,40-eventos,"Recintos feriales, estadios y salas"
+561,27-sanidad,Hospitales y clínicas
+561,14-cuidados,Residencias y centros de día
+561,24-portales,Sanidad y cuidados
+56111022,14-cuidados,Residencias y centros de día
+56111022,27-sanidad,Hospitales y clínicas
+56111022,14-cuidados,Ayuda a domicilio
+56111022,24-portales,Sanidad y cuidados
+56111031,27-sanidad,Hospitales y clínicas
+56111031,47-tercer-sector,Discapacidad y salud mental
+56111031,24-portales,Sanidad y cuidados
+5621,41-farmacias,Farmacias y grupos de farmacias
+5621,41-farmacias,Distribución y laboratorios farmacéuticos
+5621,41-farmacias,Formación y colegios profesionales
+5622,27-sanidad,Ambulancias y transporte sanitario
+5629,27-sanidad,Hospitales y clínicas
+5629,24-portales,Sanidad y cuidados
+56291025,14-cuidados,Residencias y centros de día
+56291025,47-tercer-sector,Discapacidad y salud mental
+56291025,24-portales,Sanidad y cuidados
+56291034,27-sanidad,"Dental, óptica y laboratorios"
+5710,14-cuidados,Ayuda a domicilio
+5710,14-cuidados,Residencias y centros de día
+5710,46-hogar,Agencias de empleo de hogar
+5710,24-portales,Sanidad y cuidados
+5721,29-educacion,Escuelas infantiles
+5721,15-monitores,Comedores escolares y restauración colectiva
+5721,15-monitores,Ocio y tiempo libre
+57211033,15-monitores,Comedores escolares y restauración colectiva
+57211033,29-educacion,Escuelas infantiles
+5722,46-hogar,Agencias de empleo de hogar
+5722,46-hogar,Bolsas gratuitas de entidades y parroquias
+5722,46-hogar,Asesoría y defensa de tus derechos
+581,31-estetica,
+5821,28-aeropuerto,Aerolíneas
+5822,20-transporte,"Metro, tren y otros"
+5823,17-ocio-y-cultura,Agencias de viajes
+5824,28-aeropuerto,Handling y servicios en pista
+5824,28-aeropuerto,Acreditaciones y acceso
+58241026,40-eventos,"Azafatas, auxiliares y personal de eventos"
+5825,17-ocio-y-cultura,Agencias de viajes
+5825,24-portales,Hostelería y turismo
+5831,11-hosteleria,Hoteles
+5831,13-limpieza,Grandes empresas de servicios
+58311017,-,
+5832,11-hosteleria,Hoteles
+5833,13-limpieza,Conserjería y servicios auxiliares
+5833,38-inmobiliarias,Administración de fincas y comunidades
+58331013,11-hosteleria,Hoteles
+58331013,13-limpieza,Conserjería y servicios auxiliares
+5891,14-cuidados,Ayuda a domicilio
+5891,46-hogar,Agencias de empleo de hogar
+5891,47-tercer-sector,Discapacidad y salud mental
+5893,44-animales,"Tiendas, peluquerías y residencias"
+5893,44-animales,Protectoras y centros de acogida
+5893,44-animales,"Hípicas, granjas y centros con animales"
+5893,44-animales,Formación y colegio profesional
+5899,17-ocio-y-cultura,Parques de ocio
+5899,40-eventos,"Recintos feriales, estadios y salas"
+591,25-empleo-publico,"Policía, bomberos y Fuerzas Armadas"
+592,25-empleo-publico,"Policía, bomberos y Fuerzas Armadas"
+593,25-empleo-publico,"Policía, bomberos y Fuerzas Armadas"
+5941,19-seguridad,
+59911014,25-empleo-publico,Administración del Estado
+5992,16-deporte,Piscinas y socorrismo
+5993,25-empleo-publico,Comunidad de Madrid
+
+# --- 6 · Jardinería (el campo no tiene capítulo) ---------------------------
+6120,36-jardineria,
+61201051,-,
+61201062,-,
+61201084,-,
+
+# --- 7 · Construcción, instalaciones, talleres, alimentación ---------------
+711,21-construccion,Constructoras
+711,21-construccion,Formación y tarjeta profesional
+712,21-construccion,
+713,21-construccion,
+7191,21-construccion,Instalaciones y mantenimiento
+7191,13-limpieza,Conserjería y servicios auxiliares
+7191,42-servicios-tecnicos,"Cerrajería, cristalería y pequeñas reformas"
+71911023,16-deporte,Gimnasios y centros deportivos
+71911023,21-construccion,Instalaciones y mantenimiento
+7192,21-construccion,
+7193,21-construccion,
+7199,21-construccion,
+721,21-construccion,
+722,34-instalaciones,"Electricidad, climatización y fontanería"
+722,34-instalaciones,"Gremios, carnés y formación"
+722,42-servicios-tecnicos,Reparaciones y asistencia en el hogar
+722,21-construccion,Instalaciones y mantenimiento
+723,21-construccion,Constructoras
+723,42-servicios-tecnicos,"Cerrajería, cristalería y pequeñas reformas"
+72321054,30-industria,"Automoción: fábricas, talleres y concesionarios"
+724,21-construccion,
+725,34-instalaciones,"Electricidad, climatización y fontanería"
+725,34-instalaciones,"Gremios, carnés y formación"
+725,42-servicios-tecnicos,Servicios técnicos de electrodomésticos y aparatos
+7291,21-construccion,
+7292,21-construccion,
+7293,42-servicios-tecnicos,"Cerrajería, cristalería y pequeñas reformas"
+7293,21-construccion,
+72931035,30-industria,"Automoción: fábricas, talleres y concesionarios"
+7294,34-instalaciones,Energía solar y eficiencia
+7294,34-instalaciones,"Gremios, carnés y formación"
+7295,13-limpieza,Empresas de limpieza
+731,30-industria,Industria y fabricación
+7315,34-instalaciones,"Electricidad, climatización y fontanería"
+7315,21-construccion,Instalaciones y mantenimiento
+73131063,30-industria,"Automoción: fábricas, talleres y concesionarios"
+732,30-industria,Industria y fabricación
+73221023,42-servicios-tecnicos,"Cerrajería, cristalería y pequeñas reformas"
+7401,30-industria,"Automoción: fábricas, talleres y concesionarios"
+7402,28-aeropuerto,Handling y servicios en pista
+7402,30-industria,Industria y fabricación
+7403,30-industria,Industria y fabricación
+74031133,21-construccion,Instalaciones y mantenimiento
+74031133,13-limpieza,Grandes empresas de servicios
+7404,30-industria,Industria y fabricación
+7405,43-movilidad,"VTC, taxi y vehículos de movilidad compartida"
+7405,42-servicios-tecnicos,Reparaciones y asistencia en el hogar
+751,34-instalaciones,"Electricidad, climatización y fontanería"
+751,34-instalaciones,"Gremios, carnés y formación"
+751,21-construccion,Instalaciones y mantenimiento
+7521,34-instalaciones,"Electricidad, climatización y fontanería"
+7521,30-industria,Industria y fabricación
+75211017,28-aeropuerto,Handling y servicios en pista
+75211017,30-industria,Industria y fabricación
+75211035,42-servicios-tecnicos,Servicios técnicos de electrodomésticos y aparatos
+75211091,30-industria,"Automoción: fábricas, talleres y concesionarios"
+75211101,34-instalaciones,Energía solar y eficiencia
+75211101,34-instalaciones,"Gremios, carnés y formación"
+75211156,34-instalaciones,"Electricidad, climatización y fontanería"
+75211156,21-construccion,Instalaciones y mantenimiento
+7522,34-instalaciones,Compañías de energía y agua
+7522,34-instalaciones,"Electricidad, climatización y fontanería"
+7531,42-servicios-tecnicos,Servicios técnicos de electrodomésticos y aparatos
+7531,34-instalaciones,"Electricidad, climatización y fontanería"
+75311061,19-seguridad,Empresas de seguridad
+75311061,34-instalaciones,"Electricidad, climatización y fontanería"
+7532,42-servicios-tecnicos,Servicios técnicos de electrodomésticos y aparatos
+7533,34-instalaciones,Telecomunicaciones y fibra
+7533,22-tecnologia,Telecomunicaciones y electrónica
+761,30-industria,Industria y fabricación
+762,45-publicidad,"Imprentas, packaging y rotulación"
+770,37-alimentacion,
+7701,37-alimentacion,"Cárnicas, lácteas, bebidas y conservas"
+7701,10-comercio,Supermercados e hipermercados
+7701,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+77011015,10-comercio,Supermercados e hipermercados
+77011015,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+77011015,37-alimentacion,"Cárnicas, lácteas, bebidas y conservas"
+7703,37-alimentacion,"Panadería, pastelería y obradores"
+7703,10-comercio,Supermercados e hipermercados
+7703,37-alimentacion,Formación y carnés
+781,30-industria,Industria y fabricación
+782,30-industria,Industria y fabricación
+783,10-comercio,"Moda: marcas, portales y escuelas"
+783,42-servicios-tecnicos,"Arreglos de ropa, calzado y llaves"
+783,30-industria,Industria y fabricación
+7893,30-industria,Industria y fabricación
+
+# --- 8 · Operadores de máquinas y conductores ------------------------------
+812,30-industria,Industria y fabricación
+813,30-industria,Industria y fabricación
+814,30-industria,Industria y fabricación
+815,30-industria,Industria y fabricación
+816,37-alimentacion,"Cárnicas, lácteas, bebidas y conservas"
+816,37-alimentacion,Envasado y plataformas de alimentación
+816,37-alimentacion,"Panadería, pastelería y obradores"
+8170,42-servicios-tecnicos,Lavanderías industriales y tintorerías
+819,30-industria,Industria y fabricación
+820,30-industria,
+831,20-transporte,"Metro, tren y otros"
+8331,21-construccion,Constructoras
+8331,21-construccion,Formación y tarjeta profesional
+8332,21-construccion,Constructoras
+8332,12-logistica,Operadores logísticos
+83321012,-,
+83321085,-,
+83321115,-,
+83321124,-,
+83321133,30-industria,Industria y fabricación
+83321142,-,
+83321096,17-ocio-y-cultura,Parques de ocio
+83321151,13-limpieza,Limpieza viaria y residuos
+8333,12-logistica,
+8333,37-alimentacion,Envasado y plataformas de alimentación
+8333,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+8411,43-movilidad,"VTC, taxi y vehículos de movilidad compartida"
+8412,43-movilidad,"VTC, taxi y vehículos de movilidad compartida"
+84121017,27-sanidad,Ambulancias y transporte sanitario
+84121026,-,
+84121035,35-mensajeria,Mensajería y paquetería
+84121035,12-logistica,Paquetería y reparto
+84121035,35-mensajeria,Permisos y formación
+8420,20-transporte,Autobús urbano e interurbano
+8420,20-transporte,Permisos y formación
+843,35-mensajeria,Transporte por carretera
+843,35-mensajeria,Permisos y formación
+843,12-logistica,Operadores logísticos
+8440,35-mensajeria,Reparto a domicilio y plataformas
+8440,35-mensajeria,Mensajería y paquetería
+8440,12-logistica,Paquetería y reparto
+
+# --- 9 · Ocupaciones elementales -------------------------------------------
+9100,46-hogar,
+9210,13-limpieza,
+92101016,11-hosteleria,Hoteles
+92101016,13-limpieza,Empresas de limpieza
+92101027,11-hosteleria,Hoteles
+92101027,13-limpieza,Empresas de limpieza
+92101038,13-limpieza,Grandes empresas de servicios
+92101038,13-limpieza,Empresas de limpieza
+92101038,27-sanidad,Hospitales y clínicas
+92101049,11-hosteleria,Hoteles
+92101049,13-limpieza,Empresas de limpieza
+9221,42-servicios-tecnicos,Lavanderías industriales y tintorerías
+92211025,11-hosteleria,Hoteles
+92211025,42-servicios-tecnicos,Lavanderías industriales y tintorerías
+9222,43-movilidad,Estaciones de servicio y lavado
+9223,13-limpieza,Empresas de limpieza
+9229,16-deporte,Piscinas y socorrismo
+9229,13-limpieza,Empresas de limpieza
+9310,11-hosteleria,Cadenas de restauración
+9310,11-hosteleria,Hoteles
+9310,15-monitores,Comedores escolares y restauración colectiva
+9310,40-eventos,Catering y restauración de eventos
+9310,24-portales,Hostelería y turismo
+9320,11-hosteleria,Cadenas de restauración
+9320,35-mensajeria,Reparto a domicilio y plataformas
+9431,13-limpieza,Conserjería y servicios auxiliares
+9432,11-hosteleria,Hoteles
+9432,28-aeropuerto,Handling y servicios en pista
+9433,11-hosteleria,Hoteles
+94331026,35-mensajeria,Reparto a domicilio y plataformas
+94331026,12-logistica,Paquetería y reparto
+9434,34-instalaciones,Compañías de energía y agua
+944,13-limpieza,Limpieza viaria y residuos
+944,36-jardineria,"Residuos, reciclaje y medio ambiente"
+9490,17-ocio-y-cultura,Cines y teatros
+9490,40-eventos,"Recintos feriales, estadios y salas"
+94901029,43-movilidad,Aparcamientos y grúas
+94901029,11-hosteleria,Hoteles
+94901052,-,
+9512,36-jardineria,
+960,21-construccion,
+970,30-industria,Industria y fabricación
+97001010,12-logistica,Operadores logísticos
+97001010,37-alimentacion,Envasado y plataformas de alimentación
+97001010,30-industria,Industria y fabricación
+97001056,37-alimentacion,
+97001092,45-publicidad,"Imprentas, packaging y rotulación"
+9811,12-logistica,
+9811,37-alimentacion,"Mercamadrid, mayoristas y mercados"
+98111015,-,
+98111042,-,
+98111051,35-mensajeria,Transporte por carretera
+98111051,12-logistica,Operadores logísticos
+9820,10-comercio,Supermercados e hipermercados
+9820,10-comercio,Grandes almacenes y moda
+9820,12-logistica,Comercio electrónico y distribución

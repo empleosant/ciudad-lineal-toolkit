@@ -4,7 +4,8 @@ Generador de CV con IA en pocos pasos: la pantalla.
     1 · Datos        quién es (no se manda a la IA)
     2 · Experiencia  fichas: del codificador SISPE, contadas o grabadas, o a mano
     3 · Formación    títulos, idiomas, informática, otros (con botones para lo típico)
-    4 · Documento    objetivo profesional redactado por la IA, vista previa y descarga
+    4 · Documento    objetivo profesional redactado por la IA, vista previa y descarga,
+                     y aparte, dónde enviarlo (las empresas de la guía de empleo)
 
 La lógica está en `motor.py` (Python puro), las llamadas a la IA en
 `modelo.py`, el Word sobre el modelo de la oficina en `plantilla.py` y el
@@ -20,8 +21,9 @@ import re
 
 import streamlit as st
 
-from comun import estilo, ia
+from comun import estilo, guia, ia
 from herramientas.cv import estado, modelo, motor, plantilla
+from herramientas.sispe import motor as sispe
 
 estilo.aplica()
 st.markdown("""
@@ -103,6 +105,24 @@ def empezar_de_nuevo():
     for k in [k for k in st.session_state if k.startswith("cv_w_")]:
         del st.session_state[k]
     st.session_state["cv_paso"] = 0
+
+
+def codigos_del_cv(cv):
+    """El código SISPE de cada experiencia, para buscarle sector en la guía.
+
+    Si vino del codificador, el suyo. Si se escribió a mano, el primero que
+    da el buscador del codificador para el puesto, sin IA: para elegir sector
+    basta con acertar la familia, y el buscador la acierta casi siempre.
+    """
+    codigos = []
+    for e in cv["experiencias"]:
+        codigo = e.get("codigo") or ""
+        if not re.fullmatch(r"\d{8}", codigo):
+            hallados = sispe.busca(e.get("puesto") or "", tope=1) if (e.get("puesto") or "").strip() else []
+            codigo = hallados[0][1] if hallados else ""
+        if codigo and codigo not in codigos:
+            codigos.append(codigo)
+    return codigos
 
 
 def campo(etiqueta, clave, **k):
@@ -587,6 +607,38 @@ else:
             mime="application/pdf", use_container_width=True, disabled=not vista,
             help="Para enviar o imprimir tal cual.",
         )
+
+        # Hoja aparte y no una segunda página del currículo: el currículo se
+        # manda a las empresas y esta lista es para la persona.
+        st.markdown('<div class="seccion">Dónde enviarlo</div>', unsafe_allow_html=True)
+        secs = guia.secciones(codigos_del_cv(cv), generales=False)
+        if not secs:
+            st.caption("Cuando haya experiencias, aquí salen las empresas de su sector según la "
+                       "guía de empleo, en una hoja aparte para imprimir.")
+        else:
+            por_id = {s_["capitulo"]: s_ for s_ in secs}
+            elegidos = st.pills(
+                "Sectores", list(por_id), selection_mode="multi", default=list(por_id)[:4],
+                format_func=lambda c: f"{por_id[c]['corto']} · {por_id[c]['n']}",
+                key="cv_w_sectores_" + hashlib.md5("|".join(por_id).encode()).hexdigest()[:8],
+            )
+            puestos = [motor.titulo_experiencia(e) for e in cv["experiencias"] if motor.titulo_experiencia(e)]
+            puesto = puestos[0] if puestos else ""
+            st.download_button(
+                "Dónde enviar este CV (PDF)", icon=":material/print:", on_click="ignore",
+                data=lambda: guia.pdf(
+                    [por_id[c] for c in elegidos], "Dónde enviar tu currículum",
+                    " · ".join(x for x in [cv["nombre"].strip(), ", ".join(puestos[:3])] if x),
+                    puesto=puesto[:1].lower() + puesto[1:], nombre=cv["nombre"].strip(),
+                ),
+                file_name=f"Donde_enviar_CV_{nombre_archivo}.pdf", mime="application/pdf",
+                use_container_width=True, disabled=not elegidos,
+                help="Una hoja aparte para la persona, no para enviar: las empresas de los sectores "
+                     "marcados, cómo presentarse en cada una y el guion para llamar.",
+            )
+            st.caption(f"De la guía «{guia.EDICION['titulo_empresas']}» "
+                       f"({guia.EDICION['edicion'].lower()}). Los sectores salen de las experiencias.")
+
         st.button("Empezar un CV nuevo", use_container_width=True, on_click=empezar_de_nuevo,
                   help="Borra todos los datos de este currículo.")
 

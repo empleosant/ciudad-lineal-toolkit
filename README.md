@@ -22,6 +22,9 @@ comun/                         lo que comparten varias herramientas
   gist.py                      almacén compartido en un Gist de GitHub
   estilo.py                    CSS común, la barra negra con el menú, el título de cada página y el chip de la IA
   texto.py                     normaliza()
+  guia.py                      la guía de empleo dentro de la app: sectores de cada ocupación y la lista en PDF
+  datos/guia/                  copia de la Guía de empleo de Madrid (la saca scripts/traer_guia.py; no se edita)
+  datos/ocupaciones_sectores.csv   código SISPE -> capítulos de la guía (se edita a mano)
 herramientas/
   sispe/
     vista.py                   la pantalla del codificador: lo único que dibuja
@@ -63,9 +66,12 @@ pruebas/
   cv.py                        los botones de «Otros datos» del generador de CV
   extranjeria.py               el codificador de extranjería: casos, fechas, plazos y pantalla
   casos_extranjeria.csv        los casos de extranjería (referencia, se edita a mano)
+  guia.py                      «Dónde enviar el CV»: la copia de la guía, la tabla, el PDF y las dos pantallas
+  casos_guia.csv               el sector que debe salir primero para cada ocupación (se edita a mano)
   informe_evaluacion.csv       salida de --informe, regenerable, no versionado
 scripts/
   extraer_extranjeria.py       saca los CSV del Excel de códigos de extranjería (no lo usa la app)
+  traer_guia.py                copia las fichas de la guía de empleo a comun/datos/guia/ (no lo usa la app)
   enriquecer.py                genera terminos_ampliados.txt (no lo usa la app)
   despertar.py                 despertador (no lo usa la app)
 .github/workflows/             programa el despertador

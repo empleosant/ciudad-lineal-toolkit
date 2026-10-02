@@ -20,6 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # «Dónde enviar el CV» (la guía de empleo): 9 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -64,13 +65,13 @@ prueba; `cv.py` porque el motor del CV importa reportlab para el PDF). Con el
 `uv`), que es también el que hay que usar para levantar la app entera. Las otras
 tres (`evaluar.py`, `estres.py` y `extranjeria.py`) son Python puro y corren con el
 `python3` de siempre; `extranjeria.py` solo se salta, sin ese entorno, la
-comprobación de la pantalla.
+comprobación de la pantalla, y `guia.py`, el PDF y las dos pantallas.
 
-Las seis baterías **son** la suite: no hay pytest, ni linter, ni formateador.
+Las siete baterías **son** la suite: no hay pytest, ni linter, ni formateador.
 No llaman a la IA y no gastan cuota: `cascada.py` le pone proveedores de mentira
 que contestan, tardan o fallan a la orden.
 
-`cv.py` y `extranjeria.py` son las que además **pulsan botones**: sus últimas
+`cv.py`, `extranjeria.py` y `guia.py` son las que además **pulsan botones**: sus últimas
 comprobaciones levantan la pantalla (el generador de CV, el codificador de
 extranjería) con el banco de pruebas de Streamlit (`streamlit.testing.v1.AppTest`, sin navegador) y comprueban que al
 marcar «Carnet B» cambia de verdad la caja de texto de al lado. La pantalla se
@@ -78,7 +79,7 @@ ejecuta con un envoltorio que desactiva `page_link`, que solo existe con la
 navegación de `app.py` montada.
 
 **Las pruebas corren en GitHub Actions desde el 17/09/2026**:
-`.github/workflows/pruebas.yml` pasa las seis baterías con cada push que toque
+`.github/workflows/pruebas.yml` pasa las siete baterías con cada push que toque
 `comun/`, `herramientas/` o `pruebas/`. Cada batería nueva necesita su paso allí:
 `cascada.py` y `cv.py` estuvieron nueve días sin él.
 
@@ -92,12 +93,14 @@ app.py                       monta la navegación a partir de comun/registro.py
 comun/registro.py            LA LISTA: lo único que se toca para añadir una herramienta
 comun/{estilo,ia,gist,texto,version}.py    lo que comparten varias
 comun/plazos.py              cuánto se espera a una llamada colgada (Python puro)
+comun/guia.py                la Guía de empleo de Madrid dentro de la app (Python puro)
+comun/datos/                 la copia de la guía y la tabla ocupación → sector
 herramientas/<nombre>/vista.py    la pantalla; lo ÚNICO que usa Streamlit
 herramientas/<nombre>/motor.py    la lógica, Python puro
 herramientas/<nombre>/modelo.py   los datos de la herramienta
 herramientas/<nombre>/datos/      catálogos, vocabularios, plantillas
-pruebas/                     las seis baterías
-scripts/                     despertar.py, enriquecer.py y extraer_extranjeria.py
+pruebas/                     las siete baterías
+scripts/                     despertar.py, enriquecer.py, extraer_extranjeria.py y traer_guia.py
 ```
 
 **`motor.py` no puede importar Streamlit.** `pruebas/motor_pruebas.py` lo
@@ -145,6 +148,29 @@ viven en su `motor.py` y los datos en CSV), **Generador de CV**, **Asesor de
 formación** e **Informes de orientación**. Se pasan datos entre sí: el codificador manda las
 experiencias al generador de CV, y el de CV manda el perfil al asesor de
 formación.
+
+## La guía de empleo dentro de la app (02/10/2026)
+
+La Guía de empleo de Madrid (repo privado `empleosant/guia-empleo-madrid`, en
+`~/proyectos/guia-empleo-madrid`) entra en la app como **copia**:
+`scripts/traer_guia.py` saca de ella `comun/datos/guia/` (capítulos, las 2.040
+fichas publicables con la misma regla que su PDF, y la edición). No se edita a
+mano: cuando la guía cambie (revisión de abril de 2027) se pasa el script, se
+mira el diff y se pasa `pruebas/guia.py`.
+
+Lo único hecho a mano es `comun/datos/ocupaciones_sectores.csv`: prefijo del
+código SISPE → capítulo y, si hace falta, apartado. Manda el prefijo más largo;
+capítulo «-» quita el sector. Hoy tiene sector el 84 % del catálogo; lo que no
+(campo, minas, mar, ciencia) cae en portales generalistas y grandes ETT.
+`pruebas/casos_guia.csv` se edita a mano como `casos.csv`.
+
+Dónde sale: en el **codificador**, un desplegable cerrado «Dónde enviar el CV»
+bajo las tarjetas (sectores en píldoras, fichas y la lista en PDF); en el
+**generador de CV**, «Dónde enviarlo» en el paso 4, con los sectores de todas
+las experiencias (las escritas a mano, por el buscador sin IA). La lista es
+siempre una hoja **aparte** del currículo, en blanco y negro y a dos columnas,
+con el guion de la llamada de la guía y el puesto ya puesto. El PDF se genera
+solo al pulsar (`download_button` con función).
 
 ## El motor SISPE, ya al día con `main`
 

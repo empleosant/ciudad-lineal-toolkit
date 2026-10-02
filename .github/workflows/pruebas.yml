@@ -1,4 +1,4 @@
-# Pasa las seis baterías de pruebas cada vez que se sube un cambio.
+# Pasa las siete baterías de pruebas cada vez que se sube un cambio.
 #
 # Ubicación en el repositorio:  .github/workflows/pruebas.yml
 #
@@ -77,11 +77,16 @@ jobs:
         working-directory: pruebas
         run: python extranjeria.py
 
+      - name: Dónde enviar el CV — la guía de empleo en el codificador y el CV
+        if: always()
+        working-directory: pruebas
+        run: python guia.py
+
       - name: Resumen
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "### Las seis baterías pasan. El cambio se puede dar por bueno." >> $GITHUB_STEP_SUMMARY
+            echo "### Las siete baterías pasan. El cambio se puede dar por bueno." >> $GITHUB_STEP_SUMMARY
           else
             echo "### Alguna prueba falla." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
