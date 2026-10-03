@@ -322,9 +322,15 @@ def p_pantalla_codificador():
         fallos.append("no están las píldoras de sectores")
     elif not pildoras[0].options or not pildoras[0].options[0].startswith("Hostelería"):
         fallos.append(f"el primer sector no es Hostelería: {pildoras[0].options[:2]}")
-    html = " ".join(m.value for m in at.markdown)
-    if "gu-ficha" not in html or "Alsea" not in html:
-        fallos.append("no se pintan las fichas de hostelería")
+    # Las empresas del sector van en el panel de la derecha, cada una con su casilla
+    casillas = [c for c in at.checkbox if (c.key or "").startswith("mesa_c_sispe_11-hosteleria/")]
+    if not casillas:
+        fallos.append("no salen las empresas de hostelería con su casilla")
+    else:
+        casillas[0].check().run()
+        marcadas = list(at.session_state["mesa_empresas"]) if "mesa_empresas" in at.session_state else []
+        if len(marcadas) != 1 or not marcadas[0].startswith("11-hosteleria/"):
+            fallos.append(f"marcar una empresa no la lleva a la lista ({marcadas})")
     if not any("imprimir" in b.proto.label for b in at.get("download_button")):
         fallos.append("falta el botón de la lista para imprimir")
     # El «+ CV» pequeño de la cabecera de la tarjeta sigue mandando la ocupación al CV
@@ -339,6 +345,103 @@ def p_pantalla_codificador():
         if en_cv != ["51201038"] or not ahora or not ahora[0].disabled:
             fallos.append(f"«+ CV» no pasa la ocupación al currículo ({en_cv})")
     return informe(nombre, fallos, 5)
+
+
+
+def p_el_buscador_de_la_guia():
+    """`guia.busca`: sin acentos, el nombre por delante, y nada si no hay nada."""
+    nombre = "El buscador de la guía y la lista de marcadas"
+    fallos = []
+    barcelo = guia.busca("barcelo hotel")
+    if not barcelo or not barcelo[0]["nombre"].startswith("Barceló"):
+        fallos.append(f"«barcelo hotel» no encuentra primero a Barceló: {[f['nombre'] for f in barcelo[:3]]}")
+    limpieza = guia.busca("limpieza oficinas")
+    if not limpieza or any(f["capitulo"] not in guia.sectores() + ["09-insercion"] for f in limpieza):
+        fallos.append("«limpieza oficinas» no da fichas, o las da de fuera de los sectores")
+    if guia.busca("zzzzqq") or guia.busca("") or guia.busca("  a "):
+        fallos.append("busca algo donde no hay nada que buscar")
+    if len(guia.busca("hotel", tope=5)) != 5:
+        fallos.append("el tope no se respeta")
+    claves = [guia.clave(f) for fs in guia._FICHAS.values() for f in fs]
+    if len(claves) != len(set(claves)):
+        fallos.append("hay dos fichas con la misma clave: las casillas chocarían")
+    if guia.lista([]) is not None:
+        fallos.append("una lista vacía no es None")
+    lista = guia.lista(barcelo[:2])
+    if not lista or lista["n"] != 2 or [f for _, fs in lista["apartados"] for f in fs] != barcelo[:2]:
+        fallos.append("la lista de marcadas no tiene forma de sección")
+    return informe(nombre, fallos, 7)
+
+
+MESA = {
+    "sispe_actual": ("camarero de sala", {"ocupaciones": [
+        {"codigo": "51201038", "denominacion": "CAMAREROS DE SALA O JEFES DE RANGO"}]}),
+}
+
+
+def p_pantalla_donde_enviar():
+    """La pestaña de la guía: sectores de la mesa, casillas, buscador y vaciado."""
+    nombre = "Dónde enviar el CV: sectores de la mesa, su lista y «Vaciar»"
+    if not _hay_streamlit(nombre):
+        return True
+    fallos = []
+    at = abre("herramientas/guia/vista.py", dict(MESA))
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 6)
+    pildoras = [b for b in at.get("button_group") if (b.key or "").startswith("guia_sector_mesa_")]
+    if not pildoras or not pildoras[0].options[0].startswith("Hostelería"):
+        fallos.append("no salen los sectores de la ocupación que hay en la mesa")
+    if "En la mesa" not in " ".join(m.value for m in at.markdown):
+        fallos.append("no se pinta la franja «En la mesa»")
+    casillas = [c for c in at.checkbox if (c.key or "").startswith("mesa_c_guia_")]
+    if not casillas:
+        fallos.append("las fichas no llevan casilla")
+        return informe(nombre, fallos, 6)
+    casillas[0].check().run()
+    imprimir = [b for b in at.get("download_button") if "su lista" in b.proto.label]
+    if len(at.session_state["mesa_empresas"]) != 1 or not imprimir or imprimir[0].proto.disabled:
+        fallos.append("marcar una empresa no deja imprimir su lista")
+    at.text_input(key="guia_consulta").input("limpieza de oficinas").run()
+    if at.exception or not [c for c in at.checkbox if "13-limpieza/" in (c.key or "")]:
+        fallos.append("el buscador no enseña las fichas que encuentra")
+    if len(at.session_state["mesa_empresas"]) != 1:
+        fallos.append("buscar pierde lo que estaba marcado")
+    vaciar = [b for b in at.button if b.key == "vaciar_mesa"]
+    if not vaciar:
+        fallos.append("falta el botón de vaciar la mesa")
+    else:
+        vaciar[0].click().run()
+        quedan = at.session_state["mesa_empresas"] if "mesa_empresas" in at.session_state else {}
+        if at.exception or quedan or at.session_state["sispe_actual"]:
+            fallos.append("«Vaciar» no deja la mesa limpia")
+    return informe(nombre, fallos, 6)
+
+
+def p_pantalla_portada():
+    """La portada: una columna por momento con todas las herramientas del registro."""
+    nombre = "Portada: los momentos de la cita y todas las herramientas"
+    if not _hay_streamlit(nombre):
+        return True
+    from comun import registro
+    fallos = []
+    at = abre("inicio.py")
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 4)
+    html = " ".join(m.value for m in at.markdown)
+    for _, rotulo, _ in registro.por_momento():
+        if f"</i>{rotulo}</div>" not in html:
+            fallos.append(f"falta la columna «{rotulo}»")
+    faltan = [h["titulo"] for h in registro.HERRAMIENTAS if h["titulo"] not in html]
+    if faltan:
+        fallos.append(f"herramientas sin tarjeta: {faltan}")
+    en_grupos = [h["id"] for _, _, hs in registro.por_momento() for h in hs]
+    if sorted(en_grupos) != sorted(h["id"] for h in registro.HERRAMIENTAS):
+        fallos.append("por_momento() pierde o repite herramientas")
+    if not [t for t in at.text_input if t.key == "portada_consulta"]:
+        fallos.append("falta el buscador de la portada")
+    return informe(nombre, fallos, 4)
 
 
 IA_DE_MENTIRA = """
@@ -416,7 +519,20 @@ def p_pantalla_curriculo():
             fallos.append(f"marcados de entrada: {valor} (comercio, con dos experiencias a mano, va primero)")
     if not any("Dónde enviar" in b.proto.label for b in at.get("download_button")):
         fallos.append("falta el botón «Dónde enviar este CV»")
-    return informe(nombre, fallos, 3)
+    # Con empresas marcadas en la mesa, su lista va delante y ya elegida
+    marcadas = guia.busca("barcelo hotel")[:1] + guia.busca("limpieza oficinas")[:1]
+    at = abre("herramientas/cv/vista.py", {"cv_datos": cv, "cv_paso": 3,
+                                             "mesa_empresas": {guia.clave(f): f for f in marcadas}})
+    pildoras = [b for b in at.get("button_group") if (b.key or "").startswith("cv_w_sectores_")]
+    if at.exception or not pildoras or list(pildoras[0].value or [])[:1] != ["lista"]:
+        fallos.append("las empresas marcadas no salen delante en el paso 4")
+    try:
+        hoja = guia.pdf([guia.lista(marcadas)], "Dónde enviar tu currículum", puesto="camarera")
+        if bytes(hoja[:4]) != b"%PDF":
+            fallos.append("la lista de marcadas no da un PDF")
+    except Exception as e:  # noqa: BLE001
+        fallos.append(f"la lista de marcadas no se imprime: {type(e).__name__}: {e}")
+    return informe(nombre, fallos, 5)
 
 
 def p_pantalla_informes():
@@ -486,11 +602,14 @@ PRUEBAS = [
     p_los_cee_van_aparte,
     p_las_direcciones_se_leen_como_en_la_guia,
     p_la_lista_para_imprimir,
+    p_el_buscador_de_la_guia,
     p_pantalla_codificador,
     p_pantalla_codificador_con_ia,
     p_pantalla_curriculo,
     p_pantalla_informes,
     p_pantalla_formacion_y_extranjeria,
+    p_pantalla_donde_enviar,
+    p_pantalla_portada,
 ]
 
 

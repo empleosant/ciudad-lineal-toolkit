@@ -21,7 +21,7 @@ import re
 
 import streamlit as st
 
-from comun import estilo, guia, ia
+from comun import estilo, guia, ia, mesa
 from herramientas.cv import estado, modelo, motor, plantilla
 
 estilo.aplica()
@@ -604,6 +604,11 @@ else:
         # manda a las empresas y esta lista es para la persona.
         st.markdown('<div class="seccion">Dónde enviarlo</div>', unsafe_allow_html=True)
         secs = guia.secciones(estado.codigos_sispe(cv), generales=False)
+        # Las empresas marcadas en el codificador o en «Dónde enviar el CV»
+        # van delante y ya elegidas: son las que la persona ha dicho que quiere.
+        su_lista = guia.lista(mesa.empresas())
+        if su_lista:
+            secs = [su_lista] + secs
         if not secs:
             st.caption("Cuando haya experiencias, aquí salen las empresas de su sector según la "
                        "guía de empleo, en una hoja aparte para imprimir.")

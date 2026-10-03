@@ -27,7 +27,7 @@ import time
 
 import streamlit as st
 
-from comun import estilo, gist, guia, ia, version
+from comun import estilo, gist, guia, ia, mesa, version
 from comun.texto import normaliza
 from herramientas.cv import estado as cv_estado
 from herramientas.cv import motor as cv_motor
@@ -163,8 +163,15 @@ st.markdown("""
 /* Los ejemplos: chips */
 .st-key-ejemplos div[data-testid="stButtonGroup"] button{ font-size:.84rem; font-weight:600; border-radius:999px; }
 
-/* Dónde enviar el CV: el rótulo del desplegable (las fichas, en comun/estilo.py) */
-.st-key-guia div[data-testid="stExpander"] summary p{ font-weight:700; font-size:.88rem; }
+/* «Con esta ocupación»: el panel de la derecha. Las empresas, en una caja
+   blanca con una casilla por línea: nombre en negrita y debajo qué hace. */
+.st-key-guia > div[data-testid="stVerticalBlock"], .st-key-guia{ gap:.45rem; }
+.st-key-guia_fichas{ background:#fff; border:1px solid var(--linea); border-radius:var(--radio); padding:.3rem .7rem; gap:0 !important; }
+.st-key-guia_fichas div[data-testid="stCheckbox"]{ padding:.3rem 0; border-top:1px solid var(--gris); }
+.st-key-guia_fichas div[data-testid="stElementContainer"]:first-child div[data-testid="stCheckbox"]{ border-top:0; }
+.st-key-guia_fichas label p{ font-size:.8rem; line-height:1.35; color:var(--suave); }
+.st-key-guia_fichas label p strong{ font-size:.86rem; color:var(--texto); }
+.st-key-guia a[data-testid="stPageLink-NavLink"] p{ color:var(--rojo) !important; font-weight:700; font-size:.84rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -271,15 +278,18 @@ def pinta_tarjeta(i, o, interactivo, pintada="p0"):
         )
 
 
-def pinta_tarjetas(ocupaciones, interactivo=False):
+def pinta_tarjetas(ocupaciones, interactivo=False, por_fila=2):
     """Las tarjetas, de dos en dos y muy juntas. En el móvil las columnas se
-    apilan y salen en orden porque cada fila es su propio `st.columns`."""
+    apilan y salen en orden porque cada fila es su propio `st.columns`.
+
+    Con el panel «Con esta ocupación» al lado van de una en una (`por_fila=1`):
+    a media pantalla, dos por fila no dejan sitio a la denominación."""
     if not ocupaciones:
         return
     pintada = _otra_pintada()
     with estilo.caja(f"rejilla_{pintada}"):
-        for fila in range(0, len(ocupaciones), 2):
-            cols = st.columns(2, gap="small")
+        for fila in range(0, len(ocupaciones), por_fila):
+            cols = st.columns(por_fila, gap="small")
             for j, col in enumerate(cols):
                 i = fila + j
                 if i < len(ocupaciones):
@@ -287,7 +297,7 @@ def pinta_tarjetas(ocupaciones, interactivo=False):
                         pinta_tarjeta(i + 1, ocupaciones[i], interactivo, pintada)
 
 
-def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consulta=""):
+def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consulta="", por_fila=2):
     if estado:
         st.progress(min(avance, 0.95), text=estado)
         # Antes se volvia aqui, asi que durante la espera solo se veia la barra.
@@ -327,7 +337,7 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
                             st.rerun()
 
     # 2. TARJETAS DE OCUPACIONES
-    pinta_tarjetas(ocupaciones, interactivo=interactivo)
+    pinta_tarjetas(ocupaciones, interactivo=interactivo, por_fila=por_fila)
 
     if estado:
         return
@@ -370,28 +380,32 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
     pinta_chip(payload)
 
 
+FICHAS_PANEL = 6     # empresas con casilla en el panel; el resto, en la pestaña de la guía
+
+
+def hay_donde_enviar(ocupaciones):
+    ocupaciones = [o for o in ocupaciones if o.get("codigo")]
+    return bool(ocupaciones and guia.secciones([ocupaciones[0]["codigo"]]))
+
+
 def pinta_donde_enviar(ocupaciones):
-    """«Dónde enviar el CV», plegado bajo las tarjetas.
+    """«Con esta ocupación»: el panel de la derecha, con dónde enviar el CV.
 
     Las empresas del sector de la ocupación, sacadas de la guía de empleo
-    (`comun/guia.py`), con la lista para imprimir. Va cerrado porque quien
-    codifica una inscripción no lo necesita; quien orienta, lo abre. Si hay
-    varias tarjetas se elige la ocupación dentro; el rótulo es siempre el de
-    la recomendada, para que el desplegable no se cierre al cambiarla.
+    (`comun/guia.py`). Antes iba plegado bajo las tarjetas; ahora está a la
+    vista, con las primeras empresas del sector y una casilla en cada una: lo
+    que se marca va a «su lista» (`comun/mesa.py`), que sale en la pestaña
+    «Dónde enviar el CV» y en la hoja aparte del generador de CV. Si hay
+    varias tarjetas se elige la ocupación dentro.
     """
     ocupaciones = [o for o in ocupaciones if o.get("codigo")]
-    if not ocupaciones:
-        return
-    primeras = guia.secciones([ocupaciones[0]["codigo"]])
-    if not primeras:
-        return
-    rotulo = ("portales generalistas" if primeras[0]["general"]
-              else ", ".join(s["corto"] for s in primeras[:3]) + ("…" if len(primeras) > 3 else ""))
-    with st.container(key="guia"), st.expander(f"Dónde enviar el CV · {rotulo}", icon=":material/send:"):
+    with st.container(key="guia"):
+        st.markdown('<div class="seccion" style="margin-top:0">Con esta ocupación · dónde enviar el CV</div>',
+                    unsafe_allow_html=True)
         if len(ocupaciones) > 1:
             nombres = {o["codigo"]: o["denominacion"] for o in ocupaciones}
             codigo = st.selectbox(
-                "Para la ocupación", list(nombres), key="sispe_guia_oc",
+                "Para la ocupación", list(nombres), key="sispe_guia_oc", label_visibility="collapsed",
                 format_func=lambda c: f"{c} · {cv_motor.a_oracion(nombres[c])}",
             )
         else:
@@ -405,6 +419,20 @@ def pinta_donde_enviar(ocupaciones):
             "Sector", list(range(len(secs))), default=0, key=f"sispe_guia_sec_{codigo}",
             format_func=lambda i: f"{secs[i]['corto']} · {secs[i]['n']}", label_visibility="collapsed",
         )
+        sec = secs[elegida or 0]
+        if sec.get("nota"):
+            st.caption(f"**Centros especiales de empleo.** {sec['nota']}")
+        with estilo.caja("guia_fichas"):
+            fichas = [f for _, suyas in sec["apartados"] for f in suyas]
+            for f in fichas[:FICHAS_PANEL]:
+                mesa.casilla(f, "sispe")
+        marcadas = len(mesa.empresas())
+        st.caption(
+            (f"Salen {min(FICHAS_PANEL, len(fichas))} de {sec['n']}. " if sec["n"] > FICHAS_PANEL else "")
+            + (f"**{marcadas} marcada{'s' if marcadas != 1 else ''}**: van a su lista y al paso 4 del CV."
+               if marcadas else "Lo que marques va a su lista y al paso 4 del CV.")
+        )
+        st.page_link("herramientas/guia/vista.py", label="Verlas todas en «Dónde enviar el CV» →")
         puesto = cv_motor.a_oracion(denominacion)
         st.download_button(
             "Lista para imprimir (PDF)", icon=":material/print:", on_click="ignore",
@@ -418,10 +446,6 @@ def pinta_donde_enviar(ocupaciones):
         st.caption(f"De la guía «{guia.EDICION['titulo_empresas']}» "
                    f"({guia.EDICION['edicion'].lower()}), comprobada en {guia.EDICION['verificado']}. "
                    "Que una empresa salga aquí no garantiza que tenga vacantes.")
-        sec = secs[elegida or 0]
-        if sec.get("nota"):
-            st.caption(f"**Centros especiales de empleo.** {sec['nota']}")
-        st.markdown(guia.apartados_html(sec["apartados"]), unsafe_allow_html=True)
 
 
 def pinta_chip(payload):
@@ -983,9 +1007,16 @@ if entrada:
 elif st.session_state["sispe_actual"]:
     consulta, payload = st.session_state["sispe_actual"]
     titular(consulta, len(payload.get("ocupaciones", [])))
-    pinta_resultado(payload, interactivo=True, consulta=consulta)
-    if not payload.get("aviso"):
-        pinta_donde_enviar(payload.get("ocupaciones", []))
+    # Las tarjetas a la izquierda y, a la derecha, lo que se puede hacer con
+    # la ocupación. En el móvil el panel queda debajo de las tarjetas.
+    if not payload.get("aviso") and hay_donde_enviar(payload.get("ocupaciones", [])):
+        izq, der = st.columns([3, 2], gap="medium")
+        with izq:
+            pinta_resultado(payload, interactivo=True, consulta=consulta, por_fila=1)
+        with der:
+            pinta_donde_enviar(payload.get("ocupaciones", []))
+    else:
+        pinta_resultado(payload, interactivo=True, consulta=consulta)
     linea_curriculo()
 
 else:

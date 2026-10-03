@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía en las cinco herramientas y las pantallas: 13 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 16 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -88,12 +88,13 @@ navegación de `app.py` montada.
 Una herramienta por carpeta, y una sola forma de añadir otra:
 
 ```
-inicio.py                    portada: una tarjeta por herramienta
+inicio.py                    portada: una columna por momento de la cita y el buscador
 app.py                       monta la navegación a partir de comun/registro.py
 comun/registro.py            LA LISTA: lo único que se toca para añadir una herramienta
 comun/{estilo,ia,gist,texto,version}.py    lo que comparten varias
 comun/plazos.py              cuánto se espera a una llamada colgada (Python puro)
 comun/guia.py                la Guía de empleo de Madrid dentro de la app (Python puro)
+comun/mesa.py                lo que hay «en la mesa»: ocupación, sector, cesta del CV y empresas marcadas
 comun/datos/                 la copia de la guía y la tabla ocupación → sector
 herramientas/<nombre>/vista.py    la pantalla; lo ÚNICO que usa Streamlit
 herramientas/<nombre>/motor.py    la lógica, Python puro
@@ -108,6 +109,39 @@ comprueba al cargar y aborta con un mensaje si lo ha hecho. Eso sustituyó a la
 marca `# === FIN DEL MOTOR ===` de `main`, donde el motor y la interfaz viven en
 el mismo archivo y hay que cortarlo con un Streamlit de mentira. **Aquí esa marca
 no existe y no hace falta.**
+
+## La mesa, los momentos y la cesta (03/10/2026)
+
+Rama `mesa-y-portada`, propuesta visual aprobada por Álvaro ese día.
+
+- **`comun/registro.py` lleva `momento`** en cada herramienta y la lista
+  `MOMENTOS` (inscribir, currículum, preparar, orientar). La portada pinta una
+  columna por momento y el menú un filete entre grupos, las dos a partir de
+  `por_momento()`. Añadir una pestaña sigue siendo tocar solo el registro; un
+  momento nuevo es una línea en `MOMENTOS`. Lo que no diga su momento cae en «Más».
+- **`comun/mesa.py`** no guarda datos de la persona: lee lo que ya hay en la
+  sesión (`sispe_actual`, `cv_datos`) y añade `mesa_empresas`, las fichas de la
+  guía marcadas con casilla. `estilo.banda()` pinta con eso la franja «En la
+  mesa» bajo la barra negra (no sale con la mesa vacía) y `mesa.vacia()` deja
+  todo listo para la siguiente persona, tras confirmar en un desplegable.
+- **La cesta**: el chip «Generador de CV» lleva el número de experiencias. Va
+  en la etiqueta del `page_link` como código en línea (`` `3` ``), que es lo
+  único que el CSS puede distinguir dentro de una etiqueta; en el móvil ese
+  chip se coloca detrás del activo.
+- **La portada busca**: su caja deja el texto en `sispe_pendiente` y salta al
+  codificador con `st.switch_page`.
+- **Codificador a dos columnas**: tarjetas de una en una a la izquierda y, a
+  la derecha, «Con esta ocupación» con las seis primeras empresas del sector,
+  cada una con su casilla (`mesa.casilla`). Mientras la IA piensa siguen
+  saliendo de dos en dos a todo el ancho.
+- **Sexta herramienta, «Dónde enviar el CV»** (`herramientas/guia/vista.py`,
+  sin motor propio: la lógica es `comun/guia.py`): sectores de la mesa,
+  `guia.busca()` por nombre o actividad, cualquier otro sector, casillas y
+  «su lista» con su PDF. Lo marcado sale delante y ya elegido en el paso 4
+  del generador de CV (`guia.lista()`). **El correo de cierre de informes
+  todavía no usa las marcadas.**
+- Pendiente de la propuesta: preparar la entrevista, recursos y ferias, hoja
+  de ruta, y los enlaces codificador → formación y extranjería → informes.
 
 ## La interfaz (rediseñada el 26/09/2026)
 
@@ -128,10 +162,10 @@ en la barra lateral de Streamlit y todos los saltos entre páginas son
   con `vertical_alignment="center"` Streamlit mide el texto como de una
   línea y lo que se parte se sale por abajo; para texto largo, `"top"` o
   columnas.
-- La portada (`inicio.py`) pinta las tarjetas en filas de tres, un
-  `st.columns` por fila, para que en el móvil salgan en orden; y usa
-  sentencias, no expresiones sueltas, porque Streamlit pinta el valor de una
-  expresión suelta (salía un «None» bajo cada tarjeta).
+- La portada (`inicio.py`) pinta una columna por momento, y dentro una
+  tarjeta por herramienta: en el móvil las columnas se apilan en el orden de
+  la cita. Usa sentencias, no expresiones sueltas, porque Streamlit pinta el
+  valor de una expresión suelta (salía un «None» bajo cada tarjeta).
 - Las tarjetas del codificador tienen el dibujo de antes del rediseño
   (vuelto el 03/10/2026 a petición de Álvaro): compactas, número de orden,
   filo a la izquierda (rojo la recomendada), nivel en etiqueta gris y los
@@ -163,7 +197,7 @@ en la barra lateral de Streamlit y todos los saltos entre páginas son
   con Playwright a 1280 y 390 px (Chromium está en `~/.cache/ms-playwright`,
   se lanza con `LD_LIBRARY_PATH=~/apps/libshim/ext/usr/lib/x86_64-linux-gnu`).
 
-Las cinco herramientas: **Codificador SISPE** (el buscador de códigos, que es lo
+Las seis herramientas (la sexta, **Dónde enviar el CV**, está descrita arriba): **Codificador SISPE** (el buscador de códigos, que es lo
 que hay en producción en `main`), **Codificador de extranjería** (sin IA: el
 Excel de códigos de autorizaciones de la oficina, hecho pantalla; las fórmulas
 viven en su `motor.py` y los datos en CSV), **Generador de CV**, **Asesor de
@@ -188,8 +222,9 @@ capítulo «-» quita el sector. Hoy tiene sector el 84 % del catálogo; lo que 
 
 Dónde sale:
 
-- **Codificador**: un desplegable cerrado «Dónde enviar el CV» bajo las
-  tarjetas (sectores en píldoras, fichas y la lista en PDF).
+- **Codificador**: el panel «Con esta ocupación», a la derecha de las
+  tarjetas (sectores en píldoras, las primeras empresas con casilla y la
+  lista en PDF). Hasta el 03/10/2026 era un desplegable cerrado debajo.
 - **Generador de CV**: «Dónde enviarlo» en el paso 4, con los sectores de todas
   las experiencias (las escritas a mano, por el buscador sin IA:
   `cv/estado.codigos_sispe()`). La lista es siempre una hoja **aparte** del

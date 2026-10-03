@@ -15,7 +15,7 @@ de orientación. Cada una vive en su carpeta y se registra en `app.py`.
 
 ```
 app.py                         punto de entrada: solo la navegación
-inicio.py                      portada: una tarjeta por herramienta
+inicio.py                      portada: una columna por momento de la cita y el buscador
 comun/                         lo que comparten varias herramientas
   registro.py                  la lista de herramientas (nombre, nombre corto, icono, ruta, si usa IA, descripción)
   ia.py                        cliente de IA (proveedor, modelos de relevo, genera / genera_flujo)

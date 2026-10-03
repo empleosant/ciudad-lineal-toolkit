@@ -10,6 +10,8 @@ capítulos le tocan a cada ocupación del catálogo SISPE
     secciones(codigos)        lo que hay que enseñar para una o varias ocupaciones, con los
                               centros especiales de empleo aparte
     seccion(capitulo)         un capítulo entero (o algunos apartados) con la misma forma
+    busca(texto)              las fichas de los sectores que nombran eso, las mejores primero
+    lista(fichas)             las empresas marcadas a mano, con la forma de una sección
     pdf(secciones, ...)       la lista para imprimir, en blanco y negro
     apartados_html(...)       las mismas fichas en pantalla (las clases .gu-* de comun/estilo.py)
 
@@ -298,6 +300,49 @@ def sectores():
     return [c for c, cap in CAPITULOS.items() if cap["parte"] == "IV"]
 
 
+def clave(f):
+    """Lo que distingue a una ficha de todas las demás: el id se repite entre capítulos."""
+    return f"{f['capitulo']}/{f['id']}"
+
+
+def busca(texto, tope=40):
+    """Las fichas de los sectores que nombran todas las palabras de `texto`.
+
+    Sin acentos ni mayúsculas. Primero las que lo llevan en el nombre, luego
+    en el apartado y luego en lo que hacen; a igualdad, en el orden de la
+    guía. Solo se mira en los sectores que contratan y en los centros
+    especiales de empleo: es el buscador de «Dónde enviar el CV», no el de
+    los recursos de orientación.
+    """
+    palabras = [p for p in normaliza(texto or "").split() if len(p) > 1]
+    if not palabras:
+        return []
+    hallazgos = []
+    capitulos = sectores() + ["09-insercion"]
+    for orden, capitulo in enumerate(capitulos):
+        for n, f in enumerate(_FICHAS.get(capitulo, [])):
+            nombre, apartado = normaliza(f["nombre"]), normaliza(f.get("apartado", ""))
+            resto = normaliza(f"{f.get('que', '')} {f.get('como', '')} {CAPITULOS[capitulo]['titulo']}")
+            if not all(p in nombre or p in apartado or p in resto for p in palabras):
+                continue
+            peso = sum(0 if p in nombre else 1 if p in apartado else 2 for p in palabras)
+            hallazgos.append((peso, orden, n, f))
+    hallazgos.sort(key=lambda h: h[:3])
+    return [f for *_, f in hallazgos[:tope]]
+
+
+def lista(fichas_, titulo="Tu lista"):
+    """Unas fichas sueltas (las marcadas a mano) con la forma de una sección,
+    para pintarlas con `apartados_html` o imprimirlas con `pdf`. None si no hay."""
+    fichas_ = list(fichas_)
+    if not fichas_:
+        return None
+    return {
+        "capitulo": "lista", "titulo": titulo, "corto": titulo, "entero": False,
+        "apartados": [("Empresas elegidas", fichas_)], "n": len(fichas_), "general": False,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Cómo se escribe una ficha: lo mismo en pantalla y en el papel
 # ---------------------------------------------------------------------------
@@ -353,8 +398,11 @@ def enlace(f):
     return "", ""
 
 
-def ficha_html(f):
-    """Una ficha en pantalla: nombre, a qué se dedica, cómo presentarse y el canal."""
+def ficha_html(f, nombre=True, caja=True):
+    """Una ficha en pantalla: nombre, a qué se dedica, cómo presentarse y el canal.
+
+    Sin `nombre` ni `caja` queda solo el cuerpo: lo usa la pestaña «Dónde
+    enviar el CV», donde el nombre es la casilla con que se marca la empresa."""
     renglon = f.get("formato") == "renglon"
     url, _ = enlace(f)
     datos = []
@@ -366,7 +414,8 @@ def ficha_html(f):
     if tel:
         datos.append(esc(tel))
     return (
-        f'<div class="gu-ficha"><div class="gu-nom">{esc(f["nombre"])}</div>'
+        ('<div class="gu-ficha">' if caja else '<div class="gu-cuerpo">')
+        + (f'<div class="gu-nom">{esc(f["nombre"])}</div>' if nombre else "")
         + (f'<div class="gu-que">{esc(f["que"])}</div>' if f.get("que") else "")
         + (f'<div class="gu-como"><b>Cómo:</b> {esc(f["como"])}</div>' if f.get("como") and not renglon else "")
         + (f'<div class="gu-datos">{" · ".join(datos)}</div>' if datos else "")

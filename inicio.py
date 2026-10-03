@@ -1,13 +1,14 @@
 """
 Portada de la caja de herramientas.
 
-Una tarjeta por herramienta, a partir de `comun/registro.py`, y el dibujo de
-cómo se pasan datos entre sí. Aquí no hay lógica: solo presentación.
+Una columna por momento de la cita (inscribir, currículum, preparar,
+orientar: `MOMENTOS` en `comun/registro.py`) y, dentro, una tarjeta por
+herramienta. Arriba, el buscador del codificador, que es lo que más se usa:
+se empieza a buscar sin abrir nada. Abajo, qué datos viajan de una
+herramienta a otra. Aquí no hay lógica: solo presentación.
 
-Las tarjetas van en filas de tres, una fila por `st.columns`: así en el móvil,
-donde las columnas se apilan, salen en el orden del registro. Con una sola
-fila de tres columnas y las tarjetas repartidas por turnos se apilaban por
-columnas y el orden se descolocaba.
+Una herramienta nueva sale sola en la columna de su momento, y un momento
+nuevo abre columna. En el móvil las columnas se apilan en el orden de la cita.
 
 Cada tarjeta lleva un `page_link` que el CSS estira a toda la tarjeta: se
 pulsa en cualquier sitio y se navega sin recargar la página, que es lo que
@@ -20,22 +21,16 @@ import re
 
 import streamlit as st
 
-from comun import estilo, version
-from comun.registro import HERRAMIENTAS
+from comun import estilo, guia, mesa, version
+from comun.registro import por_momento
 
 estilo.aplica()
 st.markdown("""
 <style>
 [class*="st-key-tarjeta_"]{
   position:relative; background:#fff; border:1px solid var(--linea); border-radius:var(--radio);
-  padding:.95rem 1rem 2.6rem; min-height:10.4rem; transition:border-color .15s ease, box-shadow .15s ease;
+  padding:.75rem .85rem 2.3rem; min-height:8.4rem; transition:border-color .15s ease, box-shadow .15s ease;
 }
-/* Las tarjetas de una fila, todas igual de altas. */
-div[data-testid="stColumn"]:has([class*="st-key-tarjeta_"]) > div[data-testid="stVerticalBlock"],
-div[data-testid="stColumn"]:has([class*="st-key-tarjeta_"]) > div[data-testid="stVerticalBlock"] > *:has([class*="st-key-tarjeta_"]),
-[class*="st-key-tarjeta_"],
-div[data-testid="stColumn"]:has(.tarjeta-datos) *:has(.tarjeta-datos), .tarjeta-datos{ height:100%; }
-div[data-testid="stColumn"]:has(.tarjeta-datos) div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
 /* Streamlit le resta 16px al markdown por el párrafo final que aquí no hay:
    la caja encogía y la etiqueta «Con IA» quedaba cortada por el borde. */
 [class*="st-key-tarjeta_"] div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
@@ -46,15 +41,33 @@ div[data-testid="stColumn"]:has(.tarjeta-datos) div[data-testid="stMarkdownConta
 }
 [class*="st-key-tarjeta_"]:hover{ border-color:var(--rojo); box-shadow:0 4px 16px rgba(209,18,46,.10); }
 [class*="st-key-tarjeta_"] div[data-testid="stVerticalBlock"]{ gap:0; }
-.tarjeta-ic{
-  width:32px; height:32px; border-radius:7px; background:var(--gris); color:var(--texto);
-  display:flex; align-items:center; justify-content:center; margin-bottom:.6rem;
-}
-.tarjeta-ic span[data-testid="stIconMaterial"], .tarjeta-ic .material-symbols-rounded{ font-size:20px; }
 .tarjeta-t{ font-weight:700; font-size:1rem; letter-spacing:-.01em; margin:0 0 .25rem; }
 .tarjeta-d{ font-size:.82rem; color:var(--suave); line-height:1.42; margin:0 0 .7rem; }
 /* La etiqueta va al pie, a la altura de «Abrir», tenga la tarjeta el texto que tenga */
-.tarjeta-pie{ position:absolute; left:1rem; bottom:.85rem; margin:0; z-index:1; pointer-events:none; }
+.tarjeta-pie{ position:absolute; left:.85rem; right:2.4rem; bottom:.7rem; margin:0; z-index:1; pointer-events:none;
+              display:flex; align-items:center; gap:.5rem; white-space:nowrap; overflow:hidden; }
+.tarjeta-pie .chip{ margin:0; flex:0 0 auto; }
+div[data-testid="stMarkdownContainer"]:has(.momento){ margin-bottom:0 !important; }
+.tarjeta-pie small{ font-family:'JetBrains Mono',monospace; font-size:.66rem; color:var(--suave); }
+/* El rótulo de cada momento: número en rojo y filete negro debajo */
+.momento{ font-family:'JetBrains Mono',monospace; font-size:.68rem; font-weight:700; letter-spacing:.06em;
+          text-transform:uppercase; color:var(--suave); padding-bottom:.35rem; border-bottom:2px solid var(--negro); }
+.momento i{ font-style:normal; color:var(--rojo); margin-right:.35rem; }
+div[data-testid="stColumn"]:has(.momento) > div[data-testid="stVerticalBlock"]{ gap:.5rem; }
+/* El buscador de la portada */
+.st-key-portada_buscador{ align-items:flex-end; }
+.st-key-portada_buscador > div:first-child{ flex:1 1 auto !important; min-width:0; }
+.st-key-portada_buscador > div:last-child{ flex:0 0 auto !important; width:auto !important; }
+div[data-testid="stForm"]:has(.st-key-portada_buscador){ border:0 !important; padding:0 !important; }
+/* Lo que viaja entre herramientas: una fila por paso de datos */
+.viaja{ background:#fff; border:1px solid var(--linea); border-radius:var(--radio); }
+.viaja div{ display:flex; gap:.6rem; align-items:baseline; padding:.42rem .75rem; border-top:1px solid var(--gris); font-size:.82rem; }
+.viaja div:first-child{ border-top:0; }
+.viaja b{ white-space:nowrap; } .viaja b i{ font-style:normal; color:var(--rojo); font-weight:800; }
+.viaja span{ color:var(--suave); min-width:0; }
+.pie-portada{ font-family:'JetBrains Mono',monospace; font-size:.66rem; color:var(--suave);
+              display:flex; flex-wrap:wrap; gap:.2rem 1.1rem; margin-top:1rem; }
+@media (max-width:640px){ .viaja div{ flex-direction:column; gap:0; } }
 [class*="st-key-tarjeta_"] div[data-testid="stMarkdown"],
 [class*="st-key-tarjeta_"] div[data-testid="stMarkdown"] > div,
 [class*="st-key-tarjeta_"] div[data-testid="stMarkdownContainer"]{ position:static !important; }
@@ -65,108 +78,106 @@ div[data-testid="stColumn"]:has(.tarjeta-datos) div[data-testid="stMarkdownConta
 [class*="st-key-tarjeta_"] div[data-testid="stPageLink"]{ position:static !important; }
 [class*="st-key-tarjeta_"] a[data-testid="stPageLink-NavLink"]{
   position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end;
-  padding:.8rem 1rem; background:transparent !important; text-decoration:none !important;
+  padding:.62rem .85rem; background:transparent !important; text-decoration:none !important;
   border-radius:var(--radio);
 }
 [class*="st-key-tarjeta_"] a[data-testid="stPageLink-NavLink"] p{
-  color:var(--rojo) !important; font-weight:700; font-size:.82rem; margin:0;
+  color:var(--rojo) !important; font-weight:800; font-size:1rem; margin:0;
 }
 [class*="st-key-tarjeta_"] a[data-testid="stPageLink-NavLink"]:hover p{ text-decoration:underline; text-underline-offset:3px; }
-.tarjeta-datos{
-  border:1px dashed #C9CBD2; border-radius:var(--radio); min-height:10.4rem; padding:1rem;
-  display:flex; align-items:center; justify-content:center; text-align:center;
-  font-size:.8rem; color:var(--suave); line-height:1.5;
-}
-.tarjeta-datos b{ color:var(--texto); }
-
-/* Cómo se pasan datos: una cadena de tres, y las dos que van por libre */
-.flujo{ display:flex; align-items:stretch; background:#fff; border:1px solid var(--linea); border-radius:var(--radio); overflow:hidden; }
-.flujo .nodo{ flex:1 1 0; padding:.8rem .95rem; min-width:0; }
-.flujo .nodo b{ display:block; font-size:.9rem; margin-bottom:.15rem; }
-.flujo .nodo span{ display:block; font-size:.78rem; color:var(--suave); line-height:1.4; }
-.flujo .paso-datos{
-  flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; align-items:center;
-  padding:.5rem .8rem; background:#FAFAFA; border-left:1px solid var(--linea); border-right:1px solid var(--linea);
-  font-size:.72rem; color:var(--suave); text-align:center; line-height:1.3; max-width:9rem;
-}
-.flujo .paso-datos i{ color:var(--rojo); font-style:normal; font-weight:800; font-size:1rem; }
-.flujo .nodo.aparte{ background:#FAFAFA; border-left:1px dashed #C9CBD2; }
-@media (max-width:640px){
-  .flujo{ flex-direction:column; }
-  .flujo .paso-datos{ border:0; border-top:1px solid var(--linea); border-bottom:1px solid var(--linea); max-width:none; flex-direction:row; gap:.5rem; }
-  .flujo .paso-datos i{ transform:rotate(90deg); }
-  .flujo .nodo.aparte{ border-left:0; border-top:1px dashed #C9CBD2; }
-}
 </style>
 """, unsafe_allow_html=True)
 
-estilo.banda(
+with estilo.banda(
     "inicio", "Herramientas de orientación",
-    "Pequeñas utilidades para el día a día de la oficina, que se pasan datos entre sí.",
-)
+    "Lo que se hace con una persona en la mesa, en el orden en que se hace. "
+    "Lo que averiguas en una herramienta ya está puesto en la siguiente.",
+):
+    # Un formulario para que Intro busque, como en el codificador.
+    with st.form("portada_buscar", border=False):
+        with estilo.fila("portada_buscador", vertical_alignment="bottom"):
+            descrito = st.text_input(
+                "Empieza por el código de ocupación", key="portada_consulta",
+                placeholder="Describe el puesto: «limpiaba habitaciones en un hotel»",
+            )
+            buscar = st.form_submit_button("Buscar", type="primary")
+    if buscar and (descrito or "").strip():
+        # El codificador recoge `sispe_pendiente` al abrirse y busca.
+        st.session_state["sispe_pendiente"] = descrito.strip()
+        st.switch_page("herramientas/sispe/vista.py")
+
+
+def _cifra(n):
+    return f"{n:,}".replace(",", ".")
+
+
+def dato(h):
+    """La cifra del pie de la tarjeta: de qué tamaño es lo que hay detrás, o
+    cómo va lo que hay en la mesa. '' si la herramienta no tiene nada que decir."""
+    try:
+        if h["id"] == "sispe":
+            from herramientas.sispe import motor as sispe
+            return f"{_cifra(len(sispe.IDX['registros']))} ocupaciones"
+        if h["id"] == "extranjeria":
+            from herramientas.extranjeria import motor as extranjeria
+            fecha = extranjeria.NOTAS["titulo"].split("·")[-1].strip().lower()
+            # «Actualizado septiembre 2026» -> «septiembre de 2026»
+            fecha = re.sub(r"^actualizad[oa]\s+", "", fecha)
+            return re.sub(r"^([a-zé]+) (\d{4})$", r"\1 de \2", fecha)
+        if h["id"] == "cv":
+            n = mesa.cesta()
+            return f"{n} puesto{'s' if n != 1 else ''} en curso" if n else ""
+        if h["id"] == "guia":
+            n = len(mesa.empresas())
+            return (f"{n} marcada{'s' if n != 1 else ''}" if n
+                    else f"{_cifra(int(guia.EDICION['fichas']))} fichas")
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
 
 
 def tarjeta(h):
     with estilo.caja(f"tarjeta_{h['id']}"):
-        icono = h["icono"].replace(":material/", "").rstrip(":")
+        cifra = dato(h)
         st.markdown(
-            f'<div class="tarjeta-ic"><span class="material-symbols-rounded" '
-            f'style="font-family:\'Material Symbols Rounded\'">{icono}</span></div>'
             f'<div class="tarjeta-t">{html.escape(h["titulo"])}</div>'
             f'<div class="tarjeta-d">{html.escape(h["descripcion"])}</div>'
-            f'<div class="tarjeta-pie"><span class="chip {"negro" if h.get("ia") else ""}" '
-            f'style="margin:0">{"Con IA" if h.get("ia") else "Sin IA"}</span></div>',
+            f'<div class="tarjeta-pie"><span class="chip {"negro" if h.get("ia") else ""}">'
+            f'{"Con IA" if h.get("ia") else "Sin IA"}</span>'
+            + (f"<small>{html.escape(cifra)}</small>" if cifra else "") + "</div>",
             unsafe_allow_html=True,
         )
-        st.page_link(h["ruta"], label="Abrir →")
+        st.page_link(h["ruta"], label="→", help=f"Abrir {h['titulo']}")
 
 
-def datos():
-    """La sexta celda: qué versión corre y de cuándo son los datos."""
-    try:
-        from herramientas.sispe import motor as sispe
-        n_ocupaciones = f"{len(sispe.IDX['registros']):,}".replace(",", ".")
-    except Exception:  # noqa: BLE001
-        n_ocupaciones = "2.218"
-    try:
-        from herramientas.extranjeria import motor as extranjeria
-        fecha_ext = extranjeria.NOTAS["titulo"].split("·")[-1].strip().lower()
-        # «Actualizado septiembre 2026» -> «septiembre de 2026»
-        fecha_ext = re.sub(r"^actualizad[oa]\s+", "", fecha_ext)
-        fecha_ext = re.sub(r"^([a-zé]+) (\d{4})$", r"\1 de \2", fecha_ext)
-    except Exception:  # noqa: BLE001
-        fecha_ext = "septiembre de 2026"
-    st.markdown(
-        f'<div class="tarjeta-datos"><div>Versión <b>{version.commit()}</b><br>'
-        f'Catálogo SISPE de <b>{n_ocupaciones}</b> ocupaciones<br>'
-        f'Extranjería: datos de <b>{html.escape(fecha_ext)}</b></div></div>',
-        unsafe_allow_html=True,
-    )
+grupos = por_momento()
+cols = st.columns(len(grupos), gap="medium")
+for n, (col, (_, rotulo, herramientas)) in enumerate(zip(cols, grupos), 1):
+    with col:
+        st.markdown(f'<div class="momento"><i>{n:02d}</i>{html.escape(rotulo)}</div>',
+                    unsafe_allow_html=True)
+        for h in herramientas:
+            tarjeta(h)
 
-
-st.markdown('<div class="seccion">Herramientas</div>', unsafe_allow_html=True)
-celdas = [("tarjeta", h) for h in HERRAMIENTAS] + [("datos", None)]
-for i in range(0, len(celdas), 3):
-    cols = st.columns(3, gap="medium")
-    for col, (tipo, h) in zip(cols, celdas[i:i + 3]):
-        with col:
-            # Sentencias, no una expresión: Streamlit pinta el valor de una
-            # expresión suelta, y aquí saldría un «None» bajo cada tarjeta.
-            if tipo == "tarjeta":
-                tarjeta(h)
-            else:
-                datos()
-
-st.markdown('<div class="seccion">Cómo se pasan datos</div>', unsafe_allow_html=True)
+st.markdown('<div class="seccion">Lo que viaja entre herramientas</div>', unsafe_allow_html=True)
+VIAJA = [
+    ("Codificador", "Generador de CV", "la experiencia, con el nombre del puesto ya preparado"),
+    ("Codificador", "Dónde enviar", "el sector de la ocupación, y las empresas que se marquen"),
+    ("Generador de CV", "Formación", "el perfil, sin el nombre ni el contacto"),
+    ("Generador de CV", "Informes", "la trayectoria"),
+    ("Dónde enviar", "Generador de CV", "las empresas marcadas, en la hoja aparte del paso 4"),
+    ("Guía de empleo", "Informes", "las empresas comprobadas del sector, para el correo de cierre"),
+]
 st.markdown(
-    '<div class="flujo">'
-    '<div class="nodo"><b>Codificador SISPE</b><span>Busca la ocupación y pulsa «+ CV».</span></div>'
-    '<div class="paso-datos"><i>→</i>la experiencia, con el nombre del puesto ya preparado</div>'
-    '<div class="nodo"><b>Generador de CV</b><span>Ordena la trayectoria y saca el Word.</span></div>'
-    '<div class="paso-datos"><i>→</i>el perfil, sin el nombre ni el contacto</div>'
-    '<div class="nodo"><b>Asesor de formación</b><span>Propone cursos del catálogo y explica por qué.</span></div>'
-    '<div class="nodo aparte"><b>Informes · Extranjería</b><span>Van por libre. Informes también puede '
-    'tomar la trayectoria del generador de CV.</span></div>'
-    '</div>',
+    '<div class="viaja">' + "".join(
+        f"<div><b>{html.escape(de)} <i>→</i> {html.escape(a)}</b><span>{html.escape(que)}</span></div>"
+        for de, a, que in VIAJA
+    ) + "</div>",
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    f'<div class="pie-portada"><span>Versión {html.escape(version.commit())}</span>'
+    f'<span>Guía de empleo: {html.escape(guia.EDICION["edicion"].lower())}</span></div>',
     unsafe_allow_html=True,
 )

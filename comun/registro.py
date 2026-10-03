@@ -13,7 +13,21 @@ Cada herramienta lleva:
     corto    lo que cabe en el menú del móvil; si falta, se usa el título
     ia       si llama a la IA (sin claves solo funcionan las que no)
     icono    un icono de Material, para el menú y la portada
+    momento  en qué momento de la cita se usa (ver MOMENTOS): agrupa la
+             portada en columnas y el menú con un filete entre grupos
+
+Una herramienta nueva es una entrada más con su momento; un momento nuevo
+(«Seguimiento», por ejemplo) es una línea más en MOMENTOS y la portada le
+abre columna sola.
 """
+
+# Lo que se hace con una persona en la mesa, en el orden en que se hace.
+MOMENTOS = [
+    ("inscribir", "Inscribir"),
+    ("curriculum", "Currículum"),
+    ("preparar", "Preparar"),
+    ("orientar", "Orientar"),
+]
 
 INICIO = {
     "id": "inicio",
@@ -26,6 +40,7 @@ INICIO = {
 HERRAMIENTAS = [
     {
         "id": "sispe",
+        "momento": "inscribir",
         "ruta": "herramientas/sispe/vista.py",
         "titulo": "Codificador SISPE",
         "corto": "Codificador SISPE",
@@ -38,6 +53,7 @@ HERRAMIENTAS = [
     },
     {
         "id": "extranjeria",
+        "momento": "inscribir",
         "ruta": "herramientas/extranjeria/vista.py",
         "titulo": "Codificador de extranjería",
         "corto": "Extranjería",
@@ -50,6 +66,7 @@ HERRAMIENTAS = [
     },
     {
         "id": "cv",
+        "momento": "curriculum",
         "ruta": "herramientas/cv/vista.py",
         "titulo": "Generador de CV",
         "corto": "Generador de CV",
@@ -61,7 +78,20 @@ HERRAMIENTAS = [
                        "palabra o por escrito, sugiere funciones y redacta el objetivo.",
     },
     {
+        "id": "guia",
+        "momento": "curriculum",
+        "ruta": "herramientas/guia/vista.py",
+        "titulo": "Dónde enviar el CV",
+        "corto": "Dónde enviar",
+        "icono": ":material/send:",
+        "url": "donde-enviar",
+        "ia": False,
+        "descripcion": "La Guía de empleo de Madrid con buscador: las empresas del sector "
+                       "de la persona, las que se marquen y la lista para imprimir.",
+    },
+    {
         "id": "formacion",
+        "momento": "preparar",
         "ruta": "herramientas/formacion/vista.py",
         "titulo": "Asesor de formación",
         "corto": "Formación",
@@ -74,6 +104,7 @@ HERRAMIENTAS = [
     },
     {
         "id": "informes",
+        "momento": "orientar",
         "ruta": "herramientas/informes/vista.py",
         "titulo": "Informes de orientación",
         "corto": "Informes",
@@ -87,6 +118,20 @@ HERRAMIENTAS = [
 ]
 
 PAGINAS = [INICIO] + HERRAMIENTAS
+
+
+def por_momento():
+    """[(id del momento, rótulo, herramientas)] en el orden de MOMENTOS.
+
+    Lo que no diga su momento, o diga uno que no existe, cae al final en
+    «Más», para que una herramienta nueva no desaparezca por un despiste.
+    """
+    conocidos = {m for m, _ in MOMENTOS}
+    grupos = [(m, rotulo, [h for h in HERRAMIENTAS if h.get("momento") == m]) for m, rotulo in MOMENTOS]
+    sueltas = [h for h in HERRAMIENTAS if h.get("momento") not in conocidos]
+    if sueltas:
+        grupos.append(("mas", "Más", sueltas))
+    return [g for g in grupos if g[2]]
 
 
 def por_id(id_):

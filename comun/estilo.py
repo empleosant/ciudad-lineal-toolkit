@@ -110,13 +110,52 @@ section.stMain{ overflow-x:hidden; }
 }
 /* Los iconos del menú sobran en la barra: el nombre basta y ocupa menos */
 .st-key-menu a[data-testid="stPageLink-NavLink"] > span:has(> span[data-testid="stIconMaterial"]){ display:none; }
+/* El filete entre un momento de la cita y el siguiente */
+.st-key-menu > div:has(.filete){ flex:0 0 1px !important; width:1px !important; height:18px; background:#3A3A3E; margin:0 .2rem; }
+.st-key-menu > div:has(.filete) *{ display:none; }
+/* La cesta del generador de CV: el número va en la etiqueta como código */
+.st-key-menu a[data-testid="stPageLink-NavLink"] code{
+  margin-left:.4rem; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:#fff !important; color:var(--negro) !important; font-family:inherit; font-size:.68rem; font-weight:800;
+  display:inline-flex; align-items:center; justify-content:center; line-height:1;
+}
+.st-key-menu a[data-testid="stPageLink-NavLink"]:has(code){ color:#fff !important; border-color:#8E8E93; }
 @media (max-width:640px){
   .marca small{ display:none; }
   /* En el móvil la herramienta activa va la primera de la tira, para que se
-     vea sin deslizar; la marca sigue delante de todo. */
-  .st-key-menu > div:first-child{ order:-2; }
-  .st-key-menu > div:has(a[data-testid="stPageLink-NavLink"][disabled]){ order:-1; }
+     vea sin deslizar, y detrás la que lleva cesta; la marca, delante de todo.
+     Los filetes sobran: con el orden cambiado ya no separan grupos. */
+  .st-key-menu > div:first-child{ order:-3; }
+  .st-key-menu > div:has(a[data-testid="stPageLink-NavLink"][disabled]){ order:-2; }
+  .st-key-menu > div:has(a[data-testid="stPageLink-NavLink"] code){ order:-1; }
+  .st-key-menu > div:has(.filete){ display:none !important; }
 }
+
+/* ---------- La franja «En la mesa» ---------- */
+/* Blanca, de lado a lado como la barra y pegada a ella. */
+.st-key-mesa{
+  background:#fff; border-bottom:1px solid var(--linea);
+  width:100vw !important; max-width:100vw !important;
+  margin:-2rem 0 .2rem calc(50% - 50vw) !important; padding:.3rem calc(50vw - 50%);
+  flex-wrap:nowrap !important; align-items:center; gap:.6rem !important;
+}
+.st-key-mesa > div:first-child{ flex:1 1 auto !important; min-width:0 !important; }
+.st-key-mesa > div:last-child{ flex:0 0 auto !important; width:auto !important; }
+.st-key-mesa div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
+.mesa-datos{ display:flex; align-items:center; gap:1.1rem; white-space:nowrap; overflow-x:auto;
+             font-size:.78rem; color:var(--texto); scrollbar-width:none; }
+.mesa-datos::-webkit-scrollbar{ display:none; }
+.mesa-datos > *{ flex:0 0 auto; }
+.mesa-datos em{ font-style:normal; font-family:'JetBrains Mono',monospace; font-size:.66rem; font-weight:700;
+                letter-spacing:.06em; text-transform:uppercase; color:var(--rojo-oscuro); }
+.mesa-datos code{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.74rem;
+                  background:var(--gris); color:var(--texto); padding:1px 6px; border-radius:4px; }
+.st-key-mesa button{
+  min-height:0 !important; height:28px; padding:0 .6rem !important; background:#fff !important;
+  border:1px solid var(--linea) !important; color:var(--suave) !important;
+}
+.st-key-mesa button p{ font-size:.74rem !important; font-weight:600; }
+.st-key-mesa button:hover{ border-color:var(--negro) !important; color:var(--texto) !important; }
 
 /* ---------- El título de la página ---------- */
 .st-key-titulo{ flex-wrap:nowrap !important; align-items:flex-start !important; margin-bottom:.6rem; overflow:visible !important; }
@@ -413,6 +452,7 @@ def banda(actual, titulo, subtitulo="", acciones=None):
     """
     with caja("cabecera"):
         menu(actual)
+    franja()
     with fila("titulo", vertical_alignment="top"):
         st.markdown(
             f'<div class="titulo-pagina">{titulo}</div>'
@@ -502,14 +542,59 @@ def menu(actual):
     En el móvil la línea se desliza con el dedo en vez de romperse; la marca
     se queda fija a la izquierda. `actual` es el id (ver `comun/registro.py`)
     de la herramienta que lo pinta: sale marcada en rojo y no es un enlace.
-    """
-    from comun.registro import PAGINAS
 
+    Entre un momento de la cita y el siguiente (ver `MOMENTOS` en el registro)
+    va un filete. El generador de CV lleva la cesta: cuántos puestos se le han
+    mandado ya. El número viaja en la etiqueta como código en línea, que es lo
+    único que una etiqueta de `page_link` deja distinguir con CSS.
+    """
+    from comun import mesa
+    from comun.registro import INICIO, por_momento
+
+    cesta = mesa.cesta()
     with fila("menu", vertical_alignment="center"):
         st.markdown(
             '<div class="marca"><i></i>Herramientas<small>Oficina de Empleo · Ciudad Lineal</small></div>',
             unsafe_allow_html=True,
         )
-        for h in PAGINAS:
-            st.page_link(h["ruta"], label=h.get("corto") or h["titulo"], icon=h["icono"],
-                         disabled=(h["id"] == actual))
+        st.page_link(INICIO["ruta"], label=INICIO["titulo"], icon=INICIO["icono"],
+                     disabled=(actual == INICIO["id"]))
+        for _, _, herramientas in por_momento():
+            st.markdown('<i class="filete"></i>', unsafe_allow_html=True)
+            for h in herramientas:
+                rotulo = h.get("corto") or h["titulo"]
+                if h["id"] == "cv" and cesta:
+                    rotulo += f" `{cesta}`"
+                st.page_link(h["ruta"], label=rotulo, icon=h["icono"], disabled=(h["id"] == actual))
+
+
+def franja():
+    """«En la mesa»: lo que ya se sabe de la persona, bajo la barra negra.
+
+    La ocupación de la que se habla, su sector, cuántas experiencias lleva el
+    currículo y cuántas empresas hay marcadas (`comun/mesa.py`). Va en una
+    sola línea que se desliza si no cabe. No sale mientras la mesa está vacía.
+    """
+    from comun import mesa
+
+    datos = mesa.resumen()
+    if not datos:
+        return
+    trozos = []
+    for rotulo, valor, codigo in datos:
+        trozos.append(
+            "<span>"
+            + (f'<code>{html.escape(codigo)}</code> ' if codigo else "")
+            + (f"{html.escape(rotulo)} " if rotulo else "")
+            + (f"<b>{html.escape(valor)}</b>" if rotulo else html.escape(valor))
+            + "</span>"
+        )
+    with fila("mesa", vertical_alignment="center"):
+        st.markdown(
+            f'<div class="mesa-datos"><em>En la mesa</em>{"".join(trozos)}</div>',
+            unsafe_allow_html=True, **_ancho("stretch"),
+        )
+        with st.popover("Vaciar", help="Para atender a la siguiente persona"):
+            st.markdown("Se borran el **currículo en curso**, la última búsqueda del codificador "
+                        "y las empresas marcadas. Los ajustes y el catálogo de cursos se quedan.")
+            st.button("Vaciar la mesa", key="vaciar_mesa", type="primary", on_click=mesa.vacia)
