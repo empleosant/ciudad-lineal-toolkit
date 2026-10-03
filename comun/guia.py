@@ -300,6 +300,61 @@ def sectores():
     return [c for c, cap in CAPITULOS.items() if cap["parte"] == "IV"]
 
 
+# ---------------------------------------------------------------------------
+# Para empezar a trabajar: sin experiencia ni titulación
+# ---------------------------------------------------------------------------
+# Lo pidió Álvaro el 03/10/2026: es lo que pregunta a menudo quien acaba de
+# llegar a España y quiere empezar a trabajar cuanto antes. La guía no marca
+# qué empresas contratan sin experiencia, así que esto es una selección HECHA
+# A MANO de apartados donde lo corriente es entrar sin experiencia previa ni
+# título: se queda fuera lo que pide habilitación (seguridad, socorrismo),
+# certificado de profesionalidad (residencias, ayuda a domicilio) o carné
+# profesional. En el orden en que se enseña. Si la guía renombra un apartado,
+# `pruebas/guia.py` lo canta.
+PARA_EMPEZAR = [
+    ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos"]),
+    ("11-hosteleria", ["Cadenas de restauración", "Hoteles"]),
+    ("12-logistica", ["Operadores logísticos", "Paquetería y reparto", "Comercio electrónico y distribución"]),
+    ("10-comercio", ["Supermercados e hipermercados"]),
+    ("46-hogar", ["Agencias de empleo de hogar", "Bolsas gratuitas de entidades y parroquias",
+                  "Asesoría y defensa de tus derechos"]),
+    ("35-mensajeria", ["Mensajería y paquetería", "Reparto a domicilio y plataformas"]),
+    ("37-alimentacion", ["Envasado y plataformas de alimentación", "Mercamadrid, mayoristas y mercados",
+                         "Formación y carnés"]),
+    ("21-construccion", ["Constructoras", "Formación y tarjeta profesional"]),
+    ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente"]),
+    ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
+    ("43-movilidad", ["Estaciones de servicio y lavado"]),
+    ("40-eventos", ["Azafatas, auxiliares y personal de eventos", "Catering y restauración de eventos"]),
+    ("08-ett", ["Grandes redes"]),
+    ("09-insercion", ["Empresas de inserción"]),
+    ("33-colectivos", ["Si vienes de otro país"]),
+]
+NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni título. Es una "
+                "selección de la oficina, no una garantía: cada oferta dice lo que pide. Para "
+                "trabajar hace falta, en todos, autorización de trabajo en vigor.")
+
+
+# Dos capítulos de los que solo entra un apartado y cuyo título no cabe en una píldora.
+_CORTOS_EMPEZAR = {"09-insercion": "Empresas de inserción", "33-colectivos": "Si vienes de otro país"}
+
+
+def para_empezar():
+    """Las secciones de «Para empezar a trabajar», en su orden."""
+    salida = []
+    for capitulo, apartados in PARA_EMPEZAR:
+        s = seccion(capitulo, apartados)
+        if s:
+            corto = _CORTOS_EMPEZAR.get(capitulo)
+            salida.append({**s, "corto": corto, "titulo": corto} if corto else s)
+    return salida
+
+
+def es_para_empezar(f):
+    """La ficha está en uno de los apartados de `PARA_EMPEZAR`."""
+    return any(f["capitulo"] == c and f.get("apartado") in apartados for c, apartados in PARA_EMPEZAR)
+
+
 def clave(f):
     """Lo que distingue a una ficha de todas las demás: el id se repite entre capítulos."""
     return f"{f['capitulo']}/{f['id']}"

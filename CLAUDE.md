@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 18 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 19 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -156,6 +156,16 @@ Rama `mesa-y-portada`, propuesta visual aprobada por Álvaro ese día.
   puesto en el Gist (`empresas_ia.json`). **En local no se puede probar la
   llamada de verdad**: la batería usa un buscador de mentira; el cupo gratuito
   y la calidad hay que mirarlos en el despliegue.
+- **«Para empezar a trabajar: sin experiencia ni titulación»** (03/10/2026,
+  lo pide a menudo quien acaba de llegar a España): un interruptor de la
+  pestaña que cambia las píldoras por `guia.PARA_EMPEZAR`, una selección
+  **hecha a mano** de apartados (limpieza, hostelería, logística, hogar…,
+  más ETT, empresas de inserción y «Si vienes de otro país»). Fuera lo que
+  pide habilitación, certificado o carné. Con el filtro puesto, el buscador y
+  la IA se limitan a eso (`modelo.entrada(para_empezar=True)`; se guarda con
+  otra clave). La selección es de Claude y está pendiente de que Álvaro la revise.
+- «↺ Nueva búsqueda» limpia lo escrito, el sector y el filtro (no su lista), y
+  «Regenerar con IA» va arriba de las fichas sugeridas, no al final.
 - Pendiente de la propuesta: preparar la entrevista, recursos y ferias, hoja
   de ruta, y los enlaces codificador → formación y extranjería → informes.
 

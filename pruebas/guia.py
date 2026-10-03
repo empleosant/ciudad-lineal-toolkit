@@ -443,7 +443,9 @@ BUSCADOR_DE_MENTIRA = """
 import comun.ia as ia
 import herramientas.guia.modelo as modelo_guia
 ia.tiene_clave = lambda prov: True
-def _busca(puesto, sector="", ya=(), al_relevar=None):
+LLAMADAS = []
+def _busca(puesto, sector="", ya=(), al_relevar=None, para_empezar=False):
+    LLAMADAS.append((puesto, para_empezar))
     if {falla!r}:
         raise RuntimeError("429 cupo de búsquedas agotado")
     return {respuesta!r}, {fuentes!r}, {apoyos!r}
@@ -488,7 +490,52 @@ def p_pantalla_empresas_con_ia():
         marcadas = list(at.session_state["mesa_empresas"].values())
         if at.exception or len(marcadas) != 1 or not marcadas[0].get("ia"):
             fallos.append("una sugerida marcada no llega a su lista")
-    return informe(nombre, fallos, 4)
+        # Con resultados, el botón pasa a ser «Regenerar», arriba y activo
+        regenerar = [b for b in at.button if b.key == "guia_ia_buscar"]
+        if not regenerar or "Regenerar" not in regenerar[0].label or regenerar[0].disabled:
+            fallos.append("tras buscar no queda a la vista el botón de regenerar")
+        else:
+            regenerar[0].click().run()
+            if at.exception or len([c for c in at.checkbox if (c.key or "").startswith("mesa_c_guia_ia/")]) != 2:
+                fallos.append("regenerar rompe la pantalla o pierde las fichas")
+    return informe(nombre, fallos, 5)
+
+
+def p_para_empezar_a_trabajar():
+    """El filtro «sin experiencia ni titulación»: la selección a mano y la pantalla."""
+    nombre = "Para empezar a trabajar: la selección existe y la pantalla la enseña"
+    fallos = []
+    for capitulo, apartados in guia.PARA_EMPEZAR:
+        cap = guia.CAPITULOS.get(capitulo)
+        for a in apartados:
+            if cap is None or a not in cap["apartados"] or not guia.fichas(capitulo, a):
+                fallos.append(f"{capitulo} / {a}: no existe en la guía o no tiene fichas")
+    secs = guia.para_empezar()
+    if len(secs) != len(guia.PARA_EMPEZAR) or any(len(s["corto"]) > 30 for s in secs):
+        fallos.append("falta algún sector, o su nombre no cabe en una píldora")
+    fuera = [f for f in guia.fichas("19-seguridad") + guia.fichas("14-cuidados") if guia.es_para_empezar(f)]
+    if fuera or not guia.es_para_empezar(guia.fichas("13-limpieza", "Empresas de limpieza")[0]):
+        fallos.append("se cuela lo que pide habilitación o certificado, o falta la limpieza")
+    from herramientas.guia import modelo as guia_modelo
+    if "SIN experiencia" not in guia_modelo.entrada("mozo", para_empezar=True) \
+            or "SIN experiencia" in guia_modelo.entrada("mozo"):
+        fallos.append("la IA no recibe (o recibe siempre) la condición de puestos de entrada")
+    if not _hay_streamlit(nombre):
+        return informe(nombre, fallos, 8)
+    at = abre("herramientas/guia/vista.py", dict(MESA))
+    at.toggle(key="guia_empezar").set_value(True).run()
+    pildoras = [b for b in at.get("button_group") if b.key == "guia_sector_empezar"]
+    if at.exception or not pildoras or not pildoras[0].options[0].startswith("Limpieza"):
+        fallos.append("con el filtro puesto no salen los sectores para empezar")
+    if not [c for c in at.checkbox if "13-limpieza/" in (c.key or "")]:
+        fallos.append("con el filtro puesto no salen las fichas de limpieza")
+    at.text_input(key="guia_consulta").input("seguridad").run()
+    if at.exception or [c for c in at.checkbox if "19-seguridad/" in (c.key or "")]:
+        fallos.append("buscando con el filtro salen fichas de fuera de la selección")
+    at.button(key="guia_nueva").click().run()
+    if at.exception or at.session_state["guia_consulta"] or at.session_state["guia_empezar"]:
+        fallos.append("«Nueva búsqueda» no deja el buscador limpio")
+    return informe(nombre, fallos, 8)
 
 
 MESA = {
@@ -722,6 +769,7 @@ PRUEBAS = [
     p_la_lista_para_imprimir,
     p_el_buscador_de_la_guia,
     p_las_sugeridas_por_ia,
+    p_para_empezar_a_trabajar,
     p_pantalla_codificador,
     p_pantalla_codificador_con_ia,
     p_pantalla_curriculo,

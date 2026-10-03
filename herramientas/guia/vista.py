@@ -48,6 +48,10 @@ st.markdown("""
 [class*="st-key-gf_"] div[data-testid="stCheckbox"]{ min-height:0; }
 [class*="st-key-gf_"] div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
 [class*="st-key-gf_"] label p{ font-size:.88rem; line-height:1.25; }
+.st-key-ia_regenerar{ flex-wrap:nowrap !important; align-items:center; }
+.st-key-ia_regenerar > div:first-child{ flex:1 1 auto !important; min-width:0; }
+.st-key-ia_regenerar > div:last-child{ flex:0 0 auto !important; width:auto !important; }
+.st-key-ia_regenerar div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
 .gu-cuerpo{ padding-left:1.75rem; }
 .gu-ia{ padding-left:1.75rem; margin-top:.2rem; } .gu-ia .chip{ margin-left:0; }
 /* Su lista: una línea por empresa con su aspa */
@@ -65,6 +69,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def nueva_busqueda():
+    """Empezar otra vez: fuera lo escrito, el sector abierto y el filtro.
+
+    Su lista y lo que la IA ya buscó no se tocan: lo primero es de la persona
+    y lo segundo está guardado para no gastar cupo dos veces."""
+    st.session_state["guia_consulta"] = ""
+    st.session_state["guia_otro"] = None
+    st.session_state["guia_empezar"] = False
+
+
 de_la_mesa = mesa.secciones(cee=True)
 ocupacion = mesa.ocupacion()
 puesto = cv_motor.a_oracion(ocupacion[1]) if ocupacion else ""
@@ -74,7 +88,7 @@ with estilo.banda(
     "Las empresas de la Guía de empleo de Madrid, por sector. Lo que marques es su lista: "
     "se imprime aparte y sale en el paso 4 del generador de CV.",
 ):
-    c_busca, c_otro = st.columns([3, 2], gap="small")
+    c_busca, c_otro, c_nueva = st.columns([6, 4, 2.4], gap="small")
     consulta = c_busca.text_input(
         "Buscar en la guía", key="guia_consulta", label_visibility="collapsed",
         placeholder="Busca una empresa o una actividad: «hoteles», «limpieza de oficinas»",
@@ -84,33 +98,56 @@ with estilo.banda(
         format_func=lambda c: guia.CAPITULOS[c]["corto"], placeholder="O abre otro sector de la guía",
         label_visibility="collapsed",
     )
-    por_capitulo = {s["capitulo"]: s for s in de_la_mesa}
+    c_nueva.button("↺ Nueva búsqueda", key="guia_nueva", on_click=nueva_busqueda, use_container_width=True,
+                   help="Borra lo escrito, el sector abierto y el filtro. Su lista se queda.")
+    empezar = st.toggle(
+        "Para empezar a trabajar: sin experiencia ni titulación", key="guia_empezar",
+        help="Solo los sectores donde lo corriente es entrar sin experiencia previa ni título. "
+             "Lo que se busque, también con IA, se limita a eso.",
+    )
+    if empezar:
+        opciones = {s["capitulo"]: s for s in guia.para_empezar()}
+        rotulo_pildoras, clave_pildoras = "Sectores para empezar", "guia_sector_empezar"
+    else:
+        opciones = {s["capitulo"]: s for s in de_la_mesa}
+        rotulo_pildoras = "Sectores de la mesa"
+        clave_pildoras = "guia_sector_mesa_" + hashlib.md5("|".join(opciones).encode()).hexdigest()[:8]
     elegido = None
-    if por_capitulo:
+    if opciones:
         elegido = estilo.pildoras(
-            "Sectores de la mesa", list(por_capitulo), default=next(iter(por_capitulo)),
-            format_func=lambda c: f"{por_capitulo[c]['corto']} · {por_capitulo[c]['n']}",
-            key="guia_sector_mesa_" + hashlib.md5("|".join(por_capitulo).encode()).hexdigest()[:8],
-            help="Los sectores de la ocupación del codificador y de las experiencias del currículo.",
+            rotulo_pildoras, list(opciones), default=next(iter(opciones)),
+            format_func=lambda c: f"{opciones[c]['corto']} · {opciones[c]['n']}", key=clave_pildoras,
+            help=None if empezar else
+            "Los sectores de la ocupación del codificador y de las experiencias del currículo.",
         )
 
-# Qué se enseña: lo buscado manda; luego el sector abierto a mano; luego el de la mesa.
+# Qué se enseña: lo buscado manda; luego el sector abierto a mano; luego el de
+# las píldoras (los de la mesa o, con el filtro, los de empezar a trabajar).
 consulta = (consulta or "").strip()
 if consulta:
     hallazgos = motor.busca(consulta, tope=TOPE)
+    if empezar:
+        hallazgos = [(a, [f for f in fs if guia.es_para_empezar(f)]) for a, fs in hallazgos]
+        hallazgos = [(re.sub(r"^\d+ fichas", f"{len(fs)} fichas", a), fs) for a, fs in hallazgos if fs]
     seccion = {
         "capitulo": "busqueda", "titulo": f"«{consulta}»", "corto": consulta, "entero": False,
         "apartados": hallazgos, "n": sum(len(fs) for _, fs in hallazgos), "general": False,
     } if hallazgos else None
-    rotulo = f"Buscando «{consulta}»"
+    rotulo = f"Buscando «{consulta}»" + (" entre lo que no pide experiencia" if empezar else "")
 elif otro:
     seccion = guia.seccion(otro)
+    if empezar and seccion:
+        suyos = [(a, [f for f in fs if guia.es_para_empezar(f)]) for a, fs in seccion["apartados"]]
+        suyos = [(a, fs) for a, fs in suyos if fs]
+        seccion = {**seccion, "apartados": suyos, "n": sum(len(fs) for _, fs in suyos)} if suyos else None
     rotulo = guia.CAPITULOS[otro]["titulo"]
 elif elegido:
-    seccion = por_capitulo[elegido]
+    seccion = opciones[elegido]
     rotulo = seccion["titulo"]
 else:
     seccion, rotulo = None, ""
+if empezar and seccion:
+    seccion = {**seccion, "nota_empezar": guia.NOTA_EMPEZAR}
 
 izq, der = st.columns([5, 3], gap="medium")
 
@@ -144,12 +181,14 @@ def guardadas_ia(clave):
     return memoria.get(clave)
 
 
-def busca_con_ia(puesto_, sector_, ya):
-    """Pregunta a Gemini con búsqueda en Google y guarda lo que encuentre."""
-    clave = motor.clave_consulta(puesto_)
+def busca_con_ia(puesto_, clave, sector_, ya, para_empezar=False):
+    """Pregunta a Gemini con búsqueda en Google y guarda lo que encuentre.
+
+    `clave` es con qué nombre se guarda: el puesto y, si la búsqueda es solo
+    de puestos de entrada, la marca que la distingue de la corriente."""
     try:
         with st.spinner("Buscando en Google empresas de Madrid y alrededores…"):
-            texto, fuentes, apoyos = modelo.busca(puesto_, sector_, ya)
+            texto, fuentes, apoyos = modelo.busca(puesto_, sector_, ya, para_empezar=para_empezar)
     except Exception as e:  # noqa: BLE001
         st.session_state["guia_ia_aviso"] = (
             "Ahora no se puede buscar con IA (lo normal es que se haya acabado el cupo gratuito "
@@ -176,7 +215,8 @@ with izq:
     pintadas = 0
     if seccion is None:
         if consulta:
-            st.info("Ninguna ficha de la guía nombra eso ni hay un sector para ese oficio. "
+            st.info("Ninguna ficha de la guía nombra eso ni hay un sector para ese oficio"
+                    + (" entre lo que no pide experiencia" if empezar else "") + ". "
                     "Prueba con otra palabra, abre un sector o búscalo con IA aquí debajo.")
         else:
             st.info("Busca una empresa o abre un sector. Si antes buscas la ocupación en el "
@@ -186,6 +226,8 @@ with izq:
                     unsafe_allow_html=True)
         if seccion.get("nota"):
             st.caption(f"**Centros especiales de empleo.** {seccion['nota']}")
+        if seccion.get("nota_empezar"):
+            st.caption(f"**Para empezar a trabajar.** {seccion['nota_empezar']}")
         for apartado, fichas in seccion["apartados"]:
             if pintadas >= TOPE:
                 break
@@ -199,40 +241,55 @@ with izq:
                    "garantiza que tenga vacantes.")
 
     # Más empresas con IA: para el oficio que se ha escrito o, si no se ha
-    # escrito nada, para la ocupación que hay en la mesa.
-    puesto_ia = consulta or puesto
+    # escrito nada, para la ocupación que hay en la mesa. Con el filtro de
+    # empezar a trabajar y sin nada escrito, para el sector que se está viendo.
+    if consulta:
+        puesto_ia = consulta
+    elif empezar:
+        puesto_ia = f"puestos de entrada en {seccion['corto'].lower()}" if seccion else ""
+    else:
+        puesto_ia = puesto
     if puesto_ia:
-        clave_ia = motor.clave_consulta(puesto_ia)
+        clave_ia = motor.clave_consulta(puesto_ia + (" · para empezar" if empezar else ""))
         st.markdown(f'<div class="seccion">Más empresas con IA · {guia.esc(puesto_ia)} · '
-                    'Madrid y alrededores</div>', unsafe_allow_html=True)
+                    + ("sin experiencia · " if empezar else "") + 'Madrid y alrededores</div>',
+                    unsafe_allow_html=True)
         aviso = st.session_state.pop("guia_ia_aviso", "")
         if aviso:
             st.warning(aviso)
         hechas = guardadas_ia(clave_ia)
         ya = [f["nombre"] for _, fs in (seccion["apartados"] if seccion else []) for f in fs]
-        argumentos = (puesto_ia, "" if consulta else (seccion or {}).get("corto", ""), ya)
+        argumentos = (puesto_ia, clave_ia, "" if consulta else (seccion or {}).get("corto", ""), ya, empezar)
+        hay_clave = ia.tiene_clave("gemini")
+        # En línea y no en un `on_click`: dentro de un callback no se ve la espera.
         if hechas is None:
             st.caption("La IA busca en Google empresas del oficio con centro en Madrid capital o su "
                        "área metropolitana. No están comprobadas como las de la guía: salen "
                        "etiquetadas y, en el papel, en un apartado propio.")
-            # En línea y no en un `on_click`: dentro de un callback no se ve la espera.
             if st.button("Buscar más empresas con IA", key="guia_ia_buscar", icon=":material/travel_explore:",
-                         disabled=not ia.tiene_clave("gemini"),
-                         help=None if ia.tiene_clave("gemini") else "Hace falta la clave de Gemini."):
+                         type="primary", disabled=not hay_clave,
+                         help=None if hay_clave else "Hace falta la clave de Gemini."):
                 busca_con_ia(*argumentos)
                 st.rerun()
         else:
             fichas_ia, fecha_ia = hechas
+            # El botón de regenerar, arriba y a la vista: antes iba al final,
+            # debajo de las fichas, y no se encontraba.
+            with estilo.fila("ia_regenerar", vertical_alignment="center"):
+                st.markdown(f'<div class="nota">Buscadas el {fecha_ia} con Google. <b>Sin comprobar</b>: '
+                            'confirma en la web de cada empresa antes de enviar.</div>',
+                            unsafe_allow_html=True, **estilo._ancho("stretch"))
+                regenerar = st.button("Regenerar con IA", key="guia_ia_buscar", icon=":material/refresh:",
+                                      disabled=not hay_clave,
+                                      help="Vuelve a buscar en Google y sustituye estas empresas."
+                                      if hay_clave else "Hace falta la clave de Gemini.")
+            if regenerar:
+                busca_con_ia(*argumentos)
+                st.rerun()
             if fichas_ia:
                 pinta_fichas(fichas_ia, 1000)
             else:
                 st.caption("La búsqueda no encontró empresas seguras para este oficio en Madrid.")
-            st.caption(f"Buscadas el {fecha_ia} con Google. **Sin comprobar**: confirma en la web de "
-                       "cada empresa antes de enviar.")
-            if st.button("Buscar de nuevo", key="guia_ia_buscar", icon=":material/refresh:",
-                         disabled=not ia.tiene_clave("gemini")):
-                busca_con_ia(*argumentos)
-                st.rerun()
 
 with der:
     marcadas = mesa.empresas()

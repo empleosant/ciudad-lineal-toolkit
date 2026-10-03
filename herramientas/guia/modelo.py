@@ -30,8 +30,17 @@ presenta la candidatura (portal de empleo propio, correo, formulario...)", "domi
 Entre 6 y 10 empresas. Si no encuentras ninguna segura, {"empresas": []}."""
 
 
-def entrada(puesto, sector="", ya=()):
+ENTRADA_SIN_EXPERIENCIA = (
+    "Solo puestos de entrada: empresas que contratan para ese trabajo a personas SIN experiencia "
+    "previa y SIN titulación, y que suelen formar al entrar. Descarta las que pidan título, "
+    "habilitación o años de experiencia."
+)
+
+
+def entrada(puesto, sector="", ya=(), para_empezar=False):
     lineas = [f"Puesto: {puesto.strip()}", "Zona: Madrid capital y área metropolitana."]
+    if para_empezar:
+        lineas.append(ENTRADA_SIN_EXPERIENCIA)
     if sector:
         lineas.append(f"Sector de la guía de empleo que más se le parece: {sector}.")
     if ya:
@@ -39,6 +48,6 @@ def entrada(puesto, sector="", ya=()):
     return "\n".join(lineas)
 
 
-def busca(puesto, sector="", ya=(), al_relevar=None):
+def busca(puesto, sector="", ya=(), al_relevar=None, para_empezar=False):
     """(texto, fuentes, apoyos) de `ia.busca_en_la_web` para ese puesto."""
-    return ia.busca_en_la_web(SISTEMA, entrada(puesto, sector, ya), al_relevar=al_relevar)
+    return ia.busca_en_la_web(SISTEMA, entrada(puesto, sector, ya, para_empezar), al_relevar=al_relevar)
