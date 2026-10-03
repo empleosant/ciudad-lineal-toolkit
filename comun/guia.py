@@ -343,6 +343,7 @@ EMPEZAR_FUERA = {
     "DyaDigital",
     "Exclusivas Imanara",
     "Agencia Penélope",
+    "Infotree Global",
     "UPTA (Unión de Profesionales y Trabajadores Autónomos)",
 }
 NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni título. Es una "

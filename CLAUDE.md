@@ -243,7 +243,7 @@ formación.
 
 La Guía de empleo de Madrid (repo privado `empleosant/guia-empleo-madrid`, en
 `~/proyectos/guia-empleo-madrid`) entra en la app como **copia**:
-`scripts/traer_guia.py` saca de ella `comun/datos/guia/` (capítulos, las 2.040
+`scripts/traer_guia.py` saca de ella `comun/datos/guia/` (capítulos, las 2.054
 fichas publicables con la misma regla que su PDF, y la edición). No se edita a
 mano: cuando la guía cambie (revisión de abril de 2027) se pasa el script, se
 mira el diff y se pasa `pruebas/guia.py`.
