@@ -164,6 +164,9 @@ Rama `mesa-y-portada`, propuesta visual aprobada por Álvaro ese día.
   pide habilitación, certificado o carné. Con el filtro puesto, el buscador y
   la IA se limitan a eso (`modelo.entrada(para_empezar=True)`; se guarda con
   otra clave). La selección es de Claude y está pendiente de que Álvaro la revise.
+  Es la misma que la del PDF «Empezar a trabajar en Madrid» de la guía
+  (`guia-empleo-madrid`, `datos/selecciones.toml`, `generar.py --seleccion
+  empezar`): las dos listas se cambian a la vez.
 - «↺ Nueva búsqueda» limpia lo escrito, el sector y el filtro (no su lista), y
   «Regenerar con IA» va arriba de las fichas sugeridas, no al final.
 - Pendiente de la propuesta: preparar la entrevista, recursos y ferias, hoja

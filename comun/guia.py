@@ -311,6 +311,8 @@ def sectores():
 # certificado de profesionalidad (residencias, ayuda a domicilio) o carné
 # profesional. En el orden en que se enseña. Si la guía renombra un apartado,
 # `pruebas/guia.py` lo canta.
+# La misma selección es el PDF «Empezar a trabajar en Madrid» de la guía
+# (guia-empleo-madrid, datos/selecciones.toml): si cambia aquí, cambiarla allí.
 PARA_EMPEZAR = [
     ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos"]),
     ("11-hosteleria", ["Cadenas de restauración", "Hoteles"]),
@@ -324,6 +326,7 @@ PARA_EMPEZAR = [
     ("21-construccion", ["Constructoras", "Formación y tarjeta profesional"]),
     ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente"]),
     ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
+    ("18-administracion", ["Contact center"]),
     ("43-movilidad", ["Estaciones de servicio y lavado"]),
     ("40-eventos", ["Azafatas, auxiliares y personal de eventos", "Catering y restauración de eventos"]),
     ("08-ett", ["Grandes redes"]),
@@ -336,7 +339,8 @@ NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni
 
 
 # Dos capítulos de los que solo entra un apartado y cuyo título no cabe en una píldora.
-_CORTOS_EMPEZAR = {"09-insercion": "Empresas de inserción", "33-colectivos": "Si vienes de otro país"}
+_CORTOS_EMPEZAR = {"09-insercion": "Empresas de inserción", "33-colectivos": "Si vienes de otro país",
+                   "18-administracion": "Contact center"}
 
 
 def para_empezar():
