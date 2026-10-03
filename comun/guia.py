@@ -314,6 +314,13 @@ def sectores():
 # La misma selección es el PDF «Empezar a trabajar en Madrid» de la guía
 # (guia-empleo-madrid, datos/selecciones.toml): si cambia aquí, cambiarla allí.
 PARA_EMPEZAR = [
+    ("01-oficina-de-empleo", ["Trámites por internet y por teléfono", "Oficinas de empleo de Madrid capital"]),
+    ("24-portales", ["Generalistas"]),
+    ("08-ett", ["Grandes redes", "Generalistas", "Especializadas por sector"]),
+    ("07-agencias-de-colocacion", ["Generalistas", "Entidades sociales", "Empleo de hogar y cuidados"]),
+    ("09-insercion", ["Empresas de inserción", "Entidades sociales con programas de empleo"]),
+    ("33-colectivos", ["Si vienes de otro país"]),
+    ("06-formacion", ["Centros de formación de la Comunidad de Madrid", "Buscadores de cursos gratuitos", "Carnés y acreditaciones que abren puertas"]),
     ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos", "Conserjería y servicios auxiliares"]),
     ("11-hosteleria", ["Cadenas de restauración", "Hoteles", "Bolsas y portales del sector"]),
     ("15-monitores", ["Comedores escolares y restauración colectiva"]),
@@ -330,13 +337,6 @@ PARA_EMPEZAR = [
     ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente", "Viveros y centros de jardinería"]),
     ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
     ("18-administracion", ["Contact center", "Atención al cliente y televenta"]),
-    ("01-oficina-de-empleo", ["Trámites por internet y por teléfono", "Oficinas de empleo de Madrid capital"]),
-    ("06-formacion", ["Centros de formación de la Comunidad de Madrid", "Buscadores de cursos gratuitos", "Carnés y acreditaciones que abren puertas"]),
-    ("08-ett", ["Grandes redes", "Generalistas", "Especializadas por sector"]),
-    ("07-agencias-de-colocacion", ["Generalistas", "Entidades sociales", "Empleo de hogar y cuidados"]),
-    ("09-insercion", ["Empresas de inserción", "Entidades sociales con programas de empleo"]),
-    ("24-portales", ["Generalistas"]),
-    ("33-colectivos", ["Si vienes de otro país"]),
 ]
 # Fichas de esos apartados que no entran: perfiles cualificados o de otro oficio.
 EMPEZAR_FUERA = {

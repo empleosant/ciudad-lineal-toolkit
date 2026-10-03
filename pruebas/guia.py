@@ -530,10 +530,10 @@ def p_para_empezar_a_trabajar():
     at = abre("herramientas/guia/vista.py", dict(MESA))
     at.toggle(key="guia_empezar").set_value(True).run()
     pildoras = [b for b in at.get("button_group") if b.key == "guia_sector_empezar"]
-    if at.exception or not pildoras or not pildoras[0].options[0].startswith("Limpieza"):
-        fallos.append("con el filtro puesto no salen los sectores para empezar")
-    if not [c for c in at.checkbox if "13-limpieza/" in (c.key or "")]:
-        fallos.append("con el filtro puesto no salen las fichas de limpieza")
+    if at.exception or not pildoras or not pildoras[0].options[0].startswith("Oficina de empleo"):
+        fallos.append("con el filtro puesto no salen los sectores para empezar, con la oficina de empleo delante")
+    if not [c for c in at.checkbox if "01-oficina-de-empleo/" in (c.key or "")]:
+        fallos.append("con el filtro puesto no salen las fichas de la primera parada")
     at.text_input(key="guia_consulta").input("seguridad").run()
     if at.exception or [c for c in at.checkbox if "19-seguridad/" in (c.key or "")]:
         fallos.append("buscando con el filtro salen fichas de fuera de la selección")
