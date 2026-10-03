@@ -341,6 +341,54 @@ def p_pantalla_codificador():
     return informe(nombre, fallos, 5)
 
 
+IA_DE_MENTIRA = """
+import json
+import comun.ia as ia
+import herramientas.sispe.modelo as modelo
+ia.cliente = lambda *a, **k: object()
+modelo.interpreta_consulta = lambda *a, **k: []
+def _flujo(cli, texto, candidatos, al_relevar=None):
+    if {falla!r}:
+        raise RuntimeError("el modelo de mentira se ha caído")
+    codigos = [l.split(":")[0] for l in candidatos.splitlines()[:3]]
+    yield json.dumps({{"ocupaciones": [{{"codigo": c, "motivo": "Elegida por la IA de mentira."}} for c in codigos]}})
+modelo.flujo_modelo = _flujo
+"""
+
+
+def p_pantalla_codificador_con_ia():
+    """El camino con IA, con un modelo de mentira que contesta o se cae.
+
+    Ahí la pantalla pinta primero las tarjetas del catálogo («afinando…») y
+    después las definitivas, en la misma pasada. Si las claves de los
+    contenedores se repiten entre una pintada y otra, Streamlit para la página
+    con StreamlitDuplicateElementKey: pasó en producción el 03/10/2026 con
+    «camarero de videojuegos» y en local no se veía porque no hay claves de IA.
+    """
+    nombre = "Codificador con IA: pinta dos veces sin repetir claves"
+    if not _hay_streamlit(nombre):
+        return True
+    fallos = []
+    for falla in (False, True):
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8")
+        tmp.write(ENVOLTORIO.format(raiz=RAIZ, pagina="herramientas/sispe/vista.py").replace(
+            "ruta = os.path.join", IA_DE_MENTIRA.format(falla=falla) + "\nruta = os.path.join"))
+        tmp.close()
+        from streamlit.testing.v1 import AppTest
+        at = AppTest.from_file(tmp.name, default_timeout=120)
+        at.session_state["sispe_usar_ia"] = True
+        at.run()
+        at.text_input(key="consulta").input("programador de videojuegos").run()
+        caso = "con el modelo caído" if falla else "con el modelo contestando"
+        if at.exception:
+            fallos.append(f"{caso}: {str(at.exception[0].value)[:120]}")
+            continue
+        botones = [b for b in at.button if (b.key or "").startswith("addcv_")]
+        if len(botones) < 2:
+            fallos.append(f"{caso}: no quedan las tarjetas pintadas ({len(botones)} «+ CV»)")
+    return informe(nombre, fallos, 2)
+
+
 def p_pantalla_curriculo():
     """El paso 4 del CV saca los sectores de las experiencias, también de las escritas a mano."""
     nombre = "Generador de CV: «Dónde enviarlo» en el paso 4"
@@ -439,6 +487,7 @@ PRUEBAS = [
     p_las_direcciones_se_leen_como_en_la_guia,
     p_la_lista_para_imprimir,
     p_pantalla_codificador,
+    p_pantalla_codificador_con_ia,
     p_pantalla_curriculo,
     p_pantalla_informes,
     p_pantalla_formacion_y_extranjeria,

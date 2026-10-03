@@ -16,7 +16,7 @@ la ocupación al generador de CV a través de `herramientas.cv.estado`, y
 empresas del sector de cada ocupación.
 
 Claves de sesión: todas con prefijo `sispe_`. Las claves de los contenedores
-(`buscador`, `titular`, `pregunta`, `oc_*`, `cesta`, `guia`) las usa el CSS de aquí
+(`buscador`, `titular`, `pregunta_*`, `rejilla_*`, `oc_*`, `cesta`, `guia`) las usa el CSS de aquí
 abajo por su nombre: no las cambies sin cambiarlo también.
 """
 
@@ -88,27 +88,27 @@ st.markdown("""
 .st-key-titular button:hover p{ color:var(--rojo) !important; }
 
 /* La pregunta a la persona: texto a la izquierda, opciones a la derecha */
-.st-key-pregunta{
+[class*="st-key-pregunta_"]{
   background:#fff; border:1px solid var(--linea); border-left:3px solid var(--rojo); border-radius:var(--radio);
   padding:.6rem .9rem; margin:0 0 .5rem;
 }
 .pregunta-titulo{ font-size:.62rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--rojo); margin-bottom:.1rem; }
 .pregunta-texto{ font-size:.95rem; line-height:1.3; font-weight:600; color:var(--texto); }
-.st-key-pregunta .stButton button{
+[class*="st-key-pregunta_"] .stButton button{
   background:#fff; border:1.5px solid var(--negro); font-weight:600; border-radius:var(--radio);
   padding:.32rem .8rem; min-height:34px; font-size:.84rem; transition:all .15s ease;
   white-space:normal !important; height:auto !important;
 }
-.st-key-pregunta .stButton button p{ white-space:normal !important; }
-.st-key-pregunta .stButton button:hover{ background:var(--negro); color:#fff; border-color:var(--negro); }
-.st-key-pregunta .stButton button:hover p{ color:#fff; }
+[class*="st-key-pregunta_"] .stButton button p{ white-space:normal !important; }
+[class*="st-key-pregunta_"] .stButton button:hover{ background:var(--negro); color:#fff; border-color:var(--negro); }
+[class*="st-key-pregunta_"] .stButton button:hover p{ color:#fff; }
 
 /* Las tarjetas de ocupación, como antes del rediseño: compactas, con el
    número de orden, filo a la izquierda (rojo la recomendada) y los botones
    pequeños arriba a la derecha. Son contenedores de Streamlit para que «+ CV»
    sea un botón de verdad dentro de la tarjeta. */
-.st-key-rejilla div[data-testid="stHorizontalBlock"]{ gap:.4rem !important; }
-.st-key-rejilla > div[data-testid="stVerticalBlock"], .st-key-rejilla{ gap:.4rem !important; }
+[class*="st-key-rejilla_"] div[data-testid="stHorizontalBlock"]{ gap:.4rem !important; }
+[class*="st-key-rejilla_"]{ gap:.4rem !important; }
 [class*="st-key-oc_"]{
   background:#fff; border:1px solid var(--linea); border-left:4px solid #CBD5E1; border-radius:4px;
   padding:.4rem .75rem .5rem; height:100%; gap:.1rem !important;
@@ -226,12 +226,26 @@ def boton_copiar(codigo):
     estilo.marco(BOTON_COPIAR.replace("__COD__", codigo), 26, ancho=66)
 
 
-def pinta_tarjeta(i, o, interactivo):
+# Mientras la IA piensa, la pantalla pinta las tarjetas del catálogo y luego
+# las sustituye por las buenas, todo en la misma pasada del guion. Streamlit no
+# admite dos contenedores con la misma clave en una pasada aunque el primero ya
+# se haya borrado: paraba la página con StreamlitDuplicateElementKey en cuanto
+# una búsqueda pasaba por la IA (03/10/2026). Cada pintada lleva su número en
+# las claves, y el CSS las busca por el principio («st-key-oc_…»).
+_PINTADAS = [0]
+
+
+def _otra_pintada():
+    _PINTADAS[0] += 1
+    return f"p{_PINTADAS[0]}"
+
+
+def pinta_tarjeta(i, o, interactivo, pintada="p0"):
     es_primera = (i == 1 and not o.get("provisional"))
     es_mando = o.get("nivel") in ("10", "20", "30")
-    clave = f"oc_{i}" + ("_top" if es_primera else "") + ("_relleno" if o.get("relleno") else "")
+    clave = f"oc_{i}" + ("_top" if es_primera else "") + ("_relleno" if o.get("relleno") else "") + f"_{pintada}"
     with estilo.caja(clave):
-        with estilo.fila(f"occab_{i}", vertical_alignment="center"):
+        with estilo.fila(f"occab_{i}_{pintada}", vertical_alignment="center"):
             st.markdown(
                 f'<div class="oc-id"><span class="oc-orden">{i:02d}</span>'
                 f'<span class="oc-cod">{o["codigo"]}</span></div>',
@@ -262,14 +276,15 @@ def pinta_tarjetas(ocupaciones, interactivo=False):
     apilan y salen en orden porque cada fila es su propio `st.columns`."""
     if not ocupaciones:
         return
-    with estilo.caja("rejilla"):
+    pintada = _otra_pintada()
+    with estilo.caja(f"rejilla_{pintada}"):
         for fila in range(0, len(ocupaciones), 2):
             cols = st.columns(2, gap="small")
             for j, col in enumerate(cols):
                 i = fila + j
                 if i < len(ocupaciones):
                     with col:
-                        pinta_tarjeta(i + 1, ocupaciones[i], interactivo)
+                        pinta_tarjeta(i + 1, ocupaciones[i], interactivo, pintada)
 
 
 def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consulta=""):
@@ -294,7 +309,8 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
     # 1. PREGUNTA ARRIBA (antes de las tarjetas): el texto a la izquierda y
     #    las opciones a su derecha; en el móvil, debajo.
     if payload.get("pregunta"):
-        with estilo.caja("pregunta"):
+        pintada = _otra_pintada()
+        with estilo.caja(f"pregunta_{pintada}"):
             opciones = (motor.extraer_opciones(payload.get("pregunta", ""), payload.get("opciones"))
                         if interactivo else [])
             texto_col, opciones_col = st.columns([5, 5], gap="small") if opciones else (st.container(), None)
@@ -304,7 +320,7 @@ def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consul
                 unsafe_allow_html=True,
             )
             if opciones:
-                with opciones_col, estilo.fila("opciones_pregunta", wrap=True):
+                with opciones_col, estilo.fila(f"opciones_pregunta_{pintada}", wrap=True):
                     for idx, opc in enumerate(opciones):
                         if st.button(opc, key=f"resp_opt_{idx}"):
                             st.session_state["sispe_respuesta"] = (consulta, payload["pregunta"], opc)

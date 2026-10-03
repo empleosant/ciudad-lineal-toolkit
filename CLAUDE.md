@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía de empleo en las cinco herramientas: 12 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía en las cinco herramientas y las pantallas: 13 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -140,6 +140,15 @@ en la barra lateral de Streamlit y todos los saltos entre páginas son
   único que necesita JavaScript. Las fichas de la guía usan el mismo dibujo
   (`.gu-ficha`, en rejilla de dos), y el indicador de pasos vuelve a ser un
   recuadro por paso: negro el actual, verde lo hecho.
+- **Claves de contenedor únicas por pasada.** El codificador pinta las
+  tarjetas dos veces en la misma pasada cuando usa la IA (las del catálogo
+  mientras piensa, luego las buenas), y Streamlit no admite dos contenedores
+  con la misma `key` en una pasada: paró producción el 03/10/2026 con
+  StreamlitDuplicateElementKey (latente desde el rediseño, `oc_2`). Cada
+  pintada lleva su sufijo (`_otra_pintada()`) y el CSS busca por el principio
+  de la clave. En local no se ve sin claves de IA: lo cubre
+  `p_pantalla_codificador_con_ia` de `pruebas/guia.py`, con un modelo de
+  mentira.
 - **Tres trampas de Streamlit que ya rompieron la pantalla** (03/10/2026):
   el markdown lleva `margin-bottom:-16px` para compensar un párrafo final, y
   con HTML propio (`<div>`) la caja encoge y lo de abajo la pisa (el titular
