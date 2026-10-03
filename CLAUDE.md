@@ -169,6 +169,11 @@ que cada herramienta ponga ahí (el codificador, su buscador). El menú no va
 en la barra lateral de Streamlit y todos los saltos entre páginas son
 `st.page_link`: un `<a href>` recargaría la app y perdería la sesión.
 
+- **El menú es texto sin contorno** (03/10/2026): solo lleva fondo la página
+  activa (rojo) y la que se señala. Con siete píldoras con borde la barra era
+  ruido, y además salían mordidas por arriba y por abajo: una tira con
+  `overflow-x:auto` recorta también en vertical, así que `.st-key-menu` lleva
+  alto de sobra (`min-height`) y sus hijos, `height:auto`.
 - **Lo que puede el tema, lo hace el tema** (`.streamlit/config.toml`:
   `primaryColor`, `borderColor`, `showWidgetBorder`, `baseRadius`). El CSS a
   mano de `estilo.py` queda para lo que el tema no cubre, y cada regla que

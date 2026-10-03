@@ -80,38 +80,52 @@ section.stMain{ overflow-x:hidden; }
 .st-key-cabecera{
   background:var(--negro); border-bottom:3px solid var(--rojo);
   width:100vw !important; max-width:100vw !important;
-  margin:0 0 1rem calc(50% - 50vw) !important; padding:.45rem calc(50vw - 50%) .5rem;
+  margin:0 0 1rem calc(50% - 50vw) !important; padding:.5rem calc(50vw - 50%);
 }
 .st-key-cabecera div[data-testid="stVerticalBlock"]{ gap:.35rem; }
+/* La tira se desliza de lado, y eso obliga al navegador a recortar también
+   por arriba y por abajo: con la altura justa, los chips salían mordidos
+   (03/10/2026). Se le da alto de sobra y los hijos se miden por su contenido. */
 .st-key-menu{
-  flex-wrap:nowrap !important; overflow-x:auto; gap:.3rem !important;
-  scrollbar-width:none; -ms-overflow-style:none; align-items:center;
+  flex-wrap:nowrap !important; overflow-x:auto; gap:.15rem !important;
+  scrollbar-width:none; -ms-overflow-style:none; align-items:center !important;
+  min-height:40px; padding:2px 0;
+}
+.st-key-menu div[data-testid="stElementContainer"], .st-key-menu div[data-testid="stPageLink"]{
+  height:auto !important; overflow:visible !important; display:flex; align-items:center;
 }
 .st-key-menu::-webkit-scrollbar{ display:none; }
 .st-key-menu > div{ flex:0 0 auto !important; min-width:0 !important; width:auto !important; }
 /* La marca no se va con el desplazamiento: se queda pegada a la izquierda */
-.st-key-menu > div:first-child{ position:sticky; left:0; z-index:1; background:var(--negro); padding-right:.6rem; }
+.st-key-menu > div:first-child{ position:sticky; left:0; z-index:1; background:var(--negro); padding-right:.9rem; align-self:stretch; display:flex; align-items:center; }
+/* El markdown de la marca trae el margen negativo de Streamlit y la bajaba
+   cuatro píxeles respecto a los chips. */
+.st-key-menu div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
+.st-key-menu > div{ margin-bottom:0 !important; }
 .marca{ color:#fff; font-weight:800; font-size:.95rem; letter-spacing:-.01em; white-space:nowrap;
         display:inline-flex; align-items:center; gap:.45rem; line-height:1; }
 .marca i{ width:14px; height:14px; border-radius:50%; background:var(--rojo); display:inline-block;
           box-shadow:inset 0 0 0 4px var(--rojo), inset 0 0 0 7px #fff; }
 .marca small{ color:#9A9A9F; font-weight:500; font-size:.72rem; margin-left:.2rem; }
+/* Texto sin contorno: siete píldoras con borde en una barra fina eran ruido.
+   Solo lleva fondo la página en la que se está (rojo) y la que se señala. */
 .st-key-menu a[data-testid="stPageLink-NavLink"]{
-  color:#C9C9C9 !important; font-size:.78rem; font-weight:600; letter-spacing:.01em;
-  padding:0 .75rem !important; border-radius:999px; border:1px solid #3A3A3E;
+  color:#D4D4D8 !important; font-size:.8rem; font-weight:600; letter-spacing:.01em;
+  padding:0 .7rem !important; border-radius:6px; border:0;
   background:transparent !important; text-decoration:none !important; white-space:nowrap;
-  min-height:0 !important; height:30px; display:inline-flex; align-items:center; gap:0;
+  min-height:0 !important; height:32px; display:inline-flex; align-items:center; gap:0; margin:0;
+  transition:background .12s ease, color .12s ease;
 }
-.st-key-menu a[data-testid="stPageLink-NavLink"] p{ font-size:.78rem !important; line-height:1 !important; }
+.st-key-menu a[data-testid="stPageLink-NavLink"] p{ font-size:.8rem !important; line-height:1 !important; margin:0 !important; }
 .st-key-menu a[data-testid="stPageLink-NavLink"] *{ color:inherit !important; }
-.st-key-menu a[data-testid="stPageLink-NavLink"]:hover{ color:#fff !important; border-color:#8E8E93; }
+.st-key-menu a[data-testid="stPageLink-NavLink"]:hover{ color:#fff !important; background:#26262A !important; }
 .st-key-menu a[data-testid="stPageLink-NavLink"][disabled]{
-  color:#fff !important; background:var(--rojo) !important; border-color:var(--rojo); opacity:1 !important;
+  color:#fff !important; background:var(--rojo) !important; opacity:1 !important;
 }
 /* Los iconos del menú sobran en la barra: el nombre basta y ocupa menos */
 .st-key-menu a[data-testid="stPageLink-NavLink"] > span:has(> span[data-testid="stIconMaterial"]){ display:none; }
 /* El filete entre un momento de la cita y el siguiente */
-.st-key-menu > div:has(.filete){ flex:0 0 1px !important; width:1px !important; height:18px; background:#3A3A3E; margin:0 .2rem; }
+.st-key-menu > div:has(.filete){ flex:0 0 1px !important; width:1px !important; height:16px !important; background:#3A3A3E; margin:0 .35rem; }
 .st-key-menu > div:has(.filete) *{ display:none; }
 /* La cesta del generador de CV: el número va en la etiqueta como código */
 .st-key-menu a[data-testid="stPageLink-NavLink"] code{
@@ -119,7 +133,7 @@ section.stMain{ overflow-x:hidden; }
   background:#fff !important; color:var(--negro) !important; font-family:inherit; font-size:.68rem; font-weight:800;
   display:inline-flex; align-items:center; justify-content:center; line-height:1;
 }
-.st-key-menu a[data-testid="stPageLink-NavLink"]:has(code){ color:#fff !important; border-color:#8E8E93; }
+.st-key-menu a[data-testid="stPageLink-NavLink"]:has(code){ color:#fff !important; }
 @media (max-width:640px){
   .marca small{ display:none; }
   /* En el móvil la herramienta activa va la primera de la tira, para que se
