@@ -314,33 +314,46 @@ def sectores():
 # La misma selección es el PDF «Empezar a trabajar en Madrid» de la guía
 # (guia-empleo-madrid, datos/selecciones.toml): si cambia aquí, cambiarla allí.
 PARA_EMPEZAR = [
-    ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos"]),
-    ("11-hosteleria", ["Cadenas de restauración", "Hoteles"]),
-    ("12-logistica", ["Operadores logísticos", "Paquetería y reparto", "Comercio electrónico y distribución"]),
-    ("10-comercio", ["Supermercados e hipermercados"]),
-    ("46-hogar", ["Agencias de empleo de hogar", "Bolsas gratuitas de entidades y parroquias",
-                  "Asesoría y defensa de tus derechos"]),
-    ("35-mensajeria", ["Mensajería y paquetería", "Reparto a domicilio y plataformas"]),
-    ("37-alimentacion", ["Envasado y plataformas de alimentación", "Mercamadrid, mayoristas y mercados",
-                         "Formación y carnés"]),
-    ("21-construccion", ["Constructoras", "Formación y tarjeta profesional"]),
-    ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente"]),
-    ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
-    ("18-administracion", ["Contact center"]),
-    ("43-movilidad", ["Estaciones de servicio y lavado"]),
+    ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos", "Conserjería y servicios auxiliares"]),
+    ("11-hosteleria", ["Cadenas de restauración", "Hoteles", "Bolsas y portales del sector"]),
+    ("15-monitores", ["Comedores escolares y restauración colectiva"]),
+    ("46-hogar", ["Agencias de empleo de hogar", "Bolsas gratuitas de entidades y parroquias", "Asesoría y defensa de tus derechos"]),
     ("40-eventos", ["Azafatas, auxiliares y personal de eventos", "Catering y restauración de eventos"]),
-    ("08-ett", ["Grandes redes"]),
-    ("09-insercion", ["Empresas de inserción"]),
+    ("17-ocio-y-cultura", ["Parques de ocio", "Cines y teatros"]),
+    ("10-comercio", ["Supermercados e hipermercados", "Grandes almacenes y moda", "Hogar, bricolaje y electrónica", "Deporte, ocio y cultura", "Perfumería y otros"]),
+    ("37-alimentacion", ["Panadería, pastelería y obradores", "Cárnicas, lácteas, bebidas y conservas", "Mercamadrid, mayoristas y mercados", "Envasado y plataformas de alimentación", "Formación y carnés"]),
+    ("12-logistica", ["Operadores logísticos", "Paquetería y reparto", "Comercio electrónico y distribución"]),
+    ("35-mensajeria", ["Mensajería y paquetería", "Reparto a domicilio y plataformas"]),
+    ("28-aeropuerto", ["Handling y servicios en pista", "Tiendas, restauración y servicios al pasajero", "Acreditaciones y acceso"]),
+    ("43-movilidad", ["Aparcamientos y grúas", "Estaciones de servicio y lavado"]),
+    ("21-construccion", ["Constructoras", "Formación y tarjeta profesional"]),
+    ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente", "Viveros y centros de jardinería"]),
+    ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
+    ("18-administracion", ["Contact center", "Atención al cliente y televenta"]),
+    ("08-ett", ["Grandes redes", "Generalistas", "Especializadas por sector"]),
+    ("07-agencias-de-colocacion", ["Generalistas", "Entidades sociales", "Empleo de hogar y cuidados"]),
+    ("09-insercion", ["Empresas de inserción", "Entidades sociales con programas de empleo"]),
+    ("24-portales", ["Generalistas", "Hostelería y turismo"]),
     ("33-colectivos", ["Si vienes de otro país"]),
 ]
+# Fichas de esos apartados que no entran: perfiles cualificados o de otro oficio.
+EMPEZAR_FUERA = {
+    "Hays",
+    "Michael Page",
+    "DyaDigital",
+    "Exclusivas Imanara",
+    "Agencia Penélope",
+    "UPTA (Unión de Profesionales y Trabajadores Autónomos)",
+}
 NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni título. Es una "
                 "selección de la oficina, no una garantía: cada oferta dice lo que pide. Para "
                 "trabajar hace falta, en todos, autorización de trabajo en vigor.")
 
 
 # Dos capítulos de los que solo entra un apartado y cuyo título no cabe en una píldora.
-_CORTOS_EMPEZAR = {"09-insercion": "Empresas de inserción", "33-colectivos": "Si vienes de otro país",
-                   "18-administracion": "Contact center"}
+_CORTOS_EMPEZAR = {"09-insercion": "Inserción y programas", "33-colectivos": "Si vienes de otro país",
+                   "18-administracion": "Contact center", "15-monitores": "Comedores",
+                   "17-ocio-y-cultura": "Ocio", "43-movilidad": "Gasolineras y aparcamientos"}
 
 
 def para_empezar():
@@ -349,6 +362,8 @@ def para_empezar():
     for capitulo, apartados in PARA_EMPEZAR:
         s = seccion(capitulo, apartados)
         if s:
+            suyos = [(a, [f for f in fs if f["nombre"] not in EMPEZAR_FUERA]) for a, fs in s["apartados"]]
+            s = {**s, "apartados": suyos, "n": sum(len(fs) for _, fs in suyos), "entero": False}
             corto = _CORTOS_EMPEZAR.get(capitulo)
             salida.append({**s, "corto": corto, "titulo": corto} if corto else s)
     return salida
@@ -356,7 +371,8 @@ def para_empezar():
 
 def es_para_empezar(f):
     """La ficha está en uno de los apartados de `PARA_EMPEZAR`."""
-    return any(f["capitulo"] == c and f.get("apartado") in apartados for c, apartados in PARA_EMPEZAR)
+    return f["nombre"] not in EMPEZAR_FUERA and any(
+        f["capitulo"] == c and f.get("apartado") in apartados for c, apartados in PARA_EMPEZAR)
 
 
 def clave(f):

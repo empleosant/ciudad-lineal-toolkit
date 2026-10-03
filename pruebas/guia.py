@@ -513,6 +513,11 @@ def p_para_empezar_a_trabajar():
     secs = guia.para_empezar()
     if len(secs) != len(guia.PARA_EMPEZAR) or any(len(s["corto"]) > 30 for s in secs):
         fallos.append("falta algún sector, o su nombre no cabe en una píldora")
+    nombres = {f["nombre"] for c, aps in guia.PARA_EMPEZAR for ap in aps for f in guia.fichas(c, ap)}
+    if guia.EMPEZAR_FUERA - nombres:
+        fallos.append(f"se excluyen fichas que no existen: {sorted(guia.EMPEZAR_FUERA - nombres)}")
+    if any(f["nombre"] in guia.EMPEZAR_FUERA for s in secs for _, fs in s["apartados"] for f in fs):
+        fallos.append("las fichas excluidas siguen saliendo")
     fuera = [f for f in guia.fichas("19-seguridad") + guia.fichas("14-cuidados") if guia.es_para_empezar(f)]
     if fuera or not guia.es_para_empezar(guia.fichas("13-limpieza", "Empresas de limpieza")[0]):
         fallos.append("se cuela lo que pide habilitación o certificado, o falta la limpieza")
@@ -521,7 +526,7 @@ def p_para_empezar_a_trabajar():
             or "SIN experiencia" in guia_modelo.entrada("mozo"):
         fallos.append("la IA no recibe (o recibe siempre) la condición de puestos de entrada")
     if not _hay_streamlit(nombre):
-        return informe(nombre, fallos, 8)
+        return informe(nombre, fallos, 10)
     at = abre("herramientas/guia/vista.py", dict(MESA))
     at.toggle(key="guia_empezar").set_value(True).run()
     pildoras = [b for b in at.get("button_group") if b.key == "guia_sector_empezar"]
@@ -535,7 +540,7 @@ def p_para_empezar_a_trabajar():
     at.button(key="guia_nueva").click().run()
     if at.exception or at.session_state["guia_consulta"] or at.session_state["guia_empezar"]:
         fallos.append("«Nueva búsqueda» no deja el buscador limpio")
-    return informe(nombre, fallos, 8)
+    return informe(nombre, fallos, 10)
 
 
 MESA = {
