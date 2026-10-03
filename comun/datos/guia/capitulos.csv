@@ -5,7 +5,11 @@ id,parte,zona,zona_titulo,titulo,apartados
 04-jovenes,I,,,Si tienes menos de 30 años,Garantía Juvenil | Información y asesoría juvenil | Programas de empleo y prácticas
 05-tu-distrito,II,,,Recursos de tu distrito y de tu municipio,Mesas de empleo y ferias de empleo | Servicios de empleo de los ayuntamientos | Otros recursos de barrio
 06-formacion,II,,,Formación para el empleo y acreditaciones,Centros de formación de la Comunidad de Madrid | Centros colaboradores con cursos gratuitos | Buscadores de cursos gratuitos | Acreditación de la experiencia | Carnés y acreditaciones que abren puertas
-33-colectivos,I,,,"Más de 45, mujer, otro país, discapacidad, salud mental o por tu cuenta",Si tienes más de 45 años | Si eres mujer | Si vienes de otro país | Si tienes discapacidad | Si tienes un problema de salud mental | Si quieres trabajar por tu cuenta
+48-mayores-de-45,I,,,Si tienes más de 45 años,Programas y entidades | Recolocación
+49-mujer,I,,,Si eres mujer,Programas y entidades
+50-otro-pais,I,,,Si vienes de otro país,Quién te informa y te acompaña
+51-discapacidad,I,,,Si tienes discapacidad,Orientación y apoyo | Agencias de colocación especializadas | Centros especiales de empleo | Portales de empleo
+52-por-tu-cuenta,I,,,Si quieres trabajar por tu cuenta,Asesoramiento y trámites
 07-agencias-de-colocacion,III,,,Agencias de colocación,Generalistas | Discapacidad | Entidades sociales | Empleo de hogar y cuidados | Centros de formación con bolsa de empleo | Recolocación
 08-ett,III,,,Empresas de trabajo temporal,Grandes redes | Generalistas | Especializadas por sector
 09-insercion,III,,,"Empresas de inserción, centros especiales de empleo y entidades sociales",Empresas de inserción | Centros especiales de empleo | Entidades sociales con programas de empleo

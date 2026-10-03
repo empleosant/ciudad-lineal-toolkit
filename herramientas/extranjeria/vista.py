@@ -254,7 +254,7 @@ with consultar:
 
     with st.expander("Entidades que acompañan a quien viene de otro país · de la guía de empleo"):
         st.markdown(guia.apartados_html(
-            [(a, guia.fichas(c, a)) for c, a in (("33-colectivos", "Si vienes de otro país"),
+            [(a, guia.fichas(c, a)) for c, a in (("50-otro-pais", "Quién te informa y te acompaña"),
                                                  ("47-tercer-sector", "Migración, sinhogarismo e inclusión"))]
         ), unsafe_allow_html=True)
         st.caption(f"De la «{guia.EDICION['titulo']}» ({guia.EDICION['edicion'].lower()}), "

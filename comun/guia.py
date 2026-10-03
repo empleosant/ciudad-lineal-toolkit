@@ -319,7 +319,7 @@ PARA_EMPEZAR = [
     ("08-ett", ["Grandes redes", "Generalistas", "Especializadas por sector"]),
     ("07-agencias-de-colocacion", ["Generalistas", "Entidades sociales", "Empleo de hogar y cuidados"]),
     ("09-insercion", ["Empresas de inserción", "Entidades sociales con programas de empleo"]),
-    ("33-colectivos", ["Si vienes de otro país"]),
+    ("50-otro-pais", ["Quién te informa y te acompaña"]),
     ("06-formacion", ["Centros de formación de la Comunidad de Madrid", "Buscadores de cursos gratuitos", "Carnés y acreditaciones que abren puertas"]),
     ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos", "Conserjería y servicios auxiliares"]),
     ("11-hosteleria", ["Cadenas de restauración", "Hoteles", "Bolsas y portales del sector"]),
@@ -354,7 +354,7 @@ NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni
 
 
 # Dos capítulos de los que solo entra un apartado y cuyo título no cabe en una píldora.
-_CORTOS_EMPEZAR = {"09-insercion": "Inserción y programas", "33-colectivos": "Si vienes de otro país",
+_CORTOS_EMPEZAR = {"09-insercion": "Inserción y programas", "50-otro-pais": "Si vienes de otro país",
                    "18-administracion": "Contact center", "15-monitores": "Comedores",
                    "17-ocio-y-cultura": "Ocio", "43-movilidad": "Gasolineras y aparcamientos",
                    "01-oficina-de-empleo": "Oficina de empleo", "06-formacion": "Formación gratuita"}

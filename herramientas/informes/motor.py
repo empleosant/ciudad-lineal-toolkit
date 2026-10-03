@@ -189,12 +189,11 @@ def lo_acordado(datos):
 SITUACIONES = {
     "Menos de 30 años": [("04-jovenes", "Garantía Juvenil"),
                          ("04-jovenes", "Programas de empleo y prácticas")],
-    "Más de 45 años": [("33-colectivos", "Si tienes más de 45 años")],
-    "Mujer": [("33-colectivos", "Si eres mujer")],
-    "De otro país": [("33-colectivos", "Si vienes de otro país")],
-    "Con discapacidad": [("33-colectivos", "Si tienes discapacidad")],
-    "Salud mental": [("33-colectivos", "Si tienes un problema de salud mental")],
-    "Por su cuenta": [("33-colectivos", "Si quieres trabajar por tu cuenta")],
+    "Más de 45 años": [("48-mayores-de-45", "Programas y entidades")],
+    "Mujer": [("49-mujer", "Programas y entidades")],
+    "De otro país": [("50-otro-pais", "Quién te informa y te acompaña")],
+    "Con discapacidad": [("51-discapacidad", "Orientación y apoyo")],
+    "Por su cuenta": [("52-por-tu-cuenta", "Asesoramiento y trámites")],
 }
 
 POR_SECCION = 24      # fichas por sector que se le dan a la IA; elige de 8 a 14
