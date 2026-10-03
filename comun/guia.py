@@ -305,41 +305,88 @@ def clave(f):
     return f"{f['capitulo']}/{f['id']}"
 
 
+# Terminaciones que distinguen al oficio de la actividad y de quien la hace:
+# «limpiador», «limpiadora», «limpieza» y «limpiar» son la misma búsqueda. De
+# la más larga a la más corta; la raíz no baja de cinco letras (con cuatro,
+# «soldador» se quedaba en «sold» y encontraba «Sold Out»).
+_TERMINACIONES = sorted([
+    "adores", "adoras", "ador", "adora", "edores", "edoras", "edor", "edora", "idores", "idoras",
+    "idor", "idora", "aciones", "acion", "iciones", "icion", "ciones", "cion", "mientos", "miento",
+    "erias", "eria", "eros", "eras", "ero", "era", "istas", "ista", "ezas", "eza", "antes", "ante",
+    "entes", "ente", "ajes", "aje", "icos", "icas", "ico", "ica", "ados", "adas", "ado", "ada",
+    "ar", "er", "ir", "os", "as", "es", "o", "a", "e", "s",
+], key=len, reverse=True)
+
+
+def raiz(palabra):
+    """«limpiador», «limpieza» -> «limpi». Sin diccionario: quita la terminación
+    más larga que deje al menos cinco letras."""
+    for t in _TERMINACIONES:
+        if palabra.endswith(t) and len(palabra) - len(t) >= 5:
+            return palabra[:-len(t)]
+    return palabra
+
+
 def busca(texto, tope=40):
     """Las fichas de los sectores que nombran todas las palabras de `texto`.
 
-    Sin acentos ni mayúsculas. Primero las que lo llevan en el nombre, luego
-    en el apartado y luego en lo que hacen; a igualdad, en el orden de la
-    guía. Solo se mira en los sectores que contratan y en los centros
-    especiales de empleo: es el buscador de «Dónde enviar el CV», no el de
-    los recursos de orientación.
+    Sin acentos ni mayúsculas, y por la raíz de la palabra: «limpiador» da lo
+    mismo que «limpieza». Primero las que lo llevan en el nombre, luego en el
+    apartado y luego en lo que hacen, y delante las que traen la palabra tal
+    cual; a igualdad, en el orden de la guía. Solo se mira en los sectores que
+    contratan y en los centros especiales de empleo: es el buscador de «Dónde
+    enviar el CV», no el de los recursos de orientación.
     """
     palabras = [p for p in normaliza(texto or "").split() if len(p) > 1]
     if not palabras:
         return []
+    raices = [raiz(p) for p in palabras]
+
+    def peso(p, r, campos):
+        """0-2 si la palabra está tal cual en el nombre, el apartado o el resto;
+        3-5 si solo está su raíz al principio de alguna palabra; None si no está."""
+        for n, campo in enumerate(campos):
+            if p in campo:
+                return n
+        for n, campo in enumerate(campos):
+            if any(w.startswith(r) for w in campo.split()):
+                return 3 + n
+        return None
+
     hallazgos = []
     capitulos = sectores() + ["09-insercion"]
     for orden, capitulo in enumerate(capitulos):
         for n, f in enumerate(_FICHAS.get(capitulo, [])):
-            nombre, apartado = normaliza(f["nombre"]), normaliza(f.get("apartado", ""))
-            resto = normaliza(f"{f.get('que', '')} {f.get('como', '')} {CAPITULOS[capitulo]['titulo']}")
-            if not all(p in nombre or p in apartado or p in resto for p in palabras):
+            campos = (normaliza(f["nombre"]), normaliza(f.get("apartado", "")),
+                      normaliza(f"{f.get('que', '')} {f.get('como', '')} {CAPITULOS[capitulo]['titulo']}"))
+            pesos = [peso(p, r, campos) for p, r in zip(palabras, raices)]
+            if None in pesos:
                 continue
-            peso = sum(0 if p in nombre else 1 if p in apartado else 2 for p in palabras)
-            hallazgos.append((peso, orden, n, f))
+            hallazgos.append((sum(pesos), orden, n, f))
     hallazgos.sort(key=lambda h: h[:3])
     return [f for *_, f in hallazgos[:tope]]
 
 
+SIN_COMPROBAR = "Sugeridas por IA, sin comprobar: confirma en su web antes de enviar"
+
+
 def lista(fichas_, titulo="Tu lista"):
     """Unas fichas sueltas (las marcadas a mano) con la forma de una sección,
-    para pintarlas con `apartados_html` o imprimirlas con `pdf`. None si no hay."""
+    para pintarlas con `apartados_html` o imprimirlas con `pdf`. None si no hay.
+
+    Las que ha sugerido la IA (`ia: True`, ver `herramientas/guia/motor.py`)
+    van en su propio apartado, que dice que nadie las ha comprobado: en el
+    papel no pueden confundirse con las de la guía."""
     fichas_ = list(fichas_)
     if not fichas_:
         return None
+    de_la_guia = [f for f in fichas_ if not f.get("ia")]
+    de_la_ia = [f for f in fichas_ if f.get("ia")]
+    apartados = ([("Empresas elegidas", de_la_guia)] if de_la_guia else []) \
+        + ([(SIN_COMPROBAR, de_la_ia)] if de_la_ia else [])
     return {
         "capitulo": "lista", "titulo": titulo, "corto": titulo, "entero": False,
-        "apartados": [("Empresas elegidas", fichas_)], "n": len(fichas_), "general": False,
+        "apartados": apartados, "n": len(fichas_), "general": False,
     }
 
 

@@ -8,8 +8,15 @@ por nombre o actividad o abrir cualquier otro sector, y cada empresa lleva
 una casilla. Lo marcado es «su lista»: se imprime sola y sale también en la
 hoja aparte del paso 4 del generador de CV.
 
-Sin IA. La lógica vive en `comun/guia.py` (las fichas, el buscador, el PDF)
-y en `comun/mesa.py` (lo marcado); aquí solo se pinta.
+Todo eso va sin IA. Debajo, «Más empresas con IA» es un botón aparte para
+los oficios que la guía no cubre: Gemini busca en Google empresas de Madrid y
+alrededores y salen como fichas iguales, etiquetadas «sin comprobar»
+(`modelo.py` pregunta; `motor.py` decide qué enlaces se enseñan). Lo
+encontrado se guarda en el Gist por puesto, para no gastar cupo dos veces.
+
+La lógica vive en `comun/guia.py` (las fichas, el PDF), en `motor.py` (el
+buscador y las fichas de la IA) y en `comun/mesa.py` (lo marcado); aquí solo
+se pinta.
 """
 
 import hashlib
@@ -17,11 +24,15 @@ import re
 
 import streamlit as st
 
-from comun import estilo, guia, mesa
+from datetime import date
+
+from comun import estilo, gist, guia, ia, mesa
 from herramientas.cv import estado as cv_estado
 from herramientas.cv import motor as cv_motor
+from herramientas.guia import modelo, motor
 
 TOPE = 60      # fichas con casilla por pantalla: más allá, el buscador o el PDF
+ARCHIVO_IA = "empresas_ia.json"   # en el Gist: lo que la IA ya ha buscado, por puesto
 
 estilo.aplica()
 st.markdown("""
@@ -38,6 +49,7 @@ st.markdown("""
 [class*="st-key-gf_"] div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
 [class*="st-key-gf_"] label p{ font-size:.88rem; line-height:1.25; }
 .gu-cuerpo{ padding-left:1.75rem; }
+.gu-ia{ padding-left:1.75rem; margin-top:.2rem; } .gu-ia .chip{ margin-left:0; }
 /* Su lista: una línea por empresa con su aspa */
 .st-key-su_lista{ background:#fff; border:1px solid var(--linea); border-radius:var(--radio); padding:.35rem .7rem; }
 .st-key-su_lista{ gap:0 !important; }
@@ -85,10 +97,11 @@ with estilo.banda(
 # Qué se enseña: lo buscado manda; luego el sector abierto a mano; luego el de la mesa.
 consulta = (consulta or "").strip()
 if consulta:
-    hallazgos = guia.busca(consulta, tope=TOPE)
-    seccion = guia.lista(hallazgos, f"«{consulta}»")
-    if seccion:
-        seccion["apartados"] = [(f"{len(hallazgos)} fichas que lo nombran", hallazgos)]
+    hallazgos = motor.busca(consulta, tope=TOPE)
+    seccion = {
+        "capitulo": "busqueda", "titulo": f"«{consulta}»", "corto": consulta, "entero": False,
+        "apartados": hallazgos, "n": sum(len(fs) for _, fs in hallazgos), "general": False,
+    } if hallazgos else None
     rotulo = f"Buscando «{consulta}»"
 elif otro:
     seccion = guia.seccion(otro)
@@ -101,10 +114,70 @@ else:
 
 izq, der = st.columns([5, 3], gap="medium")
 
+
+def pinta_fichas(fichas, desde=0):
+    """Las fichas de dos en dos, cada una con su casilla. Devuelve cuántas van."""
+    for i in range(0, len(fichas), 2):
+        cols = st.columns(2, gap="small")
+        for j, (col, f) in enumerate(zip(cols, fichas[i:i + 2])):
+            with col, estilo.caja(f"gf_{desde + i + j}"):
+                mesa.casilla(f, "guia", detalle=False)
+                st.markdown(
+                    guia.ficha_html(f, nombre=False, caja=False)
+                    + ('<div class="gu-ia"><span class="chip naranja">IA · sin comprobar</span></div>'
+                       if f.get("ia") else ""),
+                    unsafe_allow_html=True)
+    return desde + len(fichas)
+
+
+def guardadas_ia(clave):
+    """(fichas, fecha) de lo que la IA ya buscó para ese puesto, o None.
+
+    Primero lo de esta sesión; si no, lo del Gist, que es de toda la oficina:
+    la segunda persona que busca el mismo oficio no gasta cupo.
+    """
+    memoria = st.session_state.setdefault("guia_ia", {})
+    if clave not in memoria and gist.activo():
+        fichas, fecha = motor.desempaqueta(gist.lee(ARCHIVO_IA).get(clave, ""))
+        if fecha:
+            memoria[clave] = (fichas, fecha)
+    return memoria.get(clave)
+
+
+def busca_con_ia(puesto_, sector_, ya):
+    """Pregunta a Gemini con búsqueda en Google y guarda lo que encuentre."""
+    clave = motor.clave_consulta(puesto_)
+    try:
+        with st.spinner("Buscando en Google empresas de Madrid y alrededores…"):
+            texto, fuentes, apoyos = modelo.busca(puesto_, sector_, ya)
+    except Exception as e:  # noqa: BLE001
+        st.session_state["guia_ia_aviso"] = (
+            "Ahora no se puede buscar con IA (lo normal es que se haya acabado el cupo gratuito "
+            f"de búsquedas de hoy). {type(e).__name__}: {str(e)[:160]}")
+        return
+    fichas, descartadas = motor.interpreta(texto, fuentes, apoyos)
+    hoy = date.today().strftime("%d/%m/%Y")
+    st.session_state.setdefault("guia_ia", {})[clave] = (fichas, hoy)
+    if descartadas:
+        st.session_state["guia_ia_aviso"] = (
+            f"Se {'ha' if descartadas == 1 else 'han'} descartado {descartadas} "
+            f"{'empresa que no aparecía' if descartadas == 1 else 'empresas que no aparecían'} "
+            "en ninguna página de la búsqueda.")
+    if gist.activo() and fichas:
+        try:
+            todo = dict(gist.lee(ARCHIVO_IA))
+            todo[clave] = motor.empaqueta(fichas, hoy)
+            gist.escribe(ARCHIVO_IA, todo)
+        except Exception:  # noqa: BLE001
+            pass        # sin Gist se pierde al cerrar la sesión, nada más
+
+
 with izq:
+    pintadas = 0
     if seccion is None:
         if consulta:
-            st.info("Ninguna ficha de los sectores nombra eso. Prueba con otra palabra o abre un sector.")
+            st.info("Ninguna ficha de la guía nombra eso ni hay un sector para ese oficio. "
+                    "Prueba con otra palabra, abre un sector o búscalo con IA aquí debajo.")
         else:
             st.info("Busca una empresa o abre un sector. Si antes buscas la ocupación en el "
                     "codificador, aquí salen ya los sectores que le tocan.")
@@ -113,25 +186,53 @@ with izq:
                     unsafe_allow_html=True)
         if seccion.get("nota"):
             st.caption(f"**Centros especiales de empleo.** {seccion['nota']}")
-        pintadas = 0
         for apartado, fichas in seccion["apartados"]:
             if pintadas >= TOPE:
                 break
-            fichas = fichas[:TOPE - pintadas]
             st.markdown(f'<div class="gu-apartado">{guia.esc(apartado)}</div>', unsafe_allow_html=True)
-            for i in range(0, len(fichas), 2):
-                cols = st.columns(2, gap="small")
-                for col, f in zip(cols, fichas[i:i + 2]):
-                    with col, estilo.caja(f"gf_{pintadas}"):
-                        mesa.casilla(f, "guia", detalle=False)
-                        st.markdown(guia.ficha_html(f, nombre=False, caja=False), unsafe_allow_html=True)
-                    pintadas += 1
+            pintadas = pinta_fichas(fichas[:TOPE - pintadas], pintadas)
         if seccion["n"] > pintadas:
             st.caption(f"Salen las {pintadas} primeras de {seccion['n']}: afina con el buscador, "
                        "o descarga el sector entero en PDF.")
         st.caption(f"De la guía «{guia.EDICION['titulo_empresas']}» ({guia.EDICION['edicion'].lower()}), "
                    f"comprobada en {guia.EDICION['verificado']}. Que una empresa salga aquí no "
                    "garantiza que tenga vacantes.")
+
+    # Más empresas con IA: para el oficio que se ha escrito o, si no se ha
+    # escrito nada, para la ocupación que hay en la mesa.
+    puesto_ia = consulta or puesto
+    if puesto_ia:
+        clave_ia = motor.clave_consulta(puesto_ia)
+        st.markdown(f'<div class="seccion">Más empresas con IA · {guia.esc(puesto_ia)} · '
+                    'Madrid y alrededores</div>', unsafe_allow_html=True)
+        aviso = st.session_state.pop("guia_ia_aviso", "")
+        if aviso:
+            st.warning(aviso)
+        hechas = guardadas_ia(clave_ia)
+        ya = [f["nombre"] for _, fs in (seccion["apartados"] if seccion else []) for f in fs]
+        argumentos = (puesto_ia, "" if consulta else (seccion or {}).get("corto", ""), ya)
+        if hechas is None:
+            st.caption("La IA busca en Google empresas del oficio con centro en Madrid capital o su "
+                       "área metropolitana. No están comprobadas como las de la guía: salen "
+                       "etiquetadas y, en el papel, en un apartado propio.")
+            # En línea y no en un `on_click`: dentro de un callback no se ve la espera.
+            if st.button("Buscar más empresas con IA", key="guia_ia_buscar", icon=":material/travel_explore:",
+                         disabled=not ia.tiene_clave("gemini"),
+                         help=None if ia.tiene_clave("gemini") else "Hace falta la clave de Gemini."):
+                busca_con_ia(*argumentos)
+                st.rerun()
+        else:
+            fichas_ia, fecha_ia = hechas
+            if fichas_ia:
+                pinta_fichas(fichas_ia, 1000)
+            else:
+                st.caption("La búsqueda no encontró empresas seguras para este oficio en Madrid.")
+            st.caption(f"Buscadas el {fecha_ia} con Google. **Sin comprobar**: confirma en la web de "
+                       "cada empresa antes de enviar.")
+            if st.button("Buscar de nuevo", key="guia_ia_buscar", icon=":material/refresh:",
+                         disabled=not ia.tiene_clave("gemini")):
+                busca_con_ia(*argumentos)
+                st.rerun()
 
 with der:
     marcadas = mesa.empresas()

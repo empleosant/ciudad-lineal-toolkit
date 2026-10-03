@@ -362,6 +362,18 @@ def p_el_buscador_de_la_guia():
         fallos.append("busca algo donde no hay nada que buscar")
     if len(guia.busca("hotel", tope=5)) != 5:
         fallos.append("el tope no se respeta")
+    # Palabras parecidas, misma búsqueda: Álvaro vio 1 resultado con «limpiador» y 60 con «limpieza»
+    cuentas = {p: len(guia.busca(p, tope=999)) for p in ("limpiador", "limpiadora", "limpieza", "limpiar")}
+    if min(cuentas.values()) < 50 or max(cuentas.values()) - min(cuentas.values()) > 5:
+        fallos.append(f"palabras de la misma familia dan resultados distintos: {cuentas}")
+    if [f["nombre"] for f in guia.busca("soldador")] and guia.raiz("soldador") == "sold":
+        fallos.append("la raíz de «soldador» se queda en «sold» y encuentra «Sold Out»")
+    from herramientas.guia import motor as guia_motor
+    soldador = guia_motor.busca("soldador")
+    if not soldador or "Industria" not in soldador[0][0]:
+        fallos.append(f"«soldador» no lleva al sector de su ocupación: {[a for a, _ in soldador]}")
+    if guia_motor.busca("zzzzqq") or len(guia_motor.busca("barcelo")) != 1:
+        fallos.append("el sector de la ocupación se cuela donde no toca")
     claves = [guia.clave(f) for fs in guia._FICHAS.values() for f in fs]
     if len(claves) != len(set(claves)):
         fallos.append("hay dos fichas con la misma clave: las casillas chocarían")
@@ -370,7 +382,113 @@ def p_el_buscador_de_la_guia():
     lista = guia.lista(barcelo[:2])
     if not lista or lista["n"] != 2 or [f for _, fs in lista["apartados"] for f in fs] != barcelo[:2]:
         fallos.append("la lista de marcadas no tiene forma de sección")
-    return informe(nombre, fallos, 7)
+    return informe(nombre, fallos, 10)
+
+
+RESPUESTA_IA = """```json
+{"empresas": [
+ {"nombre": "Estudio Comprobado", "que": "Estudio de videojuegos [1]", "donde": "Madrid",
+  "como": "Portal de empleo propio", "dominio": "https://www.estudiocomprobado.com/jobs"},
+ {"nombre": "Estudio Nombrado", "que": "Estudio independiente", "donde": "Alcobendas", "dominio": "nombrado.es"},
+ {"nombre": "Inventada SL", "que": "No sale en ninguna página", "dominio": "inventada.es"},
+ {"nombre": "Barceló Hotel Group", "que": "Lo que diga el modelo"},
+ {"nombre": "estudio comprobado", "que": "repetida"}
+]}
+```"""
+FUENTES_IA = [("estudiocomprobado.com", "https://vertexaisearch.example/a"),
+              ("listado.org", "https://vertexaisearch.example/b")]
+APOYOS_IA = [("Estudio Nombrado es un estudio de Alcobendas", [1])]
+
+
+def p_las_sugeridas_por_ia():
+    """`motor.interpreta`: enlaces solo si la búsqueda los vio, y sin fuente no hay ficha."""
+    nombre = "Empresas sugeridas por IA: solo lo que la búsqueda respalda"
+    from herramientas.guia import motor as guia_motor
+    fallos = []
+    fichas, descartadas = guia_motor.interpreta(RESPUESTA_IA, FUENTES_IA, APOYOS_IA)
+    por_nombre = {f["nombre"]: f for f in fichas}
+    if list(por_nombre) != ["Estudio Comprobado", "Estudio Nombrado", "Barceló Hotel Group"] or descartadas != 1:
+        fallos.append(f"quedan {list(por_nombre)} y se descartan {descartadas}")
+        return informe(nombre, fallos, 8)
+    comprobado, nombrado, barcelo = por_nombre.values()
+    if comprobado["web"] != "https://estudiocomprobado.com" or "[1]" in comprobado["que"]:
+        fallos.append(f"la web comprobada no sale limpia: {comprobado['web']} / {comprobado['que']}")
+    if nombrado["web"] or "listado.org" not in nombrado["como"]:
+        fallos.append("una empresa cuyo dominio no vio la búsqueda sale con enlace, o sin decir dónde se la vio")
+    if not (comprobado.get("ia") and nombrado.get("ia")) or barcelo.get("ia") or barcelo["capitulo"] != "11-hosteleria":
+        fallos.append("no se distingue lo de la IA de lo de la guía (Barceló debe salir con su ficha de la guía)")
+    if "vertexaisearch" in " ".join(str(v) for f in fichas for v in f.values()):
+        fallos.append("se cuela la dirección de salto de Google, que caduca")
+    sin_apoyos, d = guia_motor.interpreta(RESPUESTA_IA, FUENTES_IA, [])
+    if d or any(f["web"] for f in sin_apoyos if f["nombre"] == "Inventada SL"):
+        fallos.append("sin apoyos no se puede descartar, pero tampoco dar enlace")
+    if guia_motor.interpreta("no es json", [], []) != ([], 0) or guia_motor.interpreta('{"empresas": "x"}') != ([], 0):
+        fallos.append("una respuesta rota tumba el intérprete")
+    ida = guia_motor.desempaqueta(guia_motor.empaqueta(fichas, "03/10/2026"))
+    if ida != (fichas, "03/10/2026") or guia_motor.desempaqueta("roto") != ([], ""):
+        fallos.append("lo guardado en el Gist no vuelve igual")
+    lista = guia.lista(fichas)
+    rotulos = [a for a, _ in lista["apartados"]]
+    if len(rotulos) != 2 or "sin comprobar" not in rotulos[1] or [f["nombre"] for f in lista["apartados"][0][1]] != ["Barceló Hotel Group"]:
+        fallos.append(f"en la lista para imprimir no van aparte: {rotulos}")
+    try:
+        if bytes(guia.pdf([lista], "Dónde enviar tu currículum", puesto="programador")[:4]) != b"%PDF":
+            fallos.append("la lista con sugeridas no da un PDF")
+    except Exception as e:  # noqa: BLE001
+        fallos.append(f"la lista con sugeridas no se imprime: {type(e).__name__}: {e}")
+    return informe(nombre, fallos, 8)
+
+
+BUSCADOR_DE_MENTIRA = """
+import comun.ia as ia
+import herramientas.guia.modelo as modelo_guia
+ia.tiene_clave = lambda prov: True
+def _busca(puesto, sector="", ya=(), al_relevar=None):
+    if {falla!r}:
+        raise RuntimeError("429 cupo de búsquedas agotado")
+    return {respuesta!r}, {fuentes!r}, {apoyos!r}
+modelo_guia.busca = _busca
+"""
+
+
+def p_pantalla_empresas_con_ia():
+    """El botón «Buscar más empresas con IA», con un buscador de mentira que contesta o se cae."""
+    nombre = "Dónde enviar el CV: más empresas con IA, marcarlas y el cupo agotado"
+    if not _hay_streamlit(nombre):
+        return True
+    from streamlit.testing.v1 import AppTest
+    fallos = []
+    for falla in (False, True):
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8")
+        tmp.write(ENVOLTORIO.format(raiz=RAIZ, pagina="herramientas/guia/vista.py").replace(
+            "ruta = os.path.join", BUSCADOR_DE_MENTIRA.format(
+                falla=falla, respuesta=RESPUESTA_IA, fuentes=FUENTES_IA, apoyos=APOYOS_IA) + "\nruta = os.path.join"))
+        tmp.close()
+        at = AppTest.from_file(tmp.name, default_timeout=120)
+        at.run()
+        at.text_input(key="guia_consulta").input("programador de videojuegos").run()
+        boton = [b for b in at.button if b.key == "guia_ia_buscar"]
+        if at.exception or not boton or boton[0].disabled:
+            fallos.append("no sale el botón de buscar con IA para un oficio escrito a mano")
+            continue
+        boton[0].click().run()
+        if at.exception:
+            fallos.append(f"excepción al buscar: {str(at.exception[0].value)[:120]}")
+            continue
+        casillas = [c for c in at.checkbox if (c.key or "").startswith("mesa_c_guia_ia/")]
+        if falla:
+            if casillas or not any("cupo" in w.value for w in at.warning):
+                fallos.append("con el cupo agotado no se avisa, o salen fichas de la nada")
+            continue
+        html = " ".join(m.value for m in at.markdown)
+        if len(casillas) != 2 or "sin comprobar" not in html:
+            fallos.append(f"las sugeridas no salen con casilla y etiqueta ({len(casillas)} casillas)")
+            continue
+        casillas[0].check().run()
+        marcadas = list(at.session_state["mesa_empresas"].values())
+        if at.exception or len(marcadas) != 1 or not marcadas[0].get("ia"):
+            fallos.append("una sugerida marcada no llega a su lista")
+    return informe(nombre, fallos, 4)
 
 
 MESA = {
@@ -603,12 +721,14 @@ PRUEBAS = [
     p_las_direcciones_se_leen_como_en_la_guia,
     p_la_lista_para_imprimir,
     p_el_buscador_de_la_guia,
+    p_las_sugeridas_por_ia,
     p_pantalla_codificador,
     p_pantalla_codificador_con_ia,
     p_pantalla_curriculo,
     p_pantalla_informes,
     p_pantalla_formacion_y_extranjeria,
     p_pantalla_donde_enviar,
+    p_pantalla_empresas_con_ia,
     p_pantalla_portada,
 ]
 

@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 16 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 18 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -140,6 +140,22 @@ Rama `mesa-y-portada`, propuesta visual aprobada por Álvaro ese día.
   «su lista» con su PDF. Lo marcado sale delante y ya elegido en el paso 4
   del generador de CV (`guia.lista()`). **El correo de cierre de informes
   todavía no usa las marcadas.**
+- **El buscador de la pestaña busca por la raíz** (`guia.raiz`: «limpiador»
+  = «limpieza»; antes daban 1 y 60 resultados) y, cuando pocas fichas nombran
+  lo escrito, añade el sector de la ocupación que el codificador entiende por
+  eso, sin IA (`herramientas/guia/motor.py: busca`): «soldador» da los talleres.
+- **«Más empresas con IA»** (rama `empresas-con-ia`): para los oficios que la
+  guía no cubre. `ia.busca_en_la_web()` llama a Gemini con la búsqueda de
+  Google; **solo Gemini, sin cascada y sin castigar al proveedor** (el cupo de
+  búsqueda es otro). `herramientas/guia/motor.py: interpreta` hace fichas con
+  la forma de las de la guía y `ia: True`, y es quien decide los enlaces: la
+  web solo sale si su dominio está entre las páginas que devolvió la búsqueda;
+  si hay apoyos y ninguna página nombra a la empresa, se descarta; lo que ya
+  está en la guía sale con su ficha de la guía. En pantalla llevan «IA · sin
+  comprobar» y en el PDF van en apartado propio (`guia.lista`). Se guardan por
+  puesto en el Gist (`empresas_ia.json`). **En local no se puede probar la
+  llamada de verdad**: la batería usa un buscador de mentira; el cupo gratuito
+  y la calidad hay que mirarlos en el despliegue.
 - Pendiente de la propuesta: preparar la entrevista, recursos y ferias, hoja
   de ruta, y los enlaces codificador → formación y extranjería → informes.
 

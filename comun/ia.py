@@ -590,6 +590,79 @@ def genera(cli, sistema, entrada, max_tokens=2048, json=False, pensar=False,
     raise RuntimeError(aviso_sin_clave())
 
 
+def busca_en_la_web(sistema, entrada, max_tokens=4096, al_relevar=None, perfil=CALIDAD):
+    """Una respuesta de Gemini apoyada en una búsqueda de Google.
+
+    Devuelve `(texto, fuentes, apoyos)`:
+
+        fuentes   [(título, dirección)] de las páginas que ha leído. El título
+                  suele ser el dominio («empresa.com»); la dirección es un
+                  salto de Google que caduca y no sirve para enseñarla.
+        apoyos    [(trozo de la respuesta, [índices de fuentes])]: qué páginas
+                  respaldan cada frase. Puede venir vacío.
+
+    Es para lo que no se puede contestar de memoria sin inventar: qué
+    empresas hay hoy en Madrid para un oficio. Lo usa «Dónde enviar el CV».
+
+    Solo Gemini: los demás proveedores no tienen esta búsqueda, y uno que
+    contestase de memoria sería justo lo que se quiere evitar, así que aquí no
+    hay cascada. Tampoco se aparta al proveedor si falla: el cupo de la
+    búsqueda es distinto del de texto, y castigarlo dejaría sin Gemini a las
+    demás herramientas durante una hora. Se prueban los modelos de la cadena
+    y, si ninguno puede, se lanza el último error.
+
+    Con la búsqueda activada Gemini no admite pedir la salida en JSON: se
+    pide en el prompt y quien llama limpia lo que llegue.
+    """
+    cli = _cliente("gemini")
+    if cli is None:
+        raise RuntimeError("La búsqueda en la web necesita la clave de Gemini.")
+    ultimo = None
+    for modelo in modelos_de("gemini", perfil):
+        arranque = time.perf_counter()
+        try:
+            cfg = _config_gemini(sistema, max_tokens, False, None)
+            cfg["tools"] = [types.Tool(google_search=types.GoogleSearch())]
+            r = cli.models.generate_content(
+                model=modelo, contents=entrada, config=types.GenerateContentConfig(**cfg),
+            )
+        except Exception as e:  # noqa: BLE001
+            if al_relevar:
+                al_relevar(f"gemini/{modelo}:{time.perf_counter() - arranque:.1f}s:{type(e).__name__}")
+            ultimo = e
+            if no_existe(e):
+                _mata_modelo("gemini", modelo)
+            continue
+        apunta_uso("gemini", modelo)
+        fuentes, apoyos = _fuentes_de(r)
+        return (getattr(r, "text", "") or "").strip(), fuentes, apoyos
+    if ultimo:
+        raise ultimo
+    raise RuntimeError("No queda ningún modelo de Gemini con el que buscar.")
+
+
+def _fuentes_de(respuesta):
+    """Las páginas que cita una respuesta con búsqueda, y qué frase apoya cada una.
+
+    Todo con `getattr` y a prueba de vacíos: la forma de estos metadatos ha
+    cambiado entre versiones del SDK y una respuesta sin ellos no es un error.
+    """
+    fuentes, apoyos = [], []
+    try:
+        meta = getattr((respuesta.candidates or [None])[0], "grounding_metadata", None)
+        for trozo in getattr(meta, "grounding_chunks", None) or []:
+            web = getattr(trozo, "web", None)
+            fuentes.append(((getattr(web, "title", "") or "").strip(), (getattr(web, "uri", "") or "").strip()))
+        for apoyo in getattr(meta, "grounding_supports", None) or []:
+            texto = getattr(getattr(apoyo, "segment", None), "text", "") or ""
+            indices = [i for i in (getattr(apoyo, "grounding_chunk_indices", None) or []) if i < len(fuentes)]
+            if texto and indices:
+                apoyos.append((texto, indices))
+    except Exception:  # noqa: BLE001
+        pass
+    return fuentes, apoyos
+
+
 def _flujo_gemini(cli, modelo, sistema, entrada, max_tokens, json, arranque_cfg):
     """Los trozos de UN modelo de Gemini, probando las configuraciones de
     razonamiento de menos a más. Devuelve también con qué configuración fue."""
