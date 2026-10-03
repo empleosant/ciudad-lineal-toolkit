@@ -553,7 +553,7 @@ with fase3:
     with st.expander("Recursos de la guía para su situación · opcional"):
         st.caption("Lo que marques va al final del correo, con su web. Lo eliges tú, no la IA, "
                    "y se puede cambiar después de redactarlo.")
-        _situaciones = st.pills("Su situación", list(motor.SITUACIONES), selection_mode="multi",
+        _situaciones = estilo.pildoras("Su situación", list(motor.SITUACIONES), selection_mode="multi",
                                 key="inf_w_situaciones")
         _opciones = {f["id"]: f for f in motor.recursos_de(_situaciones)}
         # Si se desmarca una situación, sus entidades salen de la selección
@@ -582,6 +582,7 @@ with fase3:
     _marcados = st.multiselect(
         "Sectores de la guía para el correo", _todas, default=list(_deducidas)[:4],
         format_func=lambda c: guia.CAPITULOS[c]["titulo"], disabled=not objetivo,
+        placeholder="Sin sector: las empresas las propone la IA",
         key="inf_w_sectores_" + hashlib.md5("|".join(_objetivos).encode()).hexdigest()[:8],
         help="Salen del objetivo. Las empresas que nombre el correo serán de estos sectores, "
              "comprobadas en la guía. Sin ninguno, las propone la IA y hay que repasarlas.",

@@ -16,6 +16,7 @@ enlace HTML normal recargaría la aplicación y lo perdería.
 """
 
 import html
+import re
 
 import streamlit as st
 
@@ -27,7 +28,21 @@ st.markdown("""
 <style>
 [class*="st-key-tarjeta_"]{
   position:relative; background:#fff; border:1px solid var(--linea); border-radius:var(--radio);
-  padding:.95rem 1rem .8rem; min-height:10.4rem; transition:border-color .15s ease, box-shadow .15s ease;
+  padding:.95rem 1rem 2.6rem; min-height:10.4rem; transition:border-color .15s ease, box-shadow .15s ease;
+}
+/* Las tarjetas de una fila, todas igual de altas. */
+div[data-testid="stColumn"]:has([class*="st-key-tarjeta_"]) > div[data-testid="stVerticalBlock"],
+div[data-testid="stColumn"]:has([class*="st-key-tarjeta_"]) > div[data-testid="stVerticalBlock"] > *:has([class*="st-key-tarjeta_"]),
+[class*="st-key-tarjeta_"],
+div[data-testid="stColumn"]:has(.tarjeta-datos) *:has(.tarjeta-datos), .tarjeta-datos{ height:100%; }
+div[data-testid="stColumn"]:has(.tarjeta-datos) div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
+/* Streamlit le resta 16px al markdown por el párrafo final que aquí no hay:
+   la caja encogía y la etiqueta «Con IA» quedaba cortada por el borde. */
+[class*="st-key-tarjeta_"] div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
+/* En el móvil las columnas se apilan con el hueco del ordenador, el doble
+   que entre filas: se iguala. */
+@media (max-width:640px){
+  div[data-testid="stHorizontalBlock"]:has([class*="st-key-tarjeta_"]){ gap:1rem !important; }
 }
 [class*="st-key-tarjeta_"]:hover{ border-color:var(--rojo); box-shadow:0 4px 16px rgba(209,18,46,.10); }
 [class*="st-key-tarjeta_"] div[data-testid="stVerticalBlock"]{ gap:0; }
@@ -38,7 +53,11 @@ st.markdown("""
 .tarjeta-ic span[data-testid="stIconMaterial"], .tarjeta-ic .material-symbols-rounded{ font-size:20px; }
 .tarjeta-t{ font-weight:700; font-size:1rem; letter-spacing:-.01em; margin:0 0 .25rem; }
 .tarjeta-d{ font-size:.82rem; color:var(--suave); line-height:1.42; margin:0 0 .7rem; }
-.tarjeta-pie{ margin:0; }
+/* La etiqueta va al pie, a la altura de «Abrir», tenga la tarjeta el texto que tenga */
+.tarjeta-pie{ position:absolute; left:1rem; bottom:.85rem; margin:0; z-index:1; pointer-events:none; }
+[class*="st-key-tarjeta_"] div[data-testid="stMarkdown"],
+[class*="st-key-tarjeta_"] div[data-testid="stMarkdown"] > div,
+[class*="st-key-tarjeta_"] div[data-testid="stMarkdownContainer"]{ position:static !important; }
 /* El enlace cubre la tarjeta entera; su texto se ve abajo a la derecha. Los
    envoltorios de Streamlit llevan position:relative y se lo quitamos, para
    que el enlace se mida contra la tarjeta y no contra su propia cajita. */
@@ -64,7 +83,7 @@ st.markdown("""
 .flujo{ display:flex; align-items:stretch; background:#fff; border:1px solid var(--linea); border-radius:var(--radio); overflow:hidden; }
 .flujo .nodo{ flex:1 1 0; padding:.8rem .95rem; min-width:0; }
 .flujo .nodo b{ display:block; font-size:.9rem; margin-bottom:.15rem; }
-.flujo .nodo span{ font-size:.78rem; color:var(--suave); line-height:1.4; }
+.flujo .nodo span{ display:block; font-size:.78rem; color:var(--suave); line-height:1.4; }
 .flujo .paso-datos{
   flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; align-items:center;
   padding:.5rem .8rem; background:#FAFAFA; border-left:1px solid var(--linea); border-right:1px solid var(--linea);
@@ -112,6 +131,9 @@ def datos():
     try:
         from herramientas.extranjeria import motor as extranjeria
         fecha_ext = extranjeria.NOTAS["titulo"].split("·")[-1].strip().lower()
+        # «Actualizado septiembre 2026» -> «septiembre de 2026»
+        fecha_ext = re.sub(r"^actualizad[oa]\s+", "", fecha_ext)
+        fecha_ext = re.sub(r"^([a-zé]+) (\d{4})$", r"\1 de \2", fecha_ext)
     except Exception:  # noqa: BLE001
         fecha_ext = "septiembre de 2026"
     st.markdown(

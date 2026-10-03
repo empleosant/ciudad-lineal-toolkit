@@ -36,6 +36,9 @@ CSS = """<style>
 }
 
 .stApp{ background:#FAFAFA; }
+/* Con el modo de dibujo por defecto, Chromium descoloca letras de la fuente
+   de Streamlit a tamaños pequeños: «Co dificado r SISPE», «CAT EGORÍA». */
+html, body, .stApp{ text-rendering:geometricPrecision; }
 html,body,[class*="css"],.stMarkdown{
   font-family:'Libre Franklin',system-ui,sans-serif; color:var(--texto);
 }
@@ -71,9 +74,13 @@ div[data-testid="stCustomComponentV1"] iframe, iframe.stIFrame{
    contenido a su sitio. El desbordamiento horizontal que eso puede dejar (el
    ancho de la barra de desplazamiento) se corta en la sección principal. */
 section.stMain{ overflow-x:hidden; }
+/* El ancho va fijado a la ventana: Streamlit le da al contenedor el ancho de
+   la columna, y con solo los márgenes negativos la barra se corría a la
+   izquierda sin crecer (no llegaba al borde derecho y cortaba «Informes»). */
 .st-key-cabecera{
   background:var(--negro); border-bottom:3px solid var(--rojo);
-  margin:0 calc(50% - 50vw) 1rem; padding:.45rem calc(50vw - 50%) .5rem;
+  width:100vw !important; max-width:100vw !important;
+  margin:0 0 1rem calc(50% - 50vw) !important; padding:.45rem calc(50vw - 50%) .5rem;
 }
 .st-key-cabecera div[data-testid="stVerticalBlock"]{ gap:.35rem; }
 .st-key-menu{
@@ -417,6 +424,22 @@ def banda(actual, titulo, subtitulo="", acciones=None):
             with fila("acciones_titulo"):
                 acciones()
     return caja("bajo_titulo")
+
+
+def pildoras(*args, **kwargs):
+    """`st.pills` que pasa a otra línea cuando no cabe.
+
+    Desde que Streamlit decide solo, las píldoras puestas directamente en una
+    columna se quedan en una fila que se desliza de lado, y en el móvil se
+    cortaban (los carnés del CV). En versiones sin `wrap`, `st.pills` tal cual.
+    """
+    import inspect
+    try:
+        if "wrap" in inspect.signature(st.pills).parameters:
+            kwargs.setdefault("wrap", True)
+    except (TypeError, ValueError):
+        pass
+    return st.pills(*args, **kwargs)
 
 
 def _ancho(valor):

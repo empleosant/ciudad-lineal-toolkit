@@ -147,7 +147,7 @@ def botones(clave, etiquetas, frase, catalogo, salto=False):
     # ponen al día antes de dibujarse.
     if sorted(st.session_state.get(llave) or []) != sorted(marcadas):
         st.session_state[llave] = marcadas
-    st.pills("Marcar", etiquetas, selection_mode="multi", key=llave,
+    estilo.pildoras("Marcar", etiquetas, selection_mode="multi", key=llave,
              label_visibility="collapsed",
              on_change=_aplica, args=(clave, etiquetas, frase, catalogo, salto))
 
@@ -174,7 +174,7 @@ def botones_idiomas():
     actuales = dict(motor.idiomas_de(cv["idiomas"]))
     if sorted(st.session_state.get("cv_p_idiomas") or []) != sorted(actuales):
         st.session_state["cv_p_idiomas"] = list(actuales)
-    st.pills("Idiomas", motor.IDIOMAS, selection_mode="multi", key="cv_p_idiomas",
+    estilo.pildoras("Idiomas", motor.IDIOMAS, selection_mode="multi", key="cv_p_idiomas",
              label_visibility="collapsed", on_change=_aplica_idiomas)
     for idioma, nivel in actuales.items():
         llave = f"cv_n_{idioma}"
@@ -193,7 +193,7 @@ def botones_informatica():
     actuales = motor.informatica_de(cv["informatica"])
     if sorted(st.session_state.get("cv_p_informatica") or []) != sorted(actuales):
         st.session_state["cv_p_informatica"] = actuales
-    st.pills("Informática", motor.INFORMATICA, selection_mode="multi",
+    estilo.pildoras("Informática", motor.INFORMATICA, selection_mode="multi",
              key="cv_p_informatica", label_visibility="collapsed",
              on_change=_aplica_informatica)
 
@@ -598,7 +598,7 @@ else:
                        "guía de empleo, en una hoja aparte para imprimir.")
         else:
             por_id = {s_["capitulo"]: s_ for s_ in secs}
-            elegidos = st.pills(
+            elegidos = estilo.pildoras(
                 "Sectores", list(por_id), selection_mode="multi", default=list(por_id)[:4],
                 format_func=lambda c: f"{por_id[c]['corto']} · {por_id[c]['n']}",
                 key="cv_w_sectores_" + hashlib.md5("|".join(por_id).encode()).hexdigest()[:8],

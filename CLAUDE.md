@@ -135,6 +135,14 @@ en la barra lateral de Streamlit y todos los saltos entre páginas son
 - Las tarjetas del codificador son contenedores de Streamlit con sus dos
   botones dentro: «+ CV» es un `st.button` y «Copiar» un marco de 34 px por
   tarjeta (`estilo.marco`), lo único que necesita JavaScript.
+- **Tres trampas de Streamlit que ya rompieron la pantalla** (03/10/2026):
+  el markdown lleva `margin-bottom:-16px` para compensar un párrafo final, y
+  con HTML propio (`<div>`) la caja encoge y lo de abajo la pisa (el titular
+  tachado del codificador, «Con IA» cortado en la portada): se anula con
+  `margin-bottom:0` en ese contenedor. Las píldoras puestas directamente en
+  una columna ya no pasan de línea: usar `estilo.pildoras()`, que pide
+  `wrap=True`. Y a tamaños pequeños Chromium descolocaba letras («Co dificado
+  r SISPE») hasta poner `text-rendering:geometricPrecision`.
 - **Al tocar `comun/estilo.py` hay que reiniciar `streamlit run`**: recarga
   las páginas al vuelo, pero no los módulos importados.
 - Para verlo de verdad: `~/.venvs/sispe/bin/streamlit run app.py` y capturas

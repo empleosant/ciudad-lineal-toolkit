@@ -472,7 +472,7 @@ with st.expander("Centros, buscadores y acreditaciones · de la guía de empleo"
                  icon=":material/travel_explore:"):
     sector_cv = next((x["capitulo"] for x in guia.secciones(cv_estado.codigos_sispe(), generales=False)
                       if x["capitulo"] in POR_SECTOR), None)
-    que = st.pills(
+    que = estilo.pildoras(
         "Qué mirar", GENERAL + [DEL_SECTOR], key="fmc_w_guia", label_visibility="collapsed",
         default=DEL_SECTOR if sector_cv else "Buscadores de cursos gratuitos",
     )

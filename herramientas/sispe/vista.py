@@ -364,7 +364,7 @@ def pinta_donde_enviar(ocupaciones):
         if secs[0]["general"]:
             st.caption("La guía no tiene un sector para esta ocupación: estos son los portales "
                        "generalistas y las grandes redes de trabajo temporal.")
-        elegida = st.pills(
+        elegida = estilo.pildoras(
             "Sector", list(range(len(secs))), default=0, key=f"sispe_guia_sec_{codigo}",
             format_func=lambda i: f"{secs[i]['corto']} · {secs[i]['n']}", label_visibility="collapsed",
         )
@@ -951,7 +951,7 @@ elif st.session_state["sispe_actual"]:
 else:
     st.markdown('<div class="seccion">Prueba con «una persona que…»</div>', unsafe_allow_html=True)
     with estilo.caja("ejemplos"):
-        st.pills(
+        estilo.pildoras(
             "Ejemplos", [ej[len(ARRANQUE):] for ej in EJEMPLOS], key="sispe_ejemplo",
             label_visibility="collapsed", on_change=usar_ejemplo,
         )

@@ -91,8 +91,10 @@ def tono_de(texto):
 def tabla(cabeceras, filas):
     cab = "".join(f"<th>{e(c)}</th>" for c in cabeceras)
     cuerpo = "".join("<tr>" + "".join(f"<td>{e(v)}</td>" for v in f) + "</tr>" for f in filas)
-    st.markdown(f'<table class="ext-tabla"><thead><tr>{cab}</tr></thead><tbody>{cuerpo}</tbody></table>',
-                unsafe_allow_html=True)
+    # La envoltura se desliza de lado: en el móvil, la tabla de textos de la TIE
+    # mide más del doble que la pantalla y se cortaba por la derecha.
+    st.markdown(f'<div class="envuelve-tabla"><table class="ext-tabla"><thead><tr>{cab}</tr></thead>'
+                f'<tbody>{cuerpo}</tbody></table></div>', unsafe_allow_html=True)
 
 
 def ficha(codigo):
