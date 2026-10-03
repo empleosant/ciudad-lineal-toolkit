@@ -576,8 +576,13 @@ with fase3:
     # que se enseña y se corrige: lo que quede marcado es lo que recibe la IA.
     _objetivos = [o for o in (objetivo, (st.session_state.get("inf_w_objetivo2") or "").strip()) if o]
     _codigos = [r[0][1] for r in (sispe.busca(o, tope=1) for o in _objetivos) if r]
-    _deducidas = {x["capitulo"]: x for x in guia.secciones(_codigos, generales=False)
-                  if x["capitulo"] != "24-portales"}
+    _todas_secs = guia.secciones(_codigos, generales=False)
+    _deducidas = {x["capitulo"]: x for x in _todas_secs
+                  if x["capitulo"] not in ("24-portales", guia.CEE)}
+    # Los centros especiales de empleo solo van al correo si se ha marcado que
+    # la persona tiene discapacidad: a quien no la tiene no le sirven.
+    _cee = next((x for x in _todas_secs if x["capitulo"] == guia.CEE), None)
+    _con_cee = _cee is not None and "Con discapacidad" in (_situaciones or [])
     _todas = list(_deducidas) + [c for c in guia.sectores() if c not in _deducidas]
     _marcados = st.multiselect(
         "Sectores de la guía para el correo", _todas, default=list(_deducidas)[:4],
@@ -587,7 +592,10 @@ with fase3:
         help="Salen del objetivo. Las empresas que nombre el correo serán de estos sectores, "
              "comprobadas en la guía. Sin ninguno, las propone la IA y hay que repasarlas.",
     )
-    _secciones = [_deducidas.get(c) or guia.seccion(c) for c in _marcados]
+    _secciones = [_deducidas.get(c) or guia.seccion(c) for c in _marcados] + ([_cee] if _con_cee else [])
+    if _con_cee:
+        st.caption(f"Con discapacidad marcada: van también {_cee['n']} centros especiales de empleo "
+                   "del sector, aparte del resto.")
     _texto_guia, _fichas_guia = motor.empresas_de_la_guia([x for x in _secciones if x])
 
     if st.button("Redactar el correo", type="primary", use_container_width=True,

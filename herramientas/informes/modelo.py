@@ -324,7 +324,10 @@ el objetivo, la zona y los límites de la persona: no hace falta usarlas todas n
 ocho nombres si no encajan tantas. El comercio y los servicios de barrio no están en la
 lista: esos se describen por tipo y por calle o zona, sin inventarles nombre. Las webs de
 empleo de las que nombres las añade el programa al final del correo; tú no escribas
-ninguna. Si no recibes la lista, sigue las reglas de arriba tal cual.
+ninguna. Si la lista trae «Centros especiales de empleo», van en su propio grupo del
+bloque 4 y no mezclados con el resto: contratan sobre todo a personas con discapacidad
+reconocida (33 % o más), y se dice así. Si no recibes la lista, sigue las reglas de
+arriba tal cual.
 
 CUANDO LO QUE PROPONES CHOCA CON UN LÍMITE DE LA PERSONA, SE DICE. Si las notas fijan un
 límite —solo mañanas, sin coche, una lesión, cargas de cuidado, un radio de

@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía de empleo en las cinco herramientas: 11 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía de empleo en las cinco herramientas: 12 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -193,6 +193,14 @@ Dónde sale:
   orienta marque para la situación de la persona, los añade
   `motor.con_la_guia()` antes de la firma. Los nombres en negrita que no están
   en la guía se señalan para revisarlos.
+- **Centros especiales de empleo, aparte** (pedido el 03/10/2026):
+  `guia.secciones()` saca a su propia sección los que la guía clasifica como
+  centro especial, deja en su sector (y repite en la sección aparte) las
+  empresas que dicen tener uno, y añade los del capítulo 9 cuya actividad
+  casa con el sector (`CEE_ACTIVIDAD`, hecho a mano). Va antes de los
+  portales, con la nota de la guía (70 % de plantilla, discapacidad del 33 %).
+  En el CV no sale marcada de entrada, y en los informes solo va al correo si
+  se marca «Con discapacidad».
 - **Formación** y **extranjería**: plegado, lo que la guía dice de dónde más
   formarse (con el sector del CV en curso ya elegido) y las entidades para
   quien viene de otro país. Las fichas se pintan con `guia.apartados_html()`

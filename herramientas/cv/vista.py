@@ -610,7 +610,10 @@ else:
         else:
             por_id = {s_["capitulo"]: s_ for s_ in secs}
             elegidos = estilo.pildoras(
-                "Sectores", list(por_id), selection_mode="multi", default=list(por_id)[:4],
+                # Los centros especiales de empleo no van marcados de entrada:
+                # solo sirven a quien tiene reconocida una discapacidad.
+                "Sectores", list(por_id), selection_mode="multi",
+                default=[c for c in por_id if c != guia.CEE][:4],
                 format_func=lambda c: f"{por_id[c]['corto']} · {por_id[c]['n']}",
                 key="cv_w_sectores_" + hashlib.md5("|".join(por_id).encode()).hexdigest()[:8],
             )

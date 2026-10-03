@@ -548,6 +548,7 @@ def cierre_con_reglas():
         "sin enlaces": "Nada de urls",
         "la medida del correo": "de 550 a 750 palabras",
         "con la guía, los nombres salen de ella": "LOS NOMBRES SALEN DE AHÍ",
+        "los centros especiales, en su grupo": "no mezclados con el resto",
     }
     malas = [f"no lleva {que}" for que, marca in reglas.items()
              if marca not in modelo.CIERRE]
@@ -571,7 +572,9 @@ def correo_con_la_guia():
     """
     from comun import guia
     malas = []
-    texto, fichas = motor.empresas_de_la_guia(guia.secciones(["51201038"]))
+    # Sin la sección de centros especiales: la pantalla solo la añade si se
+    # ha marcado que la persona tiene discapacidad.
+    texto, fichas = motor.empresas_de_la_guia(guia.secciones(["51201038"], cee=False))
     if "[Hostelería, restauración y hoteles]" not in texto or "Cómo se entra:" not in texto:
         malas.append("la lista para el prompt no lleva el sector o el cómo se entra")
     if not 8 <= len(fichas) <= 2 * motor.POR_SECCION:

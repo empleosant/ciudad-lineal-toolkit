@@ -12,6 +12,7 @@ cada ocupación del catálogo SISPE con sus capítulos
   · los casos de `casos_guia.csv`: el sector que tiene que salir primero;
   · que la mayoría del catálogo tiene sector, y que lo que no lo tiene cae en lo general;
   · que juntar varias ocupaciones (las de un currículo) ordena bien;
+  · que los centros especiales de empleo salen aparte del resto de empresas;
   · que la lista para imprimir se construye y lleva lo que tiene que llevar;
   · y las pantallas: el desplegable del codificador, el paso 4 del CV, el
     cierre de los informes (que pide las empresas a la guía), y lo plegado
@@ -172,6 +173,40 @@ def p_un_curriculo_con_varias():
     if any(s["general"] for s in secs):
         fallos.append("con sector, no tiene que salir lo general")
     return informe("Varias ocupaciones: un listado, ordenado por votos", fallos, 6)
+
+
+def p_los_cee_van_aparte():
+    """Pedido el 03/10/2026: buscando limpieza, los centros especiales de empleo
+    salen en su propio apartado y no mezclados con el resto de empresas."""
+    fallos = []
+    secs = guia.secciones(["92101050"])                 # personal de limpieza
+    por = {s["capitulo"]: s for s in secs}
+    cee = por.get(guia.CEE)
+    if not cee:
+        return informe("Los centros especiales de empleo, aparte", ["limpieza no tiene sección aparte"], 9)
+    nombres = lambda s: [f["nombre"] for _, fs in s["apartados"] for f in fs]  # noqa: E731
+    limpieza, aparte = nombres(por["13-limpieza"]), nombres(cee)
+    if "Grupo Osga" in limpieza or "Grupo Osga" not in aparte:
+        fallos.append("Grupo Osga (centro especial) sigue mezclado con las empresas de limpieza")
+    if "Serlingo" not in limpieza or "Serlingo" not in aparte:
+        fallos.append("Serlingo (empresa corriente con centro especial) tiene que estar en los dos sitios")
+    if "Ceelimp" in aparte:
+        fallos.append("Ceelimp no es un centro especial: «Cee» no es «CEE»")
+    if aparte.count("Grupo SIFU") != 1:
+        fallos.append(f"Grupo SIFU sale {aparte.count('Grupo SIFU')} veces (está en limpieza y en el cap. 9)")
+    if "Apadis" not in aparte:
+        fallos.append("faltan los centros del capítulo 9 que trabajan en limpieza (Apadis)")
+    if not cee.get("nota") or "33 %" not in cee["nota"]:
+        fallos.append("la sección aparte no explica qué hace falta para entrar")
+    camarero = [s["capitulo"] for s in guia.secciones(["51201038"])]
+    if camarero.index(guia.CEE) > camarero.index("24-portales"):
+        fallos.append(f"la sección aparte tiene que ir antes de los portales: {camarero}")
+    if any(s["capitulo"] == guia.CEE for s in guia.secciones(["25111040"])):
+        fallos.append("un abogado no tiene centros especiales en su sector y le sale la sección")
+    sin = {s["capitulo"]: s for s in guia.secciones(["92101050"], cee=False)}
+    if "Grupo Osga" not in nombres(sin["13-limpieza"]) or guia.CEE in sin:
+        fallos.append("con cee=False tiene que salir todo junto, como antes")
+    return informe("Los centros especiales de empleo, aparte", fallos, 9)
 
 
 def p_las_direcciones_se_leen_como_en_la_guia():
@@ -400,6 +435,7 @@ PRUEBAS = [
     p_los_casos,
     p_cobertura_y_lo_general,
     p_un_curriculo_con_varias,
+    p_los_cee_van_aparte,
     p_las_direcciones_se_leen_como_en_la_guia,
     p_la_lista_para_imprimir,
     p_pantalla_codificador,

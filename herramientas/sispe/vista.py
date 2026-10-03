@@ -402,7 +402,10 @@ def pinta_donde_enviar(ocupaciones):
         st.caption(f"De la guía «{guia.EDICION['titulo_empresas']}» "
                    f"({guia.EDICION['edicion'].lower()}), comprobada en {guia.EDICION['verificado']}. "
                    "Que una empresa salga aquí no garantiza que tenga vacantes.")
-        st.markdown(guia.apartados_html(secs[elegida or 0]["apartados"]), unsafe_allow_html=True)
+        sec = secs[elegida or 0]
+        if sec.get("nota"):
+            st.caption(f"**Centros especiales de empleo.** {sec['nota']}")
+        st.markdown(guia.apartados_html(sec["apartados"]), unsafe_allow_html=True)
 
 
 def pinta_chip(payload):

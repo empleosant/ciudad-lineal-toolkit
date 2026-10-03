@@ -7,7 +7,8 @@ capítulos le tocan a cada ocupación del catálogo SISPE
 (`comun/datos/ocupaciones_sectores.csv`).
 
     destinos(codigo)          (capítulo, apartado) de una ocupación, el principal primero
-    secciones(codigos)        lo que hay que enseñar para una o varias ocupaciones
+    secciones(codigos)        lo que hay que enseñar para una o varias ocupaciones, con los
+                              centros especiales de empleo aparte
     seccion(capitulo)         un capítulo entero (o algunos apartados) con la misma forma
     pdf(secciones, ...)       la lista para imprimir, en blanco y negro
     apartados_html(...)       las mismas fichas en pantalla (las clases .gu-* de comun/estilo.py)
@@ -23,7 +24,7 @@ import os
 import re
 from xml.sax.saxutils import escape as _esc
 
-from comun.texto import esc
+from comun.texto import esc, normaliza
 
 DATOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos")
 GUIA = os.path.join(DATOS, "guia")
@@ -120,13 +121,16 @@ def destinos(codigo):
     return []
 
 
-def secciones(codigos, generales=True):
+def secciones(codigos, generales=True, cee=True):
     """Lo que hay que enseñar para una o varias ocupaciones.
 
     Cada sección es un capítulo con los apartados que tocan, ordenadas por
     cuántas ocupaciones apuntan a él y, a igualdad, por el orden en que
     salen. Si ninguna ocupación tiene sector y `generales` es verdadero,
     salen los portales generalistas y las grandes ETT, marcadas así.
+
+    Con `cee`, los centros especiales de empleo salen de su sector y van a
+    una sección aparte (ver `aparta_cee`).
     """
     codigos = list(codigos)
     elegidos = {}            # capítulo -> None (entero) o lista de apartados
@@ -160,7 +164,111 @@ def secciones(codigos, generales=True):
         s = seccion(capitulo, elegidos[capitulo], general)
         if s:
             salida.append(s)
-    return salida
+    return aparta_cee(salida) if cee else salida
+
+
+# ---------------------------------------------------------------------------
+# Los centros especiales de empleo, aparte
+# ---------------------------------------------------------------------------
+# Lo pidió Álvaro el 03/10/2026: si alguien busca limpieza, los centros que
+# contratan sobre todo a personas con discapacidad tienen que salir en su
+# propio apartado y no mezclados con el resto de empresas. Quien no tiene el
+# certificado pierde el tiempo con ellos, y quien lo tiene los busca a propósito.
+
+CEE = "cee"     # la clave de la sección aparte; no es un capítulo de la guía
+
+# La nota «Qué es un centro especial de empleo» del capítulo 9 de la guía.
+NOTA_CEE = ("Al menos el 70 % de la plantilla son personas con discapacidad. Para entrar hay "
+            "que tener reconocido un grado de discapacidad igual o superior al 33 % y estar "
+            "inscrita o inscrito como demandante de empleo.")
+
+# Qué centros del capítulo 9 («Centros especiales de empleo») trabajan en cada
+# sector, por lo que dice su ficha que hacen. Hecho a mano: un sector que no
+# esté aquí solo enseña los centros que ya tiene en su propio capítulo.
+CEE_ACTIVIDAD = {
+    "13-limpieza": r"limpieza|conserjer",
+    "36-jardineria": r"jardiner",
+    "42-servicios-tecnicos": r"lavander|arreglo de ropa",
+    "12-logistica": r"log[ií]stica|almac[eé]n|manipulad|envasad",
+    "35-mensajeria": r"mensajer|reparto",
+    "18-administracion": r"contact center|telemarketing|administrativ|gesti[oó]n documental",
+    "45-publicidad": r"artes gr[aá]ficas|impresi[oó]n",
+    "11-hosteleria": r"restauraci[oó]n|catering",
+    "40-eventos": r"catering|eventos",
+    "37-alimentacion": r"alimentaci[oó]n",
+    "43-movilidad": r"aparcamiento",
+    "22-tecnologia": r"inform[aá]tic",
+    "30-industria": r"fabricaci[oó]n|manipulad|industrial",
+}
+
+_TIENE_CEE = re.compile(r"(?i:centro especial de empleo)|\bCEE\b")
+
+
+def es_cee(f):
+    """La ficha es un centro especial de empleo (así la clasifica la guía)."""
+    return f.get("tipo") == "centro especial de empleo"
+
+
+def tiene_cee(f):
+    """Una empresa corriente que dice tener además su centro especial («Serlingo»)."""
+    return not es_cee(f) and bool(_TIENE_CEE.search(f"{f['nombre']} {f.get('que', '')} {f.get('como', '')}"))
+
+
+def aparta_cee(secciones_):
+    """Saca los centros especiales de empleo de cada sector a una sección propia.
+
+    - Los que la guía clasifica como centro especial salen de su sector y solo
+      están en la sección aparte.
+    - Las empresas corrientes que además tienen su centro especial se quedan
+      en su sector y salen también en la sección aparte: contratan a todo el
+      mundo, y quien tiene el certificado tiene que saber que ahí hay sitio.
+    - Se añaden los centros del capítulo 9 cuya actividad es la del sector.
+
+    La sección aparte va después de los sectores y antes de los portales.
+    """
+    vistos, del_sector, salida = set(), [], []
+    for s in secciones_:
+        if s.get("general") or s["capitulo"] == "24-portales":
+            salida.append(s)
+            continue
+        apartados = []
+        for nombre, fs in s["apartados"]:
+            for f in fs:
+                if (es_cee(f) or tiene_cee(f)) and normaliza(f["nombre"]) not in vistos:
+                    vistos.add(normaliza(f["nombre"]))
+                    del_sector.append(f)
+            resto = [f for f in fs if not es_cee(f)]
+            if resto:
+                apartados.append((nombre, resto))
+        if apartados:
+            salida.append({**s, "apartados": apartados, "n": sum(len(x) for _, x in apartados),
+                           "entero": s["entero"] and len(apartados) == len(s["apartados"])})
+
+    patrones = [CEE_ACTIVIDAD[s["capitulo"]] for s in secciones_ if s["capitulo"] in CEE_ACTIVIDAD]
+    otros = []
+    if patrones:
+        actividad = re.compile("|".join(patrones), re.I)
+        for f in fichas("09-insercion", "Centros especiales de empleo"):
+            if actividad.search(f"{f.get('que', '')} {f.get('como', '')}") \
+                    and normaliza(f["nombre"]) not in vistos:
+                vistos.add(normaliza(f["nombre"]))
+                otros.append(f)
+    if not (del_sector or otros):
+        return salida
+
+    apartados = []
+    if del_sector:
+        apartados.append(("En este sector", del_sector))
+    if otros:
+        apartados.append(("Otros que también trabajan en él", otros))
+    aparte = {
+        "capitulo": CEE, "titulo": "Centros especiales de empleo (personas con discapacidad)",
+        "corto": "Con discapacidad (CEE)", "entero": False, "apartados": apartados,
+        "n": len(del_sector) + len(otros), "general": False, "cee": True, "nota": NOTA_CEE,
+    }
+    donde = next((i for i, s in enumerate(salida) if s["capitulo"] == "24-portales" or s.get("general")),
+                 len(salida))
+    return salida[:donde] + [aparte] + salida[donde:]
 
 
 def seccion(capitulo, apartados=None, general=False):
@@ -399,6 +507,8 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
 
     for s in secciones_:
         cab = [CondPageBreak(3 * cm), Paragraph(_esc(s["titulo"]), e_sector)]
+        if s.get("nota"):
+            cab.append(Paragraph(_esc(s["nota"]), e_texto))
         if s.get("general"):
             cab.append(Paragraph("La guía no tiene un sector para este puesto: empieza por los "
                                  "portales generalistas y las grandes redes de trabajo temporal.",
