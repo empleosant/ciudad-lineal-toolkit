@@ -321,7 +321,7 @@ PARA_EMPEZAR = [
     ("40-eventos", ["Azafatas, auxiliares y personal de eventos", "Catering y restauración de eventos"]),
     ("17-ocio-y-cultura", ["Parques de ocio", "Cines y teatros"]),
     ("10-comercio", ["Supermercados e hipermercados", "Grandes almacenes y moda", "Hogar, bricolaje y electrónica", "Deporte, ocio y cultura", "Perfumería y otros"]),
-    ("37-alimentacion", ["Panadería, pastelería y obradores", "Cárnicas, lácteas, bebidas y conservas", "Mercamadrid, mayoristas y mercados", "Envasado y plataformas de alimentación", "Formación y carnés"]),
+    ("37-alimentacion", ["Panadería, pastelería y obradores", "Mercamadrid, mayoristas y mercados", "Envasado y plataformas de alimentación", "Formación y carnés"]),
     ("12-logistica", ["Operadores logísticos", "Paquetería y reparto", "Comercio electrónico y distribución"]),
     ("35-mensajeria", ["Mensajería y paquetería", "Reparto a domicilio y plataformas"]),
     ("28-aeropuerto", ["Handling y servicios en pista", "Tiendas, restauración y servicios al pasajero", "Acreditaciones y acceso"]),
@@ -330,10 +330,12 @@ PARA_EMPEZAR = [
     ("36-jardineria", ["Empresas de jardinería y parques", "Residuos, reciclaje y medio ambiente", "Viveros y centros de jardinería"]),
     ("42-servicios-tecnicos", ["Lavanderías industriales y tintorerías"]),
     ("18-administracion", ["Contact center", "Atención al cliente y televenta"]),
+    ("01-oficina-de-empleo", ["Trámites por internet y por teléfono", "Oficinas de empleo de Madrid capital"]),
+    ("06-formacion", ["Centros de formación de la Comunidad de Madrid", "Buscadores de cursos gratuitos", "Carnés y acreditaciones que abren puertas"]),
     ("08-ett", ["Grandes redes", "Generalistas", "Especializadas por sector"]),
     ("07-agencias-de-colocacion", ["Generalistas", "Entidades sociales", "Empleo de hogar y cuidados"]),
     ("09-insercion", ["Empresas de inserción", "Entidades sociales con programas de empleo"]),
-    ("24-portales", ["Generalistas", "Hostelería y turismo"]),
+    ("24-portales", ["Generalistas"]),
     ("33-colectivos", ["Si vienes de otro país"]),
 ]
 # Fichas de esos apartados que no entran: perfiles cualificados o de otro oficio.
@@ -354,7 +356,8 @@ NOTA_EMPEZAR = ("Sectores donde lo corriente es entrar sin experiencia previa ni
 # Dos capítulos de los que solo entra un apartado y cuyo título no cabe en una píldora.
 _CORTOS_EMPEZAR = {"09-insercion": "Inserción y programas", "33-colectivos": "Si vienes de otro país",
                    "18-administracion": "Contact center", "15-monitores": "Comedores",
-                   "17-ocio-y-cultura": "Ocio", "43-movilidad": "Gasolineras y aparcamientos"}
+                   "17-ocio-y-cultura": "Ocio", "43-movilidad": "Gasolineras y aparcamientos",
+                   "01-oficina-de-empleo": "Oficina de empleo", "06-formacion": "Formación gratuita"}
 
 
 def para_empezar():
