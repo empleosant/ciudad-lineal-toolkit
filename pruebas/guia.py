@@ -273,7 +273,7 @@ def _hay_streamlit(nombre):
 
 def p_pantalla_codificador():
     """Buscar sin IA un camarero: bajo las tarjetas salen los sectores y sus fichas."""
-    nombre = "Codificador: «Dónde enviar el CV» bajo las tarjetas"
+    nombre = "Codificador: tarjetas, «+ CV» y «Dónde enviar el CV»"
     if not _hay_streamlit(nombre):
         return True
     fallos = []
@@ -281,7 +281,7 @@ def p_pantalla_codificador():
     at.text_input(key="consulta").input("camarero de sala").run()
     if at.exception:
         fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
-        return informe(nombre, fallos, 4)
+        return informe(nombre, fallos, 5)
     pildoras = [b for b in at.get("button_group") if (b.key or "").startswith("sispe_guia_sec_")]
     if not pildoras:
         fallos.append("no están las píldoras de sectores")
@@ -292,7 +292,18 @@ def p_pantalla_codificador():
         fallos.append("no se pintan las fichas de hostelería")
     if not any("imprimir" in b.proto.label for b in at.get("download_button")):
         fallos.append("falta el botón de la lista para imprimir")
-    return informe(nombre, fallos, 4)
+    # El «+ CV» pequeño de la cabecera de la tarjeta sigue mandando la ocupación al CV
+    at.text_input(key="consulta").input("51201038").run()
+    boton = [x for x in at.button if x.key == "addcv_51201038"]
+    if not boton:
+        fallos.append("la tarjeta no lleva el botón «+ CV»")
+    else:
+        boton[0].click().run()
+        en_cv = [e["codigo"] for e in at.session_state["cv_datos"]["experiencias"]]
+        ahora = [x for x in at.button if x.key == "addcv_51201038"]
+        if en_cv != ["51201038"] or not ahora or not ahora[0].disabled:
+            fallos.append(f"«+ CV» no pasa la ocupación al currículo ({en_cv})")
+    return informe(nombre, fallos, 5)
 
 
 def p_pantalla_curriculo():

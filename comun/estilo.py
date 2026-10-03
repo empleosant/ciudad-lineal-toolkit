@@ -148,7 +148,13 @@ section.stMain{ overflow-x:hidden; }
 .nota{ font-size:.76rem; color:var(--suave); margin:.15rem 0; }
 /* Fichas de la guía de empleo (comun/guia.py: ficha_html y apartado_html) */
 .gu-apartado{ font-size:.66rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--suave); margin:.7rem 0 .25rem; }
-.gu-ficha{ padding:.4rem 0; border-bottom:1px solid var(--linea); }
+.gu-rejilla{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; }
+@media (max-width:760px){ .gu-rejilla{ grid-template-columns:1fr; } }
+/* Cada ficha, tarjeta como las del codificador: filo gris a la izquierda */
+.gu-ficha{
+  background:#fff; border:1px solid var(--linea); border-left:4px solid #CBD5E1; border-radius:4px;
+  padding:.45rem .75rem .5rem; box-shadow:0 1px 3px rgba(0,0,0,.03); min-width:0;
+}
 .gu-nom{ font-weight:700; font-size:.88rem; color:var(--texto); line-height:1.25; }
 .gu-que{ font-size:.78rem; color:var(--suave); line-height:1.3; }
 .gu-como{ font-size:.78rem; color:var(--texto); line-height:1.3; margin-top:.1rem; }
@@ -229,29 +235,24 @@ div[data-testid="stTabs"] div[role="tablist"] > div:not([role="tab"]),
 div[data-testid="stTabs"] [data-testid="stTab"] .react-aria-SelectionIndicator{ display:none; }
 
 /* ---------- Indicador de pasos ---------- */
-/* Una línea: círculo, rótulo y detalle por paso, con una raya entre ellos.
-   Verde lo hecho, rojo el paso en curso, gris lo que falta. Aquí NO son
-   botones: informa de por dónde vas y no navega (los del generador de CV sí
-   lo son, y se pintan igual desde su vista). */
-.pasos{ display:flex; align-items:center; gap:.6rem; margin:.2rem 0 .6rem; flex-wrap:wrap; }
-.pasos .paso{ display:flex; align-items:center; gap:.5rem; min-width:0; }
-.pasos .paso i{
-  width:24px; height:24px; border-radius:50%; flex:0 0 24px; font-style:normal; font-size:.72rem;
-  font-weight:700; display:inline-flex; align-items:center; justify-content:center;
-  border:1.5px solid #C9CBD2; background:#fff; color:var(--tenue);
+/* Un recuadro por paso, como antes del rediseño: negro el paso en curso,
+   verde lo hecho, blanco lo que falta. Se ve de un vistazo y desde lejos; la
+   línea con circulitos que lo sustituyó se perdía. Aquí NO son botones:
+   informa de por dónde vas y no navega (los del generador de CV sí lo son, y
+   se pintan igual desde su vista). */
+.pasos{ display:grid; grid-template-columns:repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow:column;
+        gap:.4rem; margin:.2rem 0 .6rem; }
+.pasos .paso{
+  border:1px solid var(--linea); border-radius:6px; background:#fff;
+  padding:.5rem .7rem; display:flex; flex-direction:column; gap:.1rem; min-width:0;
 }
-.pasos .paso .t{ font-size:.86rem; font-weight:600; color:var(--tenue); line-height:1.15; display:block; }
-.pasos .paso .d{ font-size:.74rem; color:var(--tenue); line-height:1.2; display:block; }
-.pasos .paso.hecho i{ background:#1B6B3A; border-color:#1B6B3A; color:#fff; }
+.pasos .paso .t{ font-size:.84rem; font-weight:600; color:var(--suave); line-height:1.2; }
+.pasos .paso .d{ font-size:.76rem; color:var(--tenue); line-height:1.25; }
+.pasos .paso.hecho{ border-color:#BFE3CB; background:#F1FAF3; }
 .pasos .paso.hecho .t{ color:#1B6B3A; } .pasos .paso.hecho .d{ color:#3F8459; }
-.pasos .paso.activo i{ background:var(--rojo); border-color:var(--rojo); color:#fff; }
-.pasos .paso.activo .t{ color:var(--texto); } .pasos .paso.activo .d{ color:var(--suave); }
-.pasos .l{ flex:1 1 1rem; height:1.5px; background:var(--linea); min-width:.8rem; }
-.pasos .l.hecho{ background:#1B6B3A; }
-@media (max-width:640px){
-  .pasos{ flex-direction:column; align-items:stretch; gap:.35rem; }
-  .pasos .l{ display:none; }
-}
+.pasos .paso.activo{ background:var(--negro); border-color:var(--negro); }
+.pasos .paso.activo .t{ color:#fff; } .pasos .paso.activo .d{ color:#B9B9BE; }
+@media (max-width:640px){ .pasos{ grid-auto-flow:row; grid-template-columns:1fr; } }
 
 /* ---------- Chip de proveedor: qué modelo ha contestado y cuánto ha tardado ---------- */
 .chip-proveedor{
@@ -392,12 +393,10 @@ def pasos(items):
     trozos = []
     for i, (rotulo, detalle, estado) in enumerate(items, 1):
         marca = "✓" if estado == "hecho" else str(i)
-        if i > 1:
-            trozos.append(f'<div class="l {"hecho" if estado == "hecho" else ""}"></div>')
         trozos.append(
-            f'<div class="paso {estado}"><i>{marca}</i><span>'
-            f'<span class="t">{html.escape(str(rotulo))}</span>'
-            f'<span class="d">{html.escape(str(detalle))}</span></span></div>'
+            f'<div class="paso {estado}">'
+            f'<span class="t">{marca} · {html.escape(str(rotulo))}</span>'
+            f'<span class="d">{html.escape(str(detalle))}</span></div>'
         )
     st.markdown(f'<div class="pasos">{"".join(trozos)}</div>', unsafe_allow_html=True)
 
@@ -481,7 +480,7 @@ def chip(texto, color="#16A34A"):
     )
 
 
-def marco(cuerpo, alto):
+def marco(cuerpo, alto, ancho=None):
     """Un marco aislado con HTML y JavaScript propios.
 
     Lo necesitan los botones de copiar (los códigos del buscador, el correo de
@@ -492,9 +491,9 @@ def marco(cuerpo, alto):
     `requirements.txt`, así que si no está se usa el de siempre.
     """
     if hasattr(st, "iframe"):
-        return st.iframe(cuerpo, height=alto)
+        return st.iframe(cuerpo, height=alto, **({"width": ancho} if ancho else {}))
     import streamlit.components.v1 as componentes
-    return componentes.html(cuerpo, height=alto)
+    return componentes.html(cuerpo, height=alto, **({"width": ancho} if ancho else {}))
 
 
 def menu(actual):

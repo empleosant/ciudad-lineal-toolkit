@@ -30,27 +30,32 @@ st.markdown("""
 .seccion{ margin-top:1.3rem; }
 
 /* ---------- Indicador de pasos ---------- */
-/* Los mismos círculos y rayas que `estilo.pasos()`, solo que aquí SON
-   botones: la página está paginada y se navega con ellos. El número va en
-   el rótulo del botón; el CSS lo convierte en círculo. */
+/* Los mismos recuadros que `estilo.pasos()` (negro el paso en curso, verde lo
+   hecho), solo que aquí SON botones: la página está paginada y se navega con
+   ellos. */
 .st-key-pasos{ margin:.2rem 0 .8rem; }
-.st-key-pasos div[data-testid="stHorizontalBlock"]{ gap:.4rem !important; align-items:center; }
+.st-key-pasos div[data-testid="stHorizontalBlock"]{ gap:.4rem !important; align-items:stretch; }
+[class*="st-key-paso_"], [class*="st-key-paso_"] div[data-testid="stElementContainer"],
+[class*="st-key-paso_"] div[data-testid="stButton"]{ height:100%; }
 [class*="st-key-paso_"] button{
-  width:100% !important; border-radius:var(--radio) !important; padding:.4rem .6rem !important;
-  min-height:0 !important; height:auto !important; justify-content:flex-start !important;
-  border:1px solid transparent !important; background:transparent !important; box-shadow:none !important;
-  transition:all .15s ease; text-align:left;
+  width:100% !important; height:100% !important; min-height:0 !important; border-radius:6px !important;
+  padding:.5rem .7rem !important; justify-content:flex-start !important; text-align:left;
+  border:1px solid var(--linea) !important; background:#fff !important; box-shadow:none !important;
+  transition:all .15s ease;
 }
-[class*="st-key-paso_"] button div[data-testid="stMarkdownContainer"]{ display:flex; flex-direction:column; gap:.05rem; }
+[class*="st-key-paso_"] button > div{ width:100%; justify-content:flex-start !important; }
+[class*="st-key-paso_"] button div[data-testid="stMarkdownContainer"]{
+  display:flex; flex-direction:column; align-items:flex-start; gap:.1rem; width:100%;
+}
 [class*="st-key-paso_"] button p{
-  margin:0 !important; font-size:.86rem !important; font-weight:600 !important; color:var(--tenue) !important;
+  margin:0 !important; font-size:.84rem !important; font-weight:600 !important; color:var(--suave) !important;
   text-align:left !important; line-height:1.2 !important; white-space:normal !important;
 }
 [class*="st-key-paso_"] button p:last-child:not(:first-child){
-  font-size:.74rem !important; font-weight:500 !important;
+  font-size:.76rem !important; font-weight:400 !important; color:var(--tenue) !important;
 }
-[class*="st-key-paso_"] button:hover{ border-color:var(--linea) !important; background:#fff !important; }
-[class*="st-key-paso_"] button:hover p{ color:var(--texto) !important; }
+[class*="st-key-paso_"] button:hover{ border-color:var(--negro) !important; }
+[class*="st-key-paso_"][class*="_hecho"] button{ background:#F1FAF3 !important; border-color:#BFE3CB !important; }
 [class*="st-key-paso_"][class*="_hecho"] button p:first-child{ color:#1B6B3A !important; }
 [class*="st-key-paso_"][class*="_hecho"] button p:last-child:not(:first-child){ color:#3F8459 !important; }
 /* El paso activo manda sobre hecho, hover y foco (Streamlit pinta el foco en rojo) */
@@ -58,12 +63,18 @@ st.markdown("""
 [class*="st-key-paso_"][class*="_activo"] button:hover,
 [class*="st-key-paso_"][class*="_activo"] button:focus,
 [class*="st-key-paso_"][class*="_activo"] button:focus:not(:active){
-  background:#fff !important; border-color:var(--linea) !important; box-shadow:none !important;
-  border-bottom:3px solid var(--rojo) !important;
+  background:var(--negro) !important; border-color:var(--negro) !important; box-shadow:none !important;
 }
-[class*="st-key-paso_"][class*="_activo"] button p:first-child{ color:var(--texto) !important; }
-[class*="st-key-paso_"][class*="_activo"] button p:last-child:not(:first-child){ color:var(--suave) !important; }
+[class*="st-key-paso_"][class*="_activo"] button p:first-child{ color:#fff !important; }
+[class*="st-key-paso_"][class*="_activo"] button p:last-child:not(:first-child){ color:#B9B9BE !important; }
 [class*="st-key-paso_"] button:focus:not(:active){ box-shadow:none !important; }
+/* En el móvil, dos y dos: apilados, los cuatro se comían media pantalla */
+@media (max-width:640px){
+  .st-key-pasos div[data-testid="stHorizontalBlock"]{ flex-wrap:wrap !important; }
+  .st-key-pasos div[data-testid="stColumn"]{
+    flex:1 1 calc(50% - .4rem) !important; min-width:calc(50% - .4rem) !important; width:auto !important;
+  }
+}
 
 /* ---------- Vista previa como hoja (paso 4) ---------- */
 .hoja{

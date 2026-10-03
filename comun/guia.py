@@ -271,7 +271,7 @@ def apartados_html(apartados):
     trozos = []
     for apartado, suyas in apartados:
         trozos.append(f'<div class="gu-apartado">{esc(apartado)}</div>')
-        trozos += [ficha_html(f) for f in suyas]
+        trozos.append('<div class="gu-rejilla">' + "".join(ficha_html(f) for f in suyas) + "</div>")
     return "".join(trozos)
 
 

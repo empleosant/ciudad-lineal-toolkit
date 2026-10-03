@@ -132,9 +132,14 @@ en la barra lateral de Streamlit y todos los saltos entre páginas son
   `st.columns` por fila, para que en el móvil salgan en orden; y usa
   sentencias, no expresiones sueltas, porque Streamlit pinta el valor de una
   expresión suelta (salía un «None» bajo cada tarjeta).
-- Las tarjetas del codificador son contenedores de Streamlit con sus dos
-  botones dentro: «+ CV» es un `st.button` y «Copiar» un marco de 34 px por
-  tarjeta (`estilo.marco`), lo único que necesita JavaScript.
+- Las tarjetas del codificador tienen el dibujo de antes del rediseño
+  (vuelto el 03/10/2026 a petición de Álvaro): compactas, número de orden,
+  filo a la izquierda (rojo la recomendada), nivel en etiqueta gris y los
+  botones pequeños arriba a la derecha. Son contenedores de Streamlit:
+  «+ CV» es un `st.button` y «Copiar» un marco de 26 px (`estilo.marco`), lo
+  único que necesita JavaScript. Las fichas de la guía usan el mismo dibujo
+  (`.gu-ficha`, en rejilla de dos), y el indicador de pasos vuelve a ser un
+  recuadro por paso: negro el actual, verde lo hecho.
 - **Tres trampas de Streamlit que ya rompieron la pantalla** (03/10/2026):
   el markdown lleva `margin-bottom:-16px` para compensar un párrafo final, y
   con HTML propio (`<div>`) la caja encoge y lo de abajo la pisa (el titular

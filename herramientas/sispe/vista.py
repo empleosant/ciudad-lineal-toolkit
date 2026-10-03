@@ -103,30 +103,50 @@ st.markdown("""
 .st-key-pregunta .stButton button:hover{ background:var(--negro); color:#fff; border-color:var(--negro); }
 .st-key-pregunta .stButton button:hover p{ color:#fff; }
 
-/* Las tarjetas de ocupación: contenedores de verdad, con sus dos botones */
+/* Las tarjetas de ocupación, como antes del rediseño: compactas, con el
+   número de orden, filo a la izquierda (rojo la recomendada) y los botones
+   pequeños arriba a la derecha. Son contenedores de Streamlit para que «+ CV»
+   sea un botón de verdad dentro de la tarjeta. */
+.st-key-rejilla div[data-testid="stHorizontalBlock"]{ gap:.4rem !important; }
+.st-key-rejilla > div[data-testid="stVerticalBlock"], .st-key-rejilla{ gap:.4rem !important; }
 [class*="st-key-oc_"]{
-  background:#fff; border:1px solid var(--linea); border-radius:var(--radio); padding:.65rem .8rem .6rem .9rem;
-  height:100%;
+  background:#fff; border:1px solid var(--linea); border-left:4px solid #CBD5E1; border-radius:4px;
+  padding:.4rem .75rem .5rem; height:100%; gap:.1rem !important;
+  box-shadow:0 1px 3px rgba(0,0,0,.03); transition:transform .12s ease, box-shadow .12s ease;
 }
-[class*="st-key-oc_"][class*="_top"]{ border-color:var(--rojo); box-shadow:inset 0 0 0 1px var(--rojo); }
-[class*="st-key-oc_"][class*="_relleno"]{ background:#FAFAFA; }
-[class*="st-key-oc_"] div[data-testid="stVerticalBlock"]{ gap:.3rem; }
-.oc-cab{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-.oc-cod{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.15rem; letter-spacing:.03em; color:var(--negro); }
-.oc-rec{ font-size:.6rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; background:var(--rojo); color:#fff; padding:.14rem .45rem; border-radius:3px; white-space:nowrap; }
-.oc-den{ font-weight:600; font-size:.9rem; line-height:1.25; color:var(--texto); margin-top:.1rem; }
-.oc-mot{ font-size:.78rem; color:var(--suave); line-height:1.3; }
-.oc-niv{ font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--tenue); margin-top:.15rem; }
-.oc-niv.mando{ color:#C2410C; }
-[class*="st-key-oc_"] .st-key-acciones_oc,
-[class*="st-key-oc_"] div[data-testid="stHorizontalBlock"]{ flex-wrap:nowrap !important; gap:.4rem !important; }
-[class*="st-key-oc_"] div[data-testid="stHorizontalBlock"] > div{ flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
+[class*="st-key-oc_"]:hover{ transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.07); }
+[class*="st-key-oc_"][class*="_top"]{ border-left-color:var(--rojo); box-shadow:0 2px 6px rgba(209,18,46,.06); }
+[class*="st-key-oc_"][class*="_relleno"]{ background:#FAFAFA; border-left-color:#E2E8F0; }
+[class*="st-key-oc_"] div[data-testid="stMarkdownContainer"]{ margin-bottom:0 !important; }
+/* La cabecera: número y código a la izquierda, «Copiar» y «+ CV» a la derecha */
+[class*="st-key-occab_"]{ flex-wrap:nowrap !important; gap:.35rem !important; align-items:center !important; }
+[class*="st-key-occab_"] > div:first-child{ flex:1 1 auto !important; min-width:0; }
+[class*="st-key-occab_"] > div:not(:first-child){ flex:0 0 auto !important; width:auto !important; }
+.oc-id{ display:flex; align-items:baseline; gap:.5rem; }
+.oc-orden{ font-family:'JetBrains Mono',monospace; font-size:.72rem; font-weight:700; color:var(--suave); }
+.oc-cod{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.2rem; letter-spacing:.03em; color:var(--negro); }
+.oc-den{ font-weight:600; font-size:.92rem; line-height:1.25; color:var(--texto); }
+.oc-mot{ font-size:.8rem; color:var(--suave); line-height:1.25; margin-top:.05rem; }
+.oc-etq{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:.3rem; }
+.oc-etq span{
+  font-size:.64rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:.12rem .4rem; border-radius:3px; background:var(--gris); color:var(--suave);
+}
+.oc-etq span.rec{ background:var(--rojo); color:#fff; }
+.oc-etq span.mando{ background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; }
+/* Los dos botones, pequeños y con el mismo dibujo que «Copiar» */
 [class*="st-key-oc_"] .stButton button{
-  width:100%; min-height:34px !important; height:34px !important; padding:0 .6rem !important;
-  border-radius:var(--radio) !important; font-size:.8rem !important; font-weight:600 !important;
+  min-height:0 !important; height:26px !important; padding:0 .6rem !important;
+  border:1px solid #C4C4C4 !important; border-radius:3px !important; background:#fff !important;
+  box-shadow:none !important;
 }
-[class*="st-key-oc_"] iframe{ height:34px !important; }
-[class*="st-key-oc_"] div[data-testid="stElementContainer"]:has(> iframe){ height:34px !important; flex:0 0 34px !important; }
+[class*="st-key-oc_"] .stButton button p{ font-size:.74rem !important; font-weight:600 !important; color:var(--texto) !important; white-space:nowrap; }
+[class*="st-key-oc_"] .stButton button:hover:not(:disabled){ background:var(--negro) !important; border-color:var(--negro) !important; }
+[class*="st-key-oc_"] .stButton button:hover:not(:disabled) p{ color:#fff !important; }
+[class*="st-key-oc_"] .stButton button:disabled{ background:#F1FAF3 !important; border-color:#BFE3CB !important; opacity:1; }
+[class*="st-key-oc_"] .stButton button:disabled p{ color:#1B6B3A !important; }
+[class*="st-key-oc_"] iframe{ height:26px !important; }
+[class*="st-key-oc_"] div[data-testid="stElementContainer"]:has(> iframe){ height:26px !important; width:66px !important; flex:0 0 66px !important; }
 
 /* Una línea para el currículo en curso */
 .st-key-cesta{
@@ -176,20 +196,20 @@ BOTON_COPIAR = """
   @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600&display=swap');
   html,body{ margin:0; padding:0; background:transparent; overflow:hidden; }
   button{
-    width:100%; height:34px; box-sizing:border-box; cursor:pointer;
-    font-family:'Libre Franklin',system-ui,sans-serif; font-size:.8rem; font-weight:600;
-    color:#fff; background:#0A0A0A; border:1px solid #0A0A0A; border-radius:6px;
+    width:100%; height:26px; box-sizing:border-box; cursor:pointer; white-space:nowrap;
+    font-family:'Libre Franklin',system-ui,sans-serif; font-size:.74rem; font-weight:600;
+    color:#1A1A1A; background:#fff; border:1px solid #C4C4C4; border-radius:3px;
     transition:all .15s ease;
   }
-  button:hover{ background:#333; }
-  button.hecho{ background:#D1122E; border-color:#D1122E; }
+  button:hover{ background:#0A0A0A; border-color:#0A0A0A; color:#fff; }
+  button.hecho{ background:#D1122E; border-color:#D1122E; color:#fff; }
 </style>
-<button id="c">Copiar __COD__</button>
+<button id="c" title="Copiar __COD__">Copiar</button>
 <script>
 const b = document.getElementById('c');
 function hecho(){
   b.textContent = 'Copiado'; b.classList.add('hecho');
-  setTimeout(() => { b.textContent = 'Copiar __COD__'; b.classList.remove('hecho'); }, 1400);
+  setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('hecho'); }, 1400);
 }
 b.addEventListener('click', () => {
   navigator.clipboard.writeText('__COD__').then(hecho).catch(() => {
@@ -203,7 +223,7 @@ b.addEventListener('click', () => {
 
 
 def boton_copiar(codigo):
-    estilo.marco(BOTON_COPIAR.replace("__COD__", codigo), 34)
+    estilo.marco(BOTON_COPIAR.replace("__COD__", codigo), 26, ancho=66)
 
 
 def pinta_tarjeta(i, o, interactivo):
@@ -211,44 +231,45 @@ def pinta_tarjeta(i, o, interactivo):
     es_mando = o.get("nivel") in ("10", "20", "30")
     clave = f"oc_{i}" + ("_top" if es_primera else "") + ("_relleno" if o.get("relleno") else "")
     with estilo.caja(clave):
+        with estilo.fila(f"occab_{i}", vertical_alignment="center"):
+            st.markdown(
+                f'<div class="oc-id"><span class="oc-orden">{i:02d}</span>'
+                f'<span class="oc-cod">{o["codigo"]}</span></div>',
+                unsafe_allow_html=True, **estilo._ancho("stretch"),
+            )
+            boton_copiar(o["codigo"])
+            if interactivo:
+                ya = cv_estado.en_lista(o["codigo"])
+                st.button(
+                    "✓ CV" if ya else "+ CV", key=f"addcv_{o['codigo']}", disabled=ya,
+                    help=("Ya está en el currículo" if ya else
+                          f"Al currículo como «{cv_motor.a_oracion(o['denominacion'])}»"),
+                    on_click=cv_estado.anade_experiencia,
+                    args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
+                )
+        etiquetas = ('<span class="rec">★ Recomendada</span>' if es_primera else "") + (
+            f'<span class="{"mando" if es_mando else ""}">Nivel {o["nivel"]} · {o["nivel_texto"]}</span>')
         st.markdown(
-            '<div class="oc-cab">'
-            f'<span class="oc-cod">{o["codigo"]}</span>'
-            + ('<span class="oc-rec">★ Recomendada</span>' if es_primera else "")
-            + '</div>'
             f'<div class="oc-den">{o["denominacion"]}</div>'
             + (f'<div class="oc-mot">{o["motivo"]}</div>' if o.get("motivo") else "")
-            + f'<div class="oc-niv{" mando" if es_mando else ""}">Nivel {o["nivel"]} · {o["nivel_texto"]}</div>',
+            + f'<div class="oc-etq">{etiquetas}</div>',
             unsafe_allow_html=True,
         )
-        if interactivo:
-            copiar, anadir = st.columns(2, gap="small")
-            with copiar:
-                boton_copiar(o["codigo"])
-            ya = cv_estado.en_lista(o["codigo"])
-            anadir.button(
-                "Añadido al CV" if ya else "+ CV", key=f"addcv_{o['codigo']}",
-                use_container_width=True, disabled=ya,
-                help=f"Al currículo como «{cv_motor.a_oracion(o['denominacion'])}»",
-                on_click=cv_estado.anade_experiencia,
-                args=(o["codigo"], o["denominacion"], o.get("motivo", "")),
-            )
-        else:
-            boton_copiar(o["codigo"])
 
 
 def pinta_tarjetas(ocupaciones, interactivo=False):
-    """Las tarjetas, de dos en dos. En el móvil las columnas se apilan y salen
-    en orden porque cada fila es su propio `st.columns`."""
+    """Las tarjetas, de dos en dos y muy juntas. En el móvil las columnas se
+    apilan y salen en orden porque cada fila es su propio `st.columns`."""
     if not ocupaciones:
         return
-    for fila in range(0, len(ocupaciones), 2):
-        cols = st.columns(2, gap="small")
-        for j, col in enumerate(cols):
-            i = fila + j
-            if i < len(ocupaciones):
-                with col:
-                    pinta_tarjeta(i + 1, ocupaciones[i], interactivo)
+    with estilo.caja("rejilla"):
+        for fila in range(0, len(ocupaciones), 2):
+            cols = st.columns(2, gap="small")
+            for j, col in enumerate(cols):
+                i = fila + j
+                if i < len(ocupaciones):
+                    with col:
+                        pinta_tarjeta(i + 1, ocupaciones[i], interactivo)
 
 
 def pinta_resultado(payload, estado=None, avance=0.06, interactivo=False, consulta=""):
