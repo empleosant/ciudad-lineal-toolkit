@@ -4,7 +4,7 @@ id,parte,zona,zona_titulo,titulo,apartados
 03-agencia-para-el-empleo,II,,,Agencia para el Empleo del Ayuntamiento de Madrid,Agencias de zona | Centros de formación y otros servicios
 04-jovenes,I,,,Si tienes menos de 30 años,Garantía Juvenil | Información y asesoría juvenil | Programas de empleo y prácticas
 05-tu-distrito,II,,,Recursos de tu distrito y de tu municipio,Mesas de empleo y ferias de empleo | Servicios de empleo de los ayuntamientos | Otros recursos de barrio
-06-formacion,II,,,Formación para el empleo y acreditaciones,Centros de formación de la Comunidad de Madrid | Centros colaboradores con cursos gratuitos | Buscadores de cursos gratuitos | Acreditación de la experiencia | Carnés y acreditaciones que abren puertas
+06-formacion,II,,,Formación para el empleo y acreditaciones,"Centros de formación de la Comunidad de Madrid | Centros colaboradores con cursos gratuitos | Buscadores de cursos gratuitos | Cursos online gratuitos, vivas donde vivas | Acreditación de la experiencia | Carnés y acreditaciones que abren puertas"
 48-mayores-de-45,I,,,Si tienes más de 45 años,Programas y entidades | Recolocación
 49-mujer,I,,,Si eres mujer,Programas y entidades
 50-otro-pais,I,,,Si vienes de otro país,Quién te informa y te acompaña
@@ -14,6 +14,7 @@ id,parte,zona,zona_titulo,titulo,apartados
 08-ett,III,,,Empresas de trabajo temporal,Grandes redes | Generalistas | Especializadas por sector
 09-insercion,III,,,"Empresas de inserción, centros especiales de empleo y entidades sociales",Empresas de inserción | Centros especiales de empleo | Entidades sociales con programas de empleo
 24-portales,III,,,Portales de empleo,"Generalistas | Hostelería y turismo | Sanidad y cuidados | Educación | Tecnología | Construcción, arquitectura e ingeniería | Ámbito social y ONG | Discapacidad | Comercio, administración y banca | Artes escénicas y audiovisual | Otros sectores"
+53-headhunters,III,,,Headhunters y selección de directivos,Alta dirección: grandes firmas internacionales | Mandos y directivos: consultoras de selección | Boutiques y firmas especializadas
 10-comercio,IV,1,Tiendas y consumo,"Comercio: supermercados, tiendas y grandes superficies","Supermercados e hipermercados | Grandes almacenes y moda | Hogar, bricolaje y electrónica | Deporte, ocio y cultura | Perfumería y otros | Moda: marcas, portales y escuelas"
 41-farmacias,IV,1,Tiendas y consumo,"Farmacias, ópticas, audiología y ortopedia",Farmacias y grupos de farmacias | Distribución y laboratorios farmacéuticos | Ópticas y audiología | Ortopedias y parafarmacias | Formación y colegios profesionales
 37-alimentacion,IV,1,Tiendas y consumo,"Alimentación: fábricas, obradores y Mercamadrid","Panadería, pastelería y obradores | Cárnicas, lácteas, bebidas y conservas | Mercamadrid, mayoristas y mercados | Envasado y plataformas de alimentación | Formación y carnés"
