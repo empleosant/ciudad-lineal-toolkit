@@ -416,6 +416,8 @@ prefijo,capitulo,apartado
 5825,17-ocio-y-cultura,Agencias de viajes
 5825,24-portales,Hostelería y turismo
 5831,11-hosteleria,Hoteles
+58311035,11-hosteleria,Hoteles
+58311035,11-hosteleria,Camareras de pisos: limpieza de hoteles y apartamentos
 5831,13-limpieza,Grandes empresas de servicios
 58311017,-,
 5832,11-hosteleria,Hoteles
@@ -583,6 +585,7 @@ prefijo,capitulo,apartado
 9210,13-limpieza,
 92101016,11-hosteleria,Hoteles
 92101016,13-limpieza,Empresas de limpieza
+92101027,11-hosteleria,Camareras de pisos: limpieza de hoteles y apartamentos
 92101027,11-hosteleria,Hoteles
 92101027,13-limpieza,Empresas de limpieza
 92101038,13-limpieza,Grandes empresas de servicios
