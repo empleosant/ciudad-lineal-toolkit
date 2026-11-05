@@ -129,6 +129,15 @@ def _destino(valor):
     return capitulo, apartado or None
 
 
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
+         "octubre", "noviembre", "diciembre"]
+
+
+def _hoy():
+    hoy = date.today()
+    return f"{hoy.day} de {MESES[hoy.month - 1]} de {hoy.year}"
+
+
 def lista_a_medida():
     """Varios puestos, un solo PDF: lo que pide quien se va con prisa."""
     texto = st.text_input(
@@ -159,8 +168,10 @@ def lista_a_medida():
     st.download_button(
         f"PDF a medida · {sum(s['n'] for s in secciones_)} empresas", icon=":material/print:",
         on_click="ignore", type="primary", use_container_width=True,
-        data=lambda: guia.pdf(secciones_, "Dónde enviar tu currículum", " · ".join(puestos),
-                              puesto=en_frase.lower(), nombre=nombre.strip()),
+        data=lambda: guia.pdf(secciones_, "Dónde enviar tu currículum",
+                              (f"Preparado para {nombre.strip()} · " if nombre.strip() else "") + _hoy(),
+                              puesto=en_frase.lower(), nombre=nombre.strip(),
+                              paradas=True, candidaturas=True),
         file_name="Donde_enviar_CV_" + (re.sub(r"[^0-9A-Za-z]+", "_", "_".join(puestos)).strip("_")[:60] or "lista")
                   + ".pdf",
         mime="application/pdf",

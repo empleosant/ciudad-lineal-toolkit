@@ -609,11 +609,16 @@ def _fuentes():
     return "Helvetica", "Helvetica-Bold"
 
 
-def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
+def pdf(secciones_, titulo, subtitulo="", puesto="", nombre="", paradas=False, candidaturas=False):
     """La lista para imprimir. Devuelve bytes.
 
     `puesto` y `nombre` rellenan el guion de la llamada; si faltan, quedan
     los huecos entre corchetes, como en la guía.
+
+    Con `paradas` (la lista a medida) cada sección es una parada numerada, y
+    bajo el título va la línea con todas, como el plano de la guía: se ve de
+    un vistazo qué trae la hoja. Con `candidaturas`, una última hoja para
+    apuntar a quién se ha escrito. Todo en blanco y negro: se imprime así.
     """
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -633,7 +638,7 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
     e_titulo = estilo(17, negrita, leading=20)
     e_sub = estilo(10, color=gris, spaceAfter=6)
     e_sector = estilo(11.5, negrita, spaceBefore=4, spaceAfter=1)
-    e_apartado = estilo(8.6, negrita, color=gris, spaceBefore=5, spaceAfter=2)
+    e_apartado = estilo(7.6, negrita, color=gris, spaceBefore=6, spaceAfter=2)
     e_nombre = estilo(9, negrita)
     e_texto = estilo(7.9, color=colors.HexColor("#222222"))
     e_dato = estilo(7.9)
@@ -651,6 +656,8 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
 
     def al_pie(canvas, doc):
         canvas.saveState()
+        canvas.setLineWidth(3)
+        canvas.line(margen, alto - margen * 0.55, ancho - margen, alto - margen * 0.55)
         canvas.setFont(regular, 7)
         canvas.setFillColor(gris)
         canvas.drawString(margen, margen * 0.7,
@@ -665,6 +672,10 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
     # un blanco en medio de la hoja.
     cabecera = _cabecera(titulo, subtitulo, puesto, nombre, ancho - 2 * margen,
                          estilo, e_titulo, e_sub, linea, gris)
+    if paradas and secciones_:
+        cabecera.insert(2 if subtitulo else 1,
+                        _Linea([(s["corto"], s["n"]) for s in secciones_], ancho - 2 * margen,
+                               regular, negrita))
     alto_cab = sum(f.wrap(ancho - 2 * margen, alto)[1] + f.getSpaceBefore() + f.getSpaceAfter()
                    for f in cabecera) + 6
     primera = [Frame(margen, alto - margen - alto_cab, ancho - 2 * margen, alto_cab,
@@ -676,12 +687,23 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
                           topMargin=margen, bottomMargin=margen, title=titulo,
                           author=EDICION["autor"], subject=EDICION["titulo_empresas"])
     doc.addPageTemplates([PageTemplate("primera", primera, onPage=al_pie),
-                          PageTemplate("resto", columnas(margen), onPage=al_pie)])
+                          PageTemplate("resto", columnas(margen), onPage=al_pie),
+                          PageTemplate("hoja", [Frame(margen, margen + pie, ancho - 2 * margen,
+                                                      alto - 2 * margen - pie, leftPadding=0,
+                                                      rightPadding=0, topPadding=0, bottomPadding=0)],
+                                       onPage=al_pie)])
 
     flujo = [NextPageTemplate("resto")] + cabecera + [FrameBreak()]
 
+    if candidaturas:
+        flujo_final = _hoja_candidaturas(ancho - 2 * margen, estilo, regular, negrita, gris, linea)
+    numero = 0
     for s in secciones_:
-        cab = [CondPageBreak(3 * cm), Paragraph(_esc(s["titulo"]), e_sector)]
+        if paradas:
+            numero += 1
+            cab = [CondPageBreak(3 * cm), _Parada(numero, s["titulo"], s["n"], col, regular, negrita)]
+        else:
+            cab = [CondPageBreak(3 * cm), Paragraph(_esc(s["titulo"]), e_sector)]
         if s.get("nota"):
             cab.append(Paragraph(_esc(s["nota"]), e_texto))
         if s.get("general"):
@@ -692,7 +714,7 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
         for apartado, suyas in s["apartados"]:
             bloque = cab if primera_del_sector else []
             primera_del_sector = False
-            bloque.append(Paragraph(_esc(apartado), e_apartado))
+            bloque.append(Paragraph(_esc(apartado.upper()), e_apartado))
             for i, f in enumerate(suyas):
                 ficha = _ficha_pdf(f, e_nombre, e_texto, e_dato)
                 if i == 0:                       # el rótulo no se queda solo al pie
@@ -701,8 +723,99 @@ def pdf(secciones_, titulo, subtitulo="", puesto="", nombre=""):
                     flujo.append(KeepTogether(ficha))
         flujo.append(Spacer(1, 4))
 
+    if candidaturas:
+        flujo += flujo_final
     doc.build(flujo)
     return salida.getvalue()
+
+
+def _flowable():
+    from reportlab.platypus import Flowable
+    return Flowable
+
+
+class _Linea(_flowable()):
+    """La línea de la lista a medida: una parada por sección, como el plano de la guía."""
+
+    def __init__(self, paradas, ancho, regular, negrita):
+        super().__init__()
+        self.paradas, self.ancho, self.regular, self.negrita = paradas, ancho, regular, negrita
+        self.height = 62
+
+    def wrap(self, *a):
+        return self.ancho, self.height
+
+    def draw(self):
+        from reportlab.lib.utils import simpleSplit
+        c, n = self.canv, len(self.paradas)
+        y = self.height - 14
+        paso = self.ancho / max(n, 1)
+        c.setLineWidth(4)
+        c.line(paso / 2, y, self.ancho - paso / 2, y) if n > 1 else None
+        for i, (nombre, cuantas) in enumerate(self.paradas):
+            x = paso / 2 + i * paso
+            c.setFillColorRGB(1, 1, 1)
+            c.setLineWidth(2.2)
+            c.circle(x, y, 8.5, fill=1)
+            c.setFillColorRGB(0, 0, 0)
+            c.setFont(self.negrita, 9)
+            c.drawCentredString(x, y - 3.2, str(i + 1))
+            # El nombre se parte en dos renglones si no cabe en su tramo de línea.
+            nombre = nombre[:1].upper() + nombre[1:]
+            renglones = simpleSplit(nombre, self.negrita, 8.2, paso - 8)[:2]
+            c.setFont(self.negrita, 8.2)
+            for k, r in enumerate(renglones):
+                c.drawCentredString(x, y - 21 - k * 9, r)
+            c.setFont(self.regular, 7.2)
+            c.drawCentredString(x, y - 21 - len(renglones) * 9 - 0.5,
+                                f"{cuantas} empresa{'s' if cuantas != 1 else ''}")
+
+
+class _Parada(_flowable()):
+    """El rótulo de cada sección en la lista a medida: su número en círculo, como en la línea."""
+
+    def __init__(self, numero, titulo, cuantas, ancho, regular, negrita):
+        super().__init__()
+        self.numero, self.titulo, self.cuantas = numero, titulo, cuantas
+        self.ancho, self.regular, self.negrita = ancho, regular, negrita
+        self.height = 26
+
+    def wrap(self, *a):
+        return self.ancho, self.height
+
+    def draw(self):
+        c = self.canv
+        y = 10
+        c.setLineWidth(2.2)
+        c.setFillColorRGB(1, 1, 1)
+        c.circle(9, y + 3, 8.5, fill=1)
+        c.setFillColorRGB(0, 0, 0)
+        c.setFont(self.negrita, 9)
+        c.drawCentredString(9, y, str(self.numero))
+        c.setFont(self.negrita, 11.5)
+        titulo = self.titulo if len(self.titulo) <= 40 else self.titulo[:38] + "…"
+        c.drawString(24, y - 0.5, titulo)
+        c.setFont(self.regular, 7.6)
+        c.drawRightString(self.ancho, y, f"{self.cuantas} empresa{'s' if self.cuantas != 1 else ''}")
+        c.setLineWidth(0.6)
+        c.line(24, y - 5, self.ancho, y - 5)
+
+
+def _hoja_candidaturas(ancho, estilo, regular, negrita, gris, linea):
+    """Una hoja para apuntar a quién se ha escrito y qué ha contestado."""
+    from reportlab.platypus import NextPageTemplate, PageBreak, Paragraph, Table, TableStyle
+    filas = [["Empresa", "Fecha", "Cómo la envié", "Con quién hablé", "Respuesta"]]
+    filas += [[""] * 5 for _ in range(26)]
+    tabla = Table(filas, colWidths=[ancho * x for x in (.3, .1, .18, .2, .22)], rowHeights=[16] + [24] * 26)
+    tabla.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 0), negrita, 8), ("LINEBELOW", (0, 0), (-1, 0), 1.2, "#000000"),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, linea), ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+        ("LINEBEFORE", (1, 1), (-1, -1), 0.3, linea),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return [NextPageTemplate("hoja"), PageBreak(), Paragraph("Mis candidaturas", estilo(15, negrita, leading=18)),
+            Paragraph("Apunta cada envío y lo que te contesten: así sabes a quién volver a llamar.",
+                      estilo(8.6, color=gris, spaceAfter=8)), tabla]
 
 
 def _cabecera(titulo, subtitulo, puesto, nombre, ancho, estilo, e_titulo, e_sub, linea, gris):
