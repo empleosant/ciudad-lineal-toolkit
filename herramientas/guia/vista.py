@@ -252,9 +252,15 @@ def busca_con_ia(puesto_, clave, sector_, ya, para_empezar=False):
         with st.spinner("Buscando en Google empresas de Madrid y alrededores…"):
             texto, fuentes, apoyos = modelo.busca(puesto_, sector_, ya, para_empezar=para_empezar)
     except Exception as e:  # noqa: BLE001
-        st.session_state["guia_ia_aviso"] = (
-            "Ahora no se puede buscar con IA (lo normal es que se haya acabado el cupo gratuito "
-            f"de búsquedas de hoy). {type(e).__name__}: {str(e)[:160]}")
+        if ia.clave_mala(e):
+            aviso = ("Google no acepta la clave de Gemini: ha caducado o está mal copiada. Hay que "
+                     "poner una nueva en los Secrets de la app (GEMINI_API_KEY); el resto de la "
+                     "pantalla funciona sin ella.")
+        elif ia.sin_cuota(e):
+            aviso = "Se ha acabado el cupo gratuito de búsquedas de hoy: vuelve a probar mañana."
+        else:
+            aviso = f"Ahora no se puede buscar con IA. {type(e).__name__}: {str(e)[:160]}"
+        st.session_state["guia_ia_aviso"] = aviso
         return
     fichas, descartadas = motor.interpreta(texto, fuentes, apoyos)
     hoy = date.today().strftime("%d/%m/%Y")

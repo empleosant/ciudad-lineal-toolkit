@@ -363,6 +363,16 @@ def sin_cuota(e):
     return "429" in t or "RESOURCE_EXHAUSTED" in t or "quota" in t.lower()
 
 
+def clave_mala(e):
+    """El proveedor rechaza la clave (caducada, revocada o mal copiada en los Secrets).
+
+    No es cosa del cupo y no se arregla esperando: hay que poner una clave
+    nueva en los Secrets de Streamlit."""
+    t = str(e)
+    return ("API key not valid" in t or "API_KEY_INVALID" in t or "invalid api key" in t.lower()
+            or "Incorrect API key" in t or t.lstrip().startswith("401"))
+
+
 def por_minuto(e):
     """Distingue el tope POR MINUTO del cupo diario agotado.
 
