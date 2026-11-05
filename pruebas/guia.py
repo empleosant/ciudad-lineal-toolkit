@@ -252,7 +252,7 @@ def p_la_lista_para_imprimir():
     texto = " ".join(doc[i].get_textpage().get_text_range() for i in range(len(doc)))
     texto = " ".join(texto.split())
     for debe in ("Busco trabajo de camarero de sala", "me llamo Lucía", "Alsea",
-                 "europe.alsea.net/talento", "Portales de empleo", guia.EDICION["verificado"]):
+                 "europe.alsea.net/talento", "Webs de ofertas de trabajo", guia.EDICION["verificado"]):
         if debe not in texto:
             fallos.append(f"no aparece «{debe}»")
     if not 2 <= len(doc) <= 6:
