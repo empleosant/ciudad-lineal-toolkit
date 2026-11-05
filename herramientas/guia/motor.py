@@ -170,3 +170,132 @@ def desempaqueta(texto):
         return fichas, str(dato.get("fecha", ""))
     except (ValueError, KeyError, TypeError):
         return [], ""
+
+
+# ---------------------------------------------------------------------------
+# Lista a medida: varios intereses, un solo PDF
+# ---------------------------------------------------------------------------
+# Lo pidió Álvaro el 05/11/2026: una persona que busca conserjería, almacén y
+# control de accesos tiene que salir de la cita con una sola hoja, no con tres
+# sectores enteros ni con veinte casillas marcadas a mano. Sin IA: cada
+# interés pasa por el buscador del codificador y la tabla ocupación → sector.
+
+TOPE_INTERESES = 6
+
+
+def intereses(texto):
+    """«conserje, mozo de almacén y control de accesos» -> los tres, sin repetir."""
+    trozos = re.split(r"[,;\n/]+|\s+y\s+|\s+o\s+", texto or "")
+    vistos, salida = set(), []
+    for t in trozos:
+        t = re.sub(r"\s+", " ", t).strip(" .-")
+        if len(t) > 2 and normaliza(t) not in vistos:
+            vistos.add(normaliza(t))
+            salida.append(t)
+    return salida[:TOPE_INTERESES]
+
+
+def _nombra(interes, denominacion):
+    """La ocupación nombra todas las palabras con contenido de lo escrito
+    («mozo de almacén» en «MOZOS DE CARGA Y DESCARGA, ALMACÉN…»), por el
+    principio de la palabra para que valgan plurales y femeninos."""
+    d = normaliza(denominacion)
+    return all(normaliza(p)[:min(5, len(p) - 1)] in d for p in interes.split() if len(p) > 3)
+
+
+def destinos_de(interes):
+    """Dónde mirar para un interés: (denominación, [(capítulo, apartado o None)]), hasta tres.
+
+    Votan dos cosas, sin IA:
+
+    - Las tres primeras ocupaciones del codificador (6, 4 y 2 puntos), pero
+      solo las que nombran lo escrito: «conserjería» daba «conserjes de hotel»
+      y «control de accesos», «técnicos en control de calidad». Si ninguna lo
+      nombra, vale la primera, como en el codificador.
+    - Los apartados donde hay fichas que lo nombran (tres cuartos de punto por
+      ficha, hasta seis): es lo que lleva «control de accesos», que no tiene
+      ocupación con sector, a conserjería y a auxiliares de eventos.
+
+    Sale lo que tiene al menos el 40 % de los puntos del primero, y un
+    capítulo entero se come sus apartados.
+    """
+    from herramientas.sispe import motor as sispe
+
+    puntos = {}
+    halladas = sispe.busca(interes, tope=3) if len(normaliza(interes)) > 2 else []
+    buenas = [h for h in halladas if _nombra(interes, h[2])] or halladas[:1]
+    for peso, (_, codigo, _) in zip((6, 4, 2), buenas):
+        for n, destino in enumerate(guia.destinos(codigo)):
+            if destino[0] in guia.CAPITULOS:
+                puntos[destino] = puntos.get(destino, 0) + peso / (n + 1)
+    cuenta = {}
+    for f in guia.busca(interes, tope=40):
+        if f["capitulo"] in guia.sectores() or f["capitulo"] == "08-ett":
+            par = (f["capitulo"], f["apartado"])
+            cuenta[par] = cuenta.get(par, 0) + 1
+    for (capitulo, apartado), n in cuenta.items():
+        destino = (capitulo, None) if (capitulo, None) in puntos else (capitulo, apartado)
+        puntos[destino] = puntos.get(destino, 0) + min(n, 6) * .75
+    if not puntos:
+        return (buenas[0][2] if buenas else None), []
+    enteros = {c for c, a in puntos if a is None}
+    orden = [d for d in sorted(puntos, key=lambda d: -puntos[d]) if d[1] is None or d[0] not in enteros]
+    primero = puntos[orden[0]]
+    return (buenas[0][2] if buenas else None), [d for d in orden if puntos[d] >= .4 * primero][:3]
+
+
+def rotulo(destino):
+    """(capítulo, apartado) -> «Conserjería y servicios auxiliares» o el capítulo entero."""
+    capitulo, apartado = destino
+    return apartado or guia.CAPITULOS[capitulo]["corto"]
+
+
+def _primero_con_via(fichas):
+    """Delante las que dejan mandar el currículum ya (correo o página de empleo)."""
+    return sorted(fichas, key=lambda f: not (f.get("correo") or f.get("web_empleo")))
+
+
+def a_medida(elegidos, generales=True):
+    """Las secciones del PDF a medida. `elegidos`: [(interés, [(capítulo, apartado)])].
+
+    Una sección por interés, con sus apartados; una empresa que ya ha salido
+    en un interés anterior no se repite. Los centros especiales de empleo van
+    aparte, como en el resto de la app, y al final los portales generalistas
+    y las grandes ETT, que sirven para todo lo que busca.
+    """
+    vistas, salida = set(), []
+    for interes, destinos in elegidos:
+        apartados = []
+        for destino in destinos:
+            capitulo, apartado = destino
+            s = guia.seccion(capitulo, [apartado] if apartado else None)
+            if not s:
+                continue
+            for nombre, fs in s["apartados"]:
+                suyas = [f for f in fs if normaliza(f["nombre"]) not in vistas]
+                vistas.update(normaliza(f["nombre"]) for f in suyas)
+                if suyas:
+                    apartados.append((f"{s['corto']} · {nombre}", _primero_con_via(suyas)))
+        if apartados:
+            salida.append({
+                "capitulo": destinos[0][0], "titulo": interes[:1].upper() + interes[1:],
+                "corto": interes, "entero": False, "apartados": apartados,
+                "n": sum(len(fs) for _, fs in apartados), "general": False,
+            })
+    salida = guia.aparta_cee(salida)
+    if generales and salida:
+        apartados = []
+        for capitulo, apartado in guia.GENERALES:
+            s = guia.seccion(capitulo, [apartado])
+            if s:
+                suyas = [f for _, fs in s["apartados"] for f in fs if normaliza(f["nombre"]) not in vistas]
+                vistas.update(normaliza(f["nombre"]) for f in suyas)
+                if suyas:
+                    apartados.append((f"{s['corto']} · {apartado}", suyas))
+        if apartados:
+            salida.append({
+                "capitulo": "generales", "titulo": "Para todo lo que buscas: portales y grandes ETT",
+                "corto": "Portales y ETT", "entero": False, "apartados": apartados,
+                "n": sum(len(fs) for _, fs in apartados), "general": False,
+            })
+    return salida

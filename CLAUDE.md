@@ -20,7 +20,7 @@ python3 estres.py           # robustez del buscador: 10 comprobaciones
 ~/.venvs/sispe/bin/python cascada.py    # la cascada de proveedores: 21 comprobaciones
 ~/.venvs/sispe/bin/python cv.py         # el generador de CV: 10 comprobaciones
 ~/.venvs/sispe/bin/python extranjeria.py   # el codificador de extranjería: 7 comprobaciones
-~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 19 comprobaciones
+~/.venvs/sispe/bin/python guia.py          # la guía, la mesa, la portada y las pantallas: 21 comprobaciones
 
 python3 evaluar.py --detalle    # los tres primeros de cada caso
 python3 evaluar.py --informe    # vuelca a informe_evaluacion.csv (no versionado)
@@ -167,6 +167,13 @@ Rama `mesa-y-portada`, propuesta visual aprobada por Álvaro ese día.
   Es la misma que la del PDF «Empezar a trabajar en Madrid» de la guía
   (`guia-empleo-madrid`, `datos/selecciones.toml`, `generar.py --seleccion
   empezar`): las dos listas se cambian a la vez.
+- **«Lista a medida»** (05/11/2026): desplegable de «Dónde enviar el CV» para quien
+  busca varios puestos a la vez. Se escriben separados por comas, cada uno se
+  lleva a sus apartados sin IA (`herramientas/guia/motor.py: destinos_de`: votan
+  las tres primeras ocupaciones del codificador que nombran lo escrito y las
+  fichas que lo nombran) y sale un solo PDF (`a_medida`): un apartado por puesto
+  sin repetir empresas, delante las que tienen correo o página de empleo, los
+  centros especiales aparte y al final portales y grandes ETT.
 - «↺ Nueva búsqueda» limpia lo escrito, el sector y el filtro (no su lista), y
   «Regenerar con IA» va arriba de las fichas sugeridas, no al final.
 - Pendiente de la propuesta: preparar la entrevista, recursos y ferias, hoja

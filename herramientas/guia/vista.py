@@ -121,6 +121,57 @@ with estilo.banda(
             "Los sectores de la ocupación del codificador y de las experiencias del currículo.",
         )
 
+
+
+def _destino(valor):
+    """«12-logistica|Operadores logísticos» -> (capítulo, apartado); sin apartado, el capítulo entero."""
+    capitulo, _, apartado = valor.partition("|")
+    return capitulo, apartado or None
+
+
+def lista_a_medida():
+    """Varios puestos, un solo PDF: lo que pide quien se va con prisa."""
+    texto = st.text_input(
+        "Qué busca", key="guia_medida", placeholder="conserje, mozo de almacén, control de accesos",
+        help="Separados por comas. Cada puesto se lleva a sus sectores de la guía, sin IA.",
+    )
+    elegidos = []
+    todos = [f"{c}|{a}" for c in guia.sectores() + ["08-ett"] for a in guia.CAPITULOS[c]["apartados"]]
+    for interes in motor.intereses(texto):
+        _, destinos = motor.destinos_de(interes)
+        propuestos = [f"{c}|{a or ''}" for c, a in destinos]
+        opciones = propuestos + [v for v in todos if v not in propuestos]
+        valor = st.multiselect(
+            interes[:1].upper() + interes[1:], opciones, default=propuestos,
+            key="guia_medida_" + hashlib.md5(interes.lower().encode()).hexdigest()[:8],
+            format_func=lambda v: f"{guia.CAPITULOS[_destino(v)[0]]['corto']} · {motor.rotulo(_destino(v))}",
+            placeholder="Elige dónde buscar",
+        )
+        if valor:
+            elegidos.append((interes, [_destino(v) for v in valor]))
+    if not elegidos:
+        st.caption("Escribe lo que busca y aquí salen sus sectores; quita o añade con un toque.")
+        return
+    secciones_ = motor.a_medida(elegidos)
+    nombre = st.text_input("Su nombre, para la llamada (opcional)", key="guia_medida_nombre")
+    puestos = [i for i, _ in elegidos]
+    en_frase = ", ".join(puestos[:-1]) + (" o " if len(puestos) > 1 else "") + puestos[-1]
+    st.download_button(
+        f"PDF a medida · {sum(s['n'] for s in secciones_)} empresas", icon=":material/print:",
+        on_click="ignore", type="primary", use_container_width=True,
+        data=lambda: guia.pdf(secciones_, "Dónde enviar tu currículum", " · ".join(puestos),
+                              puesto=en_frase.lower(), nombre=nombre.strip()),
+        file_name="Donde_enviar_CV_" + (re.sub(r"[^0-9A-Za-z]+", "_", "_".join(puestos)).strip("_")[:60] or "lista")
+                  + ".pdf",
+        mime="application/pdf",
+        help="Un apartado por puesto, sin repetir empresas; delante las que dejan mandar el currículum "
+             "ya; al final los centros especiales de empleo, los portales y las grandes ETT.",
+    )
+
+
+with st.expander("Lista a medida: varios puestos en un solo PDF", icon=":material/checklist:"):
+    lista_a_medida()
+
 # Qué se enseña: lo buscado manda; luego el sector abierto a mano; luego el de
 # las píldoras (los de la mesa o, con el filtro, los de empezar a trabajar).
 consulta = (consulta or "").strip()

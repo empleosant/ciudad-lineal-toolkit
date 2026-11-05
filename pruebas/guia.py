@@ -763,6 +763,56 @@ def p_pantalla_formacion_y_extranjeria():
     return informe(nombre, fallos, 3)
 
 
+def p_la_lista_a_medida():
+    """`motor.a_medida`: varios puestos, un PDF, sin repetir empresas."""
+    nombre = "Lista a medida: varios puestos en un solo PDF"
+    from herramientas.guia import motor as guia_motor
+    fallos = []
+    ii = guia_motor.intereses("conserje, mozo de almacén y control de accesos")
+    if ii != ["conserje", "mozo de almacén", "control de accesos"]:
+        fallos.append(f"no separa los puestos: {ii}")
+    destinos = {i: guia_motor.destinos_de(i)[1] for i in ii}
+    if ("13-limpieza", "Conserjería y servicios auxiliares") not in destinos.get("conserje", []):
+        fallos.append("«conserje» no lleva a conserjería")
+    if not any(c == "12-logistica" for c, _ in destinos.get("mozo de almacén", [])):
+        fallos.append("«mozo de almacén» no lleva a logística")
+    if not destinos.get("control de accesos"):
+        fallos.append("«control de accesos», sin sector en la tabla, se queda sin dónde buscar")
+    secciones = guia_motor.a_medida(list(destinos.items()))
+    # los centros especiales repiten a propósito (ver `aparta_cee`)
+    nombres = [guia.normaliza(f["nombre"]) for s in secciones if not s.get("cee")
+               for _, fs in s["apartados"] for f in fs]
+    if len(nombres) != len(set(nombres)):
+        fallos.append("una empresa sale dos veces")
+    if not secciones or secciones[-1]["capitulo"] != "generales":
+        fallos.append("al final no van los portales y las grandes ETT")
+    primera = secciones[0]["apartados"][0][1] if secciones else []
+    con_via = [bool(f.get("correo") or f.get("web_empleo")) for f in primera]
+    if con_via != sorted(con_via, reverse=True):
+        fallos.append("las que dejan mandar el currículum no van delante")
+    if not guia.pdf(secciones, "Dónde enviar tu currículum", "prueba").startswith(b"%PDF"):
+        fallos.append("no sale el PDF")
+    return informe(nombre, fallos, 7)
+
+
+def p_pantalla_lista_a_medida():
+    """El desplegable de la pestaña: escribir los puestos da el botón del PDF."""
+    nombre = "Pantalla: lista a medida"
+    if not _hay_streamlit(nombre):
+        return True
+    fallos = []
+    at = abre("herramientas/guia/vista.py")
+    at.text_input(key="guia_medida").input("conserje, mozo de almacén").run()
+    if at.exception:
+        fallos.append(f"excepción: {str(at.exception[0].value)[:100]}")
+        return informe(nombre, fallos, 2)
+    if len([m for m in at.multiselect if (m.key or "").startswith("guia_medida_")]) != 2:
+        fallos.append("no sale un selector por puesto")
+    if not [b for b in at.get("download_button") if "PDF a medida" in b.proto.label]:
+        fallos.append("no sale el botón del PDF a medida")
+    return informe(nombre, fallos, 2)
+
+
 PRUEBAS = [
     p_la_copia_esta_entera,
     p_la_tabla_apunta_a_lo_que_existe,
@@ -781,6 +831,8 @@ PRUEBAS = [
     p_pantalla_informes,
     p_pantalla_formacion_y_extranjeria,
     p_pantalla_donde_enviar,
+    p_la_lista_a_medida,
+    p_pantalla_lista_a_medida,
     p_pantalla_empresas_con_ia,
     p_pantalla_portada,
 ]
