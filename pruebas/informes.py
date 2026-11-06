@@ -575,7 +575,7 @@ def correo_con_la_guia():
     # Sin la sección de centros especiales: la pantalla solo la añade si se
     # ha marcado que la persona tiene discapacidad.
     texto, fichas = motor.empresas_de_la_guia(guia.secciones(["51201038"], cee=False))
-    if "[Bares, restaurantes y hoteles]" not in texto or "Cómo se entra:" not in texto:
+    if "[Hostelería: bares, restaurantes y hoteles]" not in texto or "Cómo se entra:" not in texto:
         malas.append("la lista para el prompt no lleva el sector o el cómo se entra")
     if not 8 <= len(fichas) <= 2 * motor.POR_SECCION:
         malas.append(f"{len(fichas)} fichas para un camarero")

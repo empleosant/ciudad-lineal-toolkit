@@ -73,8 +73,8 @@ prefijo,capitulo,apartado
 231,24-portales,Educación
 232,29-educacion,Academias y formación
 232,24-portales,Educación
-2326,15-monitores,Campamentos y tiempo libre
-2326,15-monitores,"Granjas escuela y albergues"
+2326,15-monitores,Ocio y tiempo libre
+2326,15-monitores,Granjas escuela
 243,30-industria,Industria y fabricación
 243,24-portales,"Construcción, arquitectura e ingeniería"
 244,34-instalaciones,Compañías de energía y agua
@@ -124,9 +124,9 @@ prefijo,capitulo,apartado
 2823,39-asesorias,"Recursos humanos, nóminas y prevención"
 2824,47-tercer-sector,
 2824,15-monitores,Intervención social y educativa
-2824,24-portales,Trabajo social y ONG
+2824,24-portales,Ámbito social y ONG
 2825,47-tercer-sector,
-2825,24-portales,Trabajo social y ONG
+2825,24-portales,Ámbito social y ONG
 2921,45-publicidad,Editoriales y distribución de libros
 2922,45-publicidad,"Prensa, radio y medios digitales"
 29231038,47-tercer-sector,Discapacidad y salud mental
@@ -197,24 +197,24 @@ prefijo,capitulo,apartado
 3711,39-asesorias,Despachos de abogados
 3713,47-tercer-sector,
 3713,15-monitores,Intervención social y educativa
-3713,24-portales,Trabajo social y ONG
+3713,24-portales,Ámbito social y ONG
 37131078,17-ocio-y-cultura,
 3714,47-tercer-sector,
-3714,24-portales,Trabajo social y ONG
-3715,15-monitores,Campamentos y tiempo libre
+3714,24-portales,Ámbito social y ONG
+3715,15-monitores,Ocio y tiempo libre
 3715,15-monitores,Intervención social y educativa
 37151029,14-cuidados,Residencias y centros de día
-37151029,15-monitores,Campamentos y tiempo libre
+37151029,15-monitores,Ocio y tiempo libre
 3721,16-deporte,
 3722,16-deporte,
 3723,16-deporte,Gimnasios y centros deportivos
 3723,16-deporte,Federaciones y formación
 37231040,44-animales,"Hípicas, granjas y centros con animales"
 37231040,16-deporte,
-3724,15-monitores,Campamentos y tiempo libre
-3724,15-monitores,"Granjas escuela y albergues"
+3724,15-monitores,Ocio y tiempo libre
+3724,15-monitores,Granjas escuela
 37241016,17-ocio-y-cultura,Parques de ocio
-37241016,15-monitores,Campamentos y tiempo libre
+37241016,15-monitores,Ocio y tiempo libre
 3731,45-publicidad,"Prensa, radio y medios digitales"
 3731,17-ocio-y-cultura,Audiovisual
 3732,40-eventos,"Montaje, producción y técnica"
@@ -295,17 +295,17 @@ prefijo,capitulo,apartado
 5110,11-hosteleria,Cadenas de restauración
 5110,11-hosteleria,Hoteles
 5110,40-eventos,Catering y restauración de eventos
-5110,15-monitores,Comedores y restauración colectiva
+5110,15-monitores,Comedores escolares
 5110,24-portales,Hostelería y turismo
-51101048,15-monitores,Comedores y restauración colectiva
+51101048,15-monitores,Comedores escolares
 51101048,29-educacion,Escuelas infantiles
 51101059,40-eventos,Catering y restauración de eventos
-51101059,15-monitores,Comedores y restauración colectiva
+51101059,15-monitores,Comedores escolares
 51101059,11-hosteleria,
 51101071,11-hosteleria,
 51101071,37-alimentacion,"Panadería, pastelería y obradores"
 51101082,40-eventos,Catering y restauración de eventos
-51101082,15-monitores,Comedores y restauración colectiva
+51101082,15-monitores,Comedores escolares
 51101082,11-hosteleria,
 5120,11-hosteleria,Cadenas de restauración
 5120,11-hosteleria,Hoteles
@@ -399,9 +399,9 @@ prefijo,capitulo,apartado
 5710,46-hogar,Agencias de empleo de hogar
 5710,24-portales,Sanidad y cuidados
 5721,29-educacion,Escuelas infantiles
-5721,15-monitores,Comedores y restauración colectiva
-5721,15-monitores,Campamentos y tiempo libre
-57211033,15-monitores,Comedores y restauración colectiva
+5721,15-monitores,Comedores escolares
+5721,15-monitores,Ocio y tiempo libre
+57211033,15-monitores,Comedores escolares
 57211033,29-educacion,Escuelas infantiles
 5722,46-hogar,Agencias de empleo de hogar
 5722,46-hogar,Bolsas gratuitas de entidades y parroquias
@@ -602,7 +602,7 @@ prefijo,capitulo,apartado
 9229,13-limpieza,Empresas de limpieza
 9310,11-hosteleria,Cadenas de restauración
 9310,11-hosteleria,Hoteles
-9310,15-monitores,Comedores y restauración colectiva
+9310,15-monitores,Comedores escolares
 9310,40-eventos,Catering y restauración de eventos
 9310,24-portales,Hostelería y turismo
 9320,11-hosteleria,Cadenas de restauración

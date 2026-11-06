@@ -323,7 +323,7 @@ PARA_EMPEZAR = [
     ("06-formacion", ["Centros de formación de la Comunidad de Madrid", "Buscadores de cursos gratuitos", "Carnés y acreditaciones que abren puertas"]),
     ("13-limpieza", ["Grandes empresas de servicios", "Empresas de limpieza", "Limpieza viaria y residuos", "Conserjería y servicios auxiliares"]),
     ("11-hosteleria", ["Cadenas de restauración", "Hoteles", "Camareras de pisos: limpieza de hoteles y apartamentos", "Bolsas y portales del sector"]),
-    ("15-monitores", ["Comedores y restauración colectiva"]),
+    ("15-monitores", ["Comedores escolares"]),
     ("46-hogar", ["Agencias de empleo de hogar", "Bolsas gratuitas de entidades y parroquias", "Asesoría y defensa de tus derechos"]),
     ("40-eventos", ["Azafatas, auxiliares y personal de eventos", "Catering y restauración de eventos"]),
     ("17-ocio-y-cultura", ["Parques de ocio", "Cines y teatros"]),
