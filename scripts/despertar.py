@@ -58,7 +58,8 @@ def main():
     print(f"Abriendo {url}")
 
     with sync_playwright() as p:
-        navegador = p.chromium.launch()
+        # El Chrome que ya viene instalado en las máquinas de GitHub.
+        navegador = p.chromium.launch(channel="chrome")
         pagina = navegador.new_page()
 
         try:

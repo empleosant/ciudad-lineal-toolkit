@@ -52,10 +52,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Instalar navegador
-        run: |
-          pip install --quiet playwright
-          playwright install chromium --with-deps
+      # No se descarga navegador: se usa el Chrome que ya traen las máquinas
+      # de GitHub. `playwright install --with-deps` tira de los servidores de
+      # Ubuntu y, cuando fallan (pasó el 11/11/2026 con Ubuntu 26), la tarea
+      # se queda colgada sin llegar a abrir la app.
+      - name: Instalar Playwright
+        run: pip install --quiet playwright
 
       - name: Abrir la aplicación
         env:
